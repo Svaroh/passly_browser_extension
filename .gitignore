@@ -4,11 +4,12 @@
 npm-debug.log
 /bower_components
 
+# Less files
+data/less
 
 # Plugin build       #
 ######################
 # passbolt-firefox-addon.xpi
-bootstrap.js
 install.rdf
 
 # Config
