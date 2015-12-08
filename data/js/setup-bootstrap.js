@@ -17,7 +17,8 @@
   // If this script is loaded, that means the current page is targeting the first step of
   // the wizard installer. The step which is provided by the backend of passbolt.
   // Retrieve all the information we need from the url.
-  var regex = new RegExp(self.options.config.setupBootstrapRegex);
+  // @TODO move that up to addon code
+  var regex = new RegExp(self.options.setupBootstrapRegex);
   var matches = regex.exec(window.location.href);
 
   if (matches != null) {
