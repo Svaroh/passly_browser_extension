@@ -1,7 +1,7 @@
 /**
  * Setup
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -266,7 +266,7 @@ passbolt.setup.data = passbolt.setup.data || {};
     $actionsWrapper.empty();
 
     // Load the actions template
-    return passbolt.helper.html.loadTemplate($actionsWrapper, './tpl/setup/action_buttons.ejs')
+    return passbolt.html.loadTemplate($actionsWrapper, './tpl/setup/action_buttons.ejs')
       .then(function () {
         // Define which actions are available, as well as their states.
         // This is based on defaultActions, and extended with step actions if defined.
@@ -326,7 +326,7 @@ passbolt.setup.data = passbolt.setup.data || {};
           currentStepId: stepId
         };
 
-        return passbolt.helper.html.loadTemplate($menuWrapper, './tpl/setup/menu.ejs', 'html', data);
+        return passbolt.html.loadTemplate($menuWrapper, './tpl/setup/menu.ejs', 'html', data);
       });
   };
 
@@ -351,7 +351,7 @@ passbolt.setup.data = passbolt.setup.data || {};
       .then(function () {
         // Load the template relative to the step and start the step.
         var tplPath = './tpl/setup/' + currentStepId + '.ejs';
-        return passbolt.helper.html.loadTemplate($contentWrapper, tplPath, 'html', step.viewData)
+        return passbolt.html.loadTemplate($contentWrapper, tplPath, 'html', step.viewData)
           .then(function () {
             // Get elements for all selectors.
             if (step.elts != undefined) {
@@ -667,7 +667,7 @@ passbolt.setup.data = passbolt.setup.data || {};
           additional: additionalData
         };
 
-        return passbolt.helper.html.loadTemplate($actionsWrapper, './tpl/setup/fatal_error.ejs', 'html', {
+        return passbolt.html.loadTemplate($actionsWrapper, './tpl/setup/fatal_error.ejs', 'html', {
           setupData: data
         });
       })

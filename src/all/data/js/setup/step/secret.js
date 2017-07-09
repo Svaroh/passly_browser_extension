@@ -1,7 +1,7 @@
 /**
  * Passbolt passphrase setup step.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 var passbolt = passbolt || {};
@@ -178,7 +178,7 @@ passbolt.setup.steps = passbolt.setup.steps || {};
       criterias: criterias
     };
 
-    return passbolt.helper.html.loadTemplate(step.elts.$passwordCriterias, './tpl/secret/criterias.ejs', 'html', data);
+    return passbolt.html.loadTemplate(step.elts.$passwordCriterias, './tpl/secret/criterias.ejs', 'html', data);
   };
 
   /**
@@ -193,7 +193,7 @@ passbolt.setup.steps = passbolt.setup.steps || {};
       strengthLabel: secretComplexity.STRENGTH[strength].label
     };
 
-    return passbolt.helper.html.loadTemplate(step.elts.$passwordStrength, './tpl/secret/strength.ejs', 'html', data);
+    return passbolt.html.loadTemplate(step.elts.$passwordStrength, './tpl/secret/strength.ejs', 'html', data);
   };
 
   passbolt.setup.steps[step.id] = step;

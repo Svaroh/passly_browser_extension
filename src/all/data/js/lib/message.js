@@ -2,7 +2,7 @@
  * The passbolt message is a part of the communication layer used on the
  * content side code to communicate with the addon-code.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 var passbolt = passbolt || {};

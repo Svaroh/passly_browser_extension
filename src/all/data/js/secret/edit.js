@@ -1,7 +1,7 @@
 /**
  * Edit a secret.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -68,7 +68,7 @@
    * @returns {promise}
    */
   var loadTemplate = function () {
-    return passbolt.helper.html.loadTemplate('body', './tpl/secret/edit.ejs')
+    return passbolt.html.loadTemplate('body', './tpl/secret/edit.ejs')
       .then(function () {
         $secret = $('#js_secret');
         $secretClear = $('#js_secret_clear');
@@ -147,7 +147,7 @@
         strengthLabel: secretComplexity.STRENGTH[strength].label
       };
 
-    return passbolt.helper.html.loadTemplate($secretStrength, './tpl/secret/strength.ejs', 'html', tplData)
+    return passbolt.html.loadTemplate($secretStrength, './tpl/secret/strength.ejs', 'html', tplData)
       .then(function () {
         // Add class on the top container.
         var containerClasses = $secretStrength.attr('class').split(' ');
@@ -350,7 +350,7 @@
     $feedback.hide();
 
     // Resize the iframe to fit the content.
-    passbolt.helper.html.resizeIframe('#passbolt-iframe-secret-edition', {
+    passbolt.html.resizeIframe('#passbolt-iframe-secret-edition', {
       width: '100%'
     });
 
@@ -377,7 +377,7 @@
     $feedback.html(error).show();
 
     // Resize the iframe to fit the content.
-    passbolt.helper.html.resizeIframe('#passbolt-iframe-secret-edition', {
+    passbolt.html.resizeIframe('#passbolt-iframe-secret-edition', {
       width: '100%'
     });
 

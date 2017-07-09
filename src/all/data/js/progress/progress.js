@@ -1,7 +1,7 @@
 /**
  * Progress bar.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -81,7 +81,7 @@
       }
     }
 
-    passbolt.helper.html.loadTemplate('body', './tpl/progress/progress.ejs', 'html', {
+    passbolt.html.loadTemplate('body', './tpl/progress/progress.ejs', 'html', {
       title: title
     }).then(initEventsListeners, error)
       .then(initProgressBar);

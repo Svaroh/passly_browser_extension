@@ -3,7 +3,7 @@
  * It has for aim to guarantee the integrity of critical information displayed
  * to the user.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 var passbolt = passbolt || {};
@@ -25,7 +25,7 @@ passbolt.security = passbolt.security || {};
       .then(function (securityToken) {
         $(securityTokenSelector).text(securityToken.code);
         securityToken.id = protectedFieldSelector;
-        return passbolt.helper.html.loadTemplate('head', './tpl/secret/securitytoken-style.ejs', 'append', securityToken);
+        return passbolt.html.loadTemplate('head', './tpl/secret/securitytoken-style.ejs', 'append', securityToken);
       });
   };
   passbolt.security.initSecurityToken = initSecurityToken;

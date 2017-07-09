@@ -1,13 +1,12 @@
 /**
  * HTML Helper.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
 var passbolt = passbolt || {};
-passbolt.helper = passbolt.helper || {};
-passbolt.helper.html = passbolt.helper.html || {};
+passbolt.html = passbolt.html || {};
 
 (function (passbolt) {
 
@@ -44,7 +43,7 @@ passbolt.helper.html = passbolt.helper.html || {};
     // Request the application worker to resize the iframe container.
     passbolt.message.emit('passbolt.passbolt-page.resize-iframe', selector, dimension);
   };
-  passbolt.helper.html.resizeIframe = resizeIframe;
+  passbolt.html.resizeIframe = resizeIframe;
 
   /**
    * Get template
@@ -70,7 +69,7 @@ passbolt.helper.html = passbolt.helper.html || {};
         }
       );
   };
-  passbolt.helper.html.getTemplate = getTemplate;
+  passbolt.html.getTemplate = getTemplate;
 
   /**
    * Render a template and add the result to the selector given in parameter.
@@ -93,6 +92,25 @@ passbolt.helper.html = passbolt.helper.html || {};
         return $(selector)[loadStrategy](html);
       });
   };
-  passbolt.helper.html.loadTemplate = loadTemplate;
+  passbolt.html.loadTemplate = loadTemplate;
+
+	/**
+	 * Return the browser name (best guess)
+	 * This should be used for view enhancement purposes not to change
+	 * functionalities or behaviors
+	 */
+	var getBrowserName = function () {
+		var userAgent = window.navigator.userAgent;
+		if(typeof userAgent != 'undefined' ) {
+			if (userAgent.substring('Firefox') != -1 || userAgent.substring('Seamonkey') != -1) {
+				return 'firefox';
+			}
+			if (userAgent.substring('Chrome') != -1 || userAgent.substring('Chromium') != -1) {
+				return 'chrome'
+			}
+			return 'unsupported';
+		}
+	};
+	passbolt.html.getBrowserName = getBrowserName;
 
 })(passbolt);

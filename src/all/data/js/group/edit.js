@@ -1,7 +1,7 @@
 /**
  * Share a secret.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -37,12 +37,12 @@
      * @returns {promise}
      */
     var loadTemplate = function () {
-        return passbolt.helper.html.loadTemplate('body', './tpl/group/edit.ejs')
+        return passbolt.html.loadTemplate('body', './tpl/group/edit.ejs')
             .then(function () {
                 $autocomplete = $(autocompleteFieldSelector);
 
                 // Resize the iframe container regarding the iframe content.
-                passbolt.helper.html.resizeIframe('#passbolt-iframe-group-edit', {
+                passbolt.html.resizeIframe('#passbolt-iframe-group-edit', {
                     width: '100%'
                 });
             });

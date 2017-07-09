@@ -1,7 +1,7 @@
 /**
  * Autocomplete form in share a resource.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -42,12 +42,12 @@
    * @returns {promise}
    */
   var loadTemplate = function () {
-    return passbolt.helper.html.loadTemplate('body', './tpl/resource/shareAutocomplete.ejs')
+    return passbolt.html.loadTemplate('body', './tpl/resource/shareAutocomplete.ejs')
       .then(function () {
-        return passbolt.helper.html.getTemplate('./tpl/resource/shareAutocompleteItem.ejs');
+        return passbolt.html.getTemplate('./tpl/resource/shareAutocompleteItem.ejs');
       }).then(function (data) {
         itemTpl = data;
-        return passbolt.helper.html.getTemplate('./tpl/resource/share-autocomplete-item_empty.ejs');
+        return passbolt.html.getTemplate('./tpl/resource/share-autocomplete-item_empty.ejs');
       }).then(function (data) {
         emptyTpl = data;
       });
@@ -72,13 +72,13 @@
     // If the resolution is too low, the iframe should not be scrollable.
     if (cssClasses.indexOf('fourfour') == -1) {
       // Resize the iframe container regarding the iframe content.
-      passbolt.helper.html.resizeIframe('#passbolt-iframe-password-share-autocomplete', {
+      passbolt.html.resizeIframe('#passbolt-iframe-password-share-autocomplete', {
         width: '100%'
       });
     }
     // In desktop.
     else {
-      passbolt.helper.html.resizeIframe('#passbolt-iframe-password-share-autocomplete', {
+      passbolt.html.resizeIframe('#passbolt-iframe-password-share-autocomplete', {
         width: '100%'
       });
     }

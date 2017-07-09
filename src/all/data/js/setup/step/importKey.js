@@ -1,7 +1,7 @@
 /**
  * Passbolt import key setup step.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 var passbolt = passbolt || {};
@@ -49,7 +49,7 @@ passbolt.setup.steps = passbolt.setup.steps || {};
     // If info template is provided, display it.
     // We use this space to display side information to the user.
     if (step.options.infoTemplate != undefined && step.options.infoTemplate != null) {
-      passbolt.helper.html.loadTemplate($('#js_step_content .sideInfo'), './tpl/setup/' + step.options.infoTemplate);
+      passbolt.html.loadTemplate($('#js_step_content .sideInfo'), './tpl/setup/' + step.options.infoTemplate);
     }
 
     // Bind the go back to create a new key button.

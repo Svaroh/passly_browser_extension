@@ -1,7 +1,7 @@
 /**
  * Bootstrap.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -84,12 +84,10 @@ var passbolt = passbolt || {};
       if (!this.isTrustedDomain) {
         this.loginPageWrongDomain();
       }
-    }
-    else {
+    } else {
       this.loginPageConfigurationMissing();
     }
 
-    // Init the version component.
     this.initVersion();
   };
 
@@ -101,13 +99,14 @@ var passbolt = passbolt || {};
     $('html').addClass('domain-unknown');
     var $renderSpace = $('.login.page .js_main-login-section'),
       publicRegistration = $('.login.page.public-registration').length > 0 ? true : false,
-      passboltDomain = window.location.href.replace(/(.*)(\/auth\/login(\/)?)$/, '$1');
+      passboltDomain = window.location.href.replace(/(.*)(\/auth\/login(\/)?)$/, '$1'),
+			browserName = passbolt.html.getBrowserName();
 
-    // Get template.
-    passbolt.helper.html.loadTemplate($renderSpace, './tpl/login/wrong-domain.ejs', 'html', {
+    passbolt.html.loadTemplate($renderSpace, 'data/tpl/login/wrong-domain.ejs', 'html', {
       trustedDomain: this.trustedDomain,
       publicRegistration: publicRegistration,
-      passboltDomain: passboltDomain
+      passboltDomain: passboltDomain,
+      browserName: browserName
     });
   };
 
@@ -118,11 +117,13 @@ var passbolt = passbolt || {};
   Bootstrap.prototype.loginPageConfigurationMissing = function () {
     var $renderSpace = $('.login.page .js_main-login-section'),
       publicRegistration = $('.login.page.public-registration').length > 0 ? true : false,
-        passboltDomain = window.location.href.replace(/(.*)(\/auth\/login(\/)?)$/, '$1');
+			passboltDomain = window.location.href.replace(/(.*)(\/auth\/login(\/)?)$/, '$1'),
+			browserName = passbolt.html.getBrowserName();
 
-    return passbolt.helper.html.loadTemplate($renderSpace, './tpl/login/noconfig.ejs', 'html', {
+    return passbolt.html.loadTemplate($renderSpace, 'data/tpl/login/noconfig.ejs', 'html', {
       publicRegistration: publicRegistration,
-      passboltDomain: passboltDomain
+      passboltDomain: passboltDomain,
+			browserName: browserName
     });
   };
 

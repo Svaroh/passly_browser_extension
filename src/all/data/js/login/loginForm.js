@@ -1,7 +1,7 @@
 /**
  * Login form.
  *
- * @copyright (c) 2015-present Bolt Softwares Pvt Ltd
+ * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 
@@ -36,7 +36,7 @@
    * @returns {promise}
    */
   var loadTemplate = function () {
-    return passbolt.helper.html.loadTemplate('body', './tpl/login/form.ejs')
+    return passbolt.html.loadTemplate('body', './tpl/login/form.ejs')
       .then(function success() {
         $loginSubmit = $('#loginSubmit');
         $username = $('#UserUsername');

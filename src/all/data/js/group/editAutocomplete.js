@@ -41,12 +41,12 @@
      * @returns {promise}
      */
     var loadTemplate = function () {
-        return passbolt.helper.html.loadTemplate('body', './tpl/group/editAutocomplete.ejs')
+        return passbolt.html.loadTemplate('body', './tpl/group/editAutocomplete.ejs')
             .then(function () {
-                return passbolt.helper.html.getTemplate('./tpl/group/editAutocompleteItem.ejs');
+                return passbolt.html.getTemplate('./tpl/group/editAutocompleteItem.ejs');
             }).then(function (data) {
                 itemTpl = data;
-                return passbolt.helper.html.getTemplate('./tpl/group/editAutocompleteItemEmpty.ejs');
+                return passbolt.html.getTemplate('./tpl/group/editAutocompleteItemEmpty.ejs');
             }).then(function (data) {
                 emptyTpl = data;
             });
@@ -71,13 +71,13 @@
         // If the resolution is too low, the iframe should not be scrollable.
         if (cssClasses.indexOf('fourfour') == -1) {
             // Resize the iframe container regarding the iframe content.
-            passbolt.helper.html.resizeIframe('#passbolt-iframe-group-edit-autocomplete', {
+            passbolt.html.resizeIframe('#passbolt-iframe-group-edit-autocomplete', {
                 width: '100%'
             });
         }
         // In desktop.
         else {
-            passbolt.helper.html.resizeIframe('#passbolt-iframe-group-edit-autocomplete', {
+            passbolt.html.resizeIframe('#passbolt-iframe-group-edit-autocomplete', {
                 width: '100%'
             });
         }
