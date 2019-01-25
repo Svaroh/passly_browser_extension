@@ -19,9 +19,8 @@ class SecretService {}
 
 /**
  * Find a secret by resource id.
- * @param {string} keywords The keywords to search
- * @returns {array}
- * Return users or groups objects.
+ * @param {string} string The target resource id
+ * @returns {object}
  */
 SecretService.findByResourceId = async function (resourceId) {
   const user = User.getInstance();
