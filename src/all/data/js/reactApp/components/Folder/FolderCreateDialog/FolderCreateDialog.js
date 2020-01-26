@@ -13,8 +13,8 @@
  */
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import AppContext from "../../contexts/AppContext";
-import SvgCloseIcon from "../../img/svg/close";
+import AppContext from "../../../contexts/AppContext";
+import SvgCloseIcon from "../../../img/svg/close";
 
 class FolderCreateDialog extends Component {
   constructor() {
@@ -72,7 +72,7 @@ class FolderCreateDialog extends Component {
     try {
       const folder = await this.createFolder();
       this.displayNotification("success", "The folder has been added successfully");
-      // TODO - UI state changes after folder add?
+      this.selectAndScrollToFolder(folder.id);
       this.props.onClose();
     } catch (error) {
       // It can happen when the user has closed the passphrase entry dialog by instance.
