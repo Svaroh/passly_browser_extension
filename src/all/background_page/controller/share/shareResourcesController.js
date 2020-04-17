@@ -16,7 +16,7 @@ const {Share} = require('../../model/share');
 const passphraseController = require('../passphrase/passphraseController');
 const progressController = require('../progress/progressController');
 
-class ShareController {
+class ShareResourcesController {
   constructor(worker, requestId) {
     this.worker = worker;
     this.requestId = requestId;
@@ -37,10 +37,14 @@ class ShareController {
     // why 3: simulate call to the API + encrypting step + share call to the API
     // why +1: this function initialization step
     const progressGoal = resources.length * 3 + 1;
+    const privateKeySecret = await passphraseController.get(this.worker);
 
     try {
-      const privateKeySecret = await passphraseController.get(this.worker);
-      await progressController.start(this.worker, `Share ${resources.length} passwords`, progressGoal);
+      let msg = `Share ${resources.length} passwords`;
+      if (resources.length === 1) {
+        msg  = `Share one password`;
+      }
+      await progressController.start(this.worker, msg, progressGoal);
       await progressController.update(this.worker, progress++, 'Initialize');
       await keyring.sync();
       await Share.bulkShare(resources, changes, privateKeySecret, message => {
@@ -57,4 +61,4 @@ class ShareController {
   }
 }
 
-exports.ShareController = ShareController;
+exports.ShareResourcesController = ShareResourcesController;
