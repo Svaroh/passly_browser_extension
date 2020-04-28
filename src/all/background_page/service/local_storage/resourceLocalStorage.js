@@ -48,12 +48,11 @@ ResourceLocalStorage.set = async function (resources) {
 /**
  * Get a resource from the local storage by id
  * @param {string} id The resource id
- * @param {object} The resource object
+ * @return {object} resource object
  */
 ResourceLocalStorage.getResourceById = async function (id) {
   const resources = await ResourceLocalStorage.get();
-  const resource = resources.find(item => item.id === id);
-  return resource;
+  return resources.find(item => item.id === id);
 };
 
 /**
