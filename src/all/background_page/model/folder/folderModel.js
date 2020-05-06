@@ -10,10 +10,12 @@
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
  */
-const {FolderEntity} = require('./entity/folder/folderEntity');
-const {PermissionChangeEntity} = require('./entity/permission/permissionChangeEntity');
-const {FolderLocalStorage} = require('../service/local_storage/folderLocalStorage');
-const {FolderService} = require('../service/api/folder/folderService');
+const {PermissionEntity} = require('../entity/permission/permissionEntity');
+const {PermissionsCollection} = require('../entity/permission/permissionsCollection');
+const {PermissionChangesCollection} = require("../../model/entity/permission/permissionChangesCollection");
+const {FolderEntity} = require('../entity/folder/folderEntity');
+const {FolderLocalStorage} = require('../../service/local_storage/folderLocalStorage');
+const {FolderService} = require('../../service/api/folder/folderService');
 
 class FolderModel {
   /**
@@ -49,21 +51,6 @@ class FolderModel {
   }
 
   /**
-   * The parent folders from API and map API result to folder Entity
-   *
-   * @param {FolderEntity} folderEntity
-   * @throws {Error} if API call fails, service unreachable, etc.
-   * @return {Array<FolderEntity>} folders
-   */
-  async findParent(folderEntity) {
-    if (!folderEntity.folderParentId) {
-      throw new TypeError('FolderModel::findParent folder parent id is missing.');
-    }
-    const body = await this.folderService.get(folderEntity.folderParentId, {permission: true});
-    return new FolderEntity(body);
-  }
-
-  /**
    * Get all folders from API and map API result to folder Entity
    *
    * @return {Array<FolderEntity>} folders
@@ -72,6 +59,25 @@ class FolderModel {
     return await this.folderService.findAllForShare(foldersIds);
     // TODO map to entities
     //return body.map(folder => FolderEntity.fromApiData(folder));
+  }
+
+  /**
+   *
+   * @param {FolderEntity} folderEntity
+   * @returns {Promise<PermissionsCollection>}
+   */
+  async cloneParentPermissions(folderEntity) {
+    // get parent from api
+    const parentDto = await this.folderService.get(folderEntity.folderParentId, {permissions: true});
+    const parentFolder = new FolderEntity(parentDto);
+
+    // clone parent permission for this new folder
+    const permissions = new PermissionsCollection([], false);
+    for (let parentPermission of parentFolder.permissions) {
+      let clone = parentPermission.copyForAnotherAco(PermissionEntity.ACO_FOLDER, folderEntity.id);
+      permissions.addOrReplace(clone);
+    }
+    return permissions;
   }
 
   /**
@@ -85,6 +91,29 @@ class FolderModel {
     const updatedFolderEntity = new FolderEntity(folderDto);
     await FolderLocalStorage.addFolder(updatedFolderEntity);
     return updatedFolderEntity;
+  }
+
+  /***
+   * Update folder permission by matching the parent permissions
+   *
+   * @param {FolderEntity} folderEntity
+   * @param {boolean} [keepOwnership] optional, default true
+   * @returns {Promise<FolderEntity>}
+   */
+  async applyPermissionFromParent(folderEntity, keepOwnership) {
+    if (folderEntity.folderParentId) {
+      const currentPermissions = new PermissionsCollection([folderEntity.permission]);
+      const targetPermissions = await this.cloneParentPermissions(folderEntity);
+
+      // Keep ownership / don't transfer folder
+      if (typeof keepOwnership === 'undefined' || keepOwnership) {
+        targetPermissions.addOrReplace(folderEntity.permission);
+      }
+
+      const changes = PermissionChangesCollection.buildChangesFromPermissions(currentPermissions, targetPermissions);
+      folderEntity = await this.updatePermissions(folderEntity, changes);
+    }
+    return folderEntity;
   }
 
   /**
@@ -105,7 +134,7 @@ class FolderModel {
    *
    * @param {FolderEntity} folderEntity
    * @param {PermissionChangesCollection} changesCollection
-   * @param {boolean} updateStorage optional default true, in case you want to update only after bulk update
+   * @param {boolean} [updateStorage] optional, default true, in case you want to update only after bulk update
    * @returns {Promise<FolderEntity>}
    */
   async updatePermissions(folderEntity, changesCollection, updateStorage) {
