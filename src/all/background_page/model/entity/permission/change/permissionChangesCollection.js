@@ -11,10 +11,10 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-const {EntityCollection} = require('../abstract/entityCollection');
-const {EntitySchema} = require('../abstract/entitySchema');
+const {EntityCollection} = require('../../abstract/entityCollection');
+const {EntitySchema} = require('../../abstract/entitySchema');
 const {PermissionChangeEntity} = require('./permissionChangeEntity');
-const {PermissionsCollection} = require('./permissionsCollection');
+const {PermissionsCollection} = require('../permissionsCollection');
 
 const ENTITY_NAME = 'PermissionChanges';
 

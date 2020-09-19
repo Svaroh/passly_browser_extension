@@ -12,10 +12,10 @@
  * @since         2.13.0
  */
 import {PermissionChangesCollection} from "./permissionChangesCollection";
-import {EntitySchema} from "../abstract/entitySchema";
+import {EntitySchema} from "../../abstract/entitySchema";
 import Validator from 'validator';
-import {PermissionEntity} from "./permissionEntity";
-import {PermissionsCollection} from "./permissionsCollection";
+import {PermissionEntity} from "../permissionEntity";
+import {PermissionsCollection} from "../permissionsCollection";
 
 // Reset the modules before each test.
 beforeEach(() => {

@@ -11,9 +11,9 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-const {Entity} = require('../abstract/entity');
-const {EntitySchema} = require('../abstract/entitySchema');
-const {PermissionEntity} = require('./permissionEntity');
+const {Entity} = require('../../abstract/entity');
+const {EntitySchema} = require('../../abstract/entitySchema');
+const {PermissionEntity} = require('../permissionEntity');
 
 const ENTITY_NAME = 'PermissionChange';
 const PERMISSION_CHANGE_CREATE = 'create';
