@@ -11,17 +11,17 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-const {Entity} = require('../abstract/entity');
+const {EntityCollection} = require('../abstract/entityCollection');
 const {EntitySchema} = require('../abstract/entitySchema');
 const {GroupUserEntity} = require('./groupUserEntity');
 
 const ENTITY_NAME = 'GroupsUsers';
 
-class GroupsUsersCollection extends Entity {
+class GroupsUsersCollection extends EntityCollection {
   /**
    * GroupUsers Entity constructor
    *
-   * @param {Object} groupsUsersDto folder DTO
+   * @param {Object} groupsUsersDto memberships
    * @throws EntityValidationError if the dto cannot be converted into an entity
    */
   constructor(groupsUsersDto) {
@@ -84,7 +84,7 @@ class GroupsUsersCollection extends Entity {
       throw new TypeError(`GroupUsersEntity push parameter should be an object.`);
     }
     if (groupUser instanceof GroupUserEntity) {
-      groupUser = groupUser.toDto(); // clone
+      groupUser = groupUser.toDto(GroupUserEntity.ALL_CONTAIN_OPTIONS); // clone
     }
     groupUser = new GroupUserEntity(groupUser); // validate
     super.push(groupUser);

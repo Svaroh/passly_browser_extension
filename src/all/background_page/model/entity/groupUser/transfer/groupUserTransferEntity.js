@@ -20,7 +20,7 @@ class GroupUserTransferEntity extends Entity {
   /**
    * GroupUserTransfer Entity constructor
    *
-   * @param {Object} groupUserTransferDto folder DTO
+   * @param {Object} groupUserTransferDto membership transfers
    * @throws EntityValidationError if the dto cannot be converted into an entity
    * @public
    */

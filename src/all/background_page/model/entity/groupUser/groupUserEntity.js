@@ -13,7 +13,6 @@
  */
 const {Entity} = require('../abstract/entity');
 const {EntitySchema} = require('../abstract/entitySchema');
-const {UserEntity} = require('../user/userEntity');
 
 const ENTITY_NAME = 'GroupUser';
 
@@ -30,12 +29,6 @@ class GroupUserEntity extends Entity {
       groupUserDto,
       GroupUserEntity.getSchema()
     ));
-
-    // Associations
-    if (this._props.user) {
-      this._user = new UserEntity(this._props.user);
-      delete this._props.user;
-    }
   }
 
   /**
@@ -68,11 +61,20 @@ class GroupUserEntity extends Entity {
         "created": {
           "type": "string",
           "format": "date-time"
-        },
-        // Relations
-        "user": UserEntity.getSchema()
+        }
+        // NO ASSOCIATIONS
+        // users or groups are omitted
+        // to avoid circular dependencies
       }
     }
+  }
+
+  /**
+   * Return a DTO ready to be sent to API
+   * @returns {*}
+   */
+  toDto() {
+    return Object.assign({}, this._props);
   }
 
   // ==================================================
@@ -118,14 +120,6 @@ class GroupUserEntity extends Entity {
     return this._props.created || null;
   }
 
-  /**
-   * Get associated user
-   * @returns {UserEntity|null}
-   */
-  get user() {
-    return this._user || null;
-  }
-
   // ==================================================
   // Static properties getters
   // ==================================================
@@ -135,6 +129,14 @@ class GroupUserEntity extends Entity {
    */
   static get ENTITY_NAME() {
     return ENTITY_NAME;
+  }
+
+  /**
+   * GroupUserEntity.ALL_CONTAIN_OPTIONS
+   * @returns {object} all contain options that can be used in toDto()
+   */
+  static get ALL_CONTAIN_OPTIONS() {
+    return {};
   }
 }
 
