@@ -2,7 +2,7 @@ const path = require('path');
 
 const config = {
   entry: {
-    'manage-react-app-iframe': path.resolve(__dirname, './src/all/content_scripts/js/manageReactAppIframe/ManageReactAppIframe.js')
+    'app': path.resolve(__dirname, './src/all/content_scripts/js/app/App.js')
   },
   mode: 'production',
   module: {
@@ -20,7 +20,7 @@ const config = {
   optimization: {
     splitChunks: {
       chunks: 'all',
-      filename: 'vendors/vendors-manage-react-app-iframe.js'
+      filename: 'vendors/vendors-app.js'
     },
   },
   resolve: {extensions: ["*", ".js", ".jsx"]},

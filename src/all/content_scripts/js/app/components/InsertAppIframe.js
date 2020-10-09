@@ -14,7 +14,7 @@
 import React, {Component} from "react";
 import {withRouter} from "react-router-dom";
 
-class ReactAppIframe extends Component {
+class InsertAppIframe extends Component {
 
   constructor(props) {
     super(props);
@@ -22,8 +22,7 @@ class ReactAppIframe extends Component {
   }
 
   componentDidMount() {
-    this.removeLegacyCanJs();
-    this.loadReactAppIframe();
+    this.loadAppIframe();
   }
 
   createRefs() {
@@ -31,36 +30,12 @@ class ReactAppIframe extends Component {
   }
 
   /**
-   * Remove the legacy canjs application.
-   * Empty the body and remove all javascripts.
-   */
-  removeLegacyCanJs() {
-    // Remove all javascript.
-    const scripts = document.querySelectorAll('script');
-    scripts.forEach(script => script.remove());
-
-    // Remove all canjs content
-    const legacyContainerElement = document.querySelector('#container');
-    if (legacyContainerElement) {
-      legacyContainerElement.remove();
-    }
-    const legacyBusElement = document.querySelector('#bus');
-    if (legacyBusElement) {
-      legacyBusElement.remove();
-    }
-    const legacyFooterElement = document.querySelector('footer');
-    if (legacyFooterElement) {
-      legacyFooterElement.remove();
-    }
-  }
-
-  /**
    * Load the react app iframe
    * @returns {void}
    */
-  loadReactAppIframe() {
+  loadAppIframe() {
     const contentScriptPathname = this.getPagePathname();
-    const iframeUrl = `data/passbolt-iframe-react-app.html?passbolt=passbolt-iframe-react-app&pathname=${contentScriptPathname}`;
+    const iframeUrl = `data/passbolt-iframe-app.html?passbolt=passbolt-iframe-app&pathname=${contentScriptPathname}`;
     this.iframeRef.current.contentWindow.location = chrome.runtime.getURL(iframeUrl);
   }
 
@@ -101,9 +76,9 @@ class ReactAppIframe extends Component {
     };
 
     return (
-      <iframe id="passbolt-iframe-react-app" ref={this.iframeRef} style={style}/>
+      <iframe id="passbolt-iframe-app" ref={this.iframeRef} style={style}/>
     );
   }
 }
 
-export default withRouter(ReactAppIframe);
+export default withRouter(InsertAppIframe);

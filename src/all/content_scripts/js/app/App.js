@@ -14,12 +14,14 @@
 import React, {Component} from "react";
 import ReactDOM from "react-dom";
 import {Route, BrowserRouter as Router, Switch} from "react-router-dom";
-import ReactAppIframe from "./components/ReactAppIframe";
 /* eslint-disable no-unused-vars */
 import Port from "../../../data/js/lib/port";
 /* eslint-enable no-unused-vars */
+import InsertAppIframe from "./components/InsertAppIframe";
+import CleanupLegacyAppJs from "./components/CleanupLegacyAppJs";
+import InsertClipboardIframe from "./components/InsertClipboardIframe";
 
-class ManageReactAppIframe extends Component {
+class App extends Component {
   render() {
     return (
       <Router>
@@ -31,7 +33,9 @@ class ManageReactAppIframe extends Component {
             "/app/users",
             "/",
           ]}>
-            <ReactAppIframe/>
+            <CleanupLegacyAppJs/>
+            <InsertAppIframe/>
+            <InsertClipboardIframe/>
           </Route>
         </Switch>
       </Router>
@@ -41,4 +45,4 @@ class ManageReactAppIframe extends Component {
 
 const manageReactAppIframeElement = document.createElement("div");
 document.body.appendChild(manageReactAppIframeElement);
-ReactDOM.render(React.createElement(ManageReactAppIframe), manageReactAppIframeElement);
+ReactDOM.render(React.createElement(App), manageReactAppIframeElement);

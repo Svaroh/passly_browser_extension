@@ -1,5 +1,5 @@
 /**
- * Bootstrap pagemod.
+ * WebIntegration pagemod.
  *
  * This pagemod allow inserting classes to help any page
  * to know about the status of the extension, in a modernizr fashion
@@ -11,17 +11,17 @@ const app = require('../app');
 const {PageMod} = require('../sdk/page-mod');
 const Worker = require('../model/worker');
 
-const Bootstrap = function () {};
-Bootstrap._pageMod = undefined;
+const WebIntegration = function () {};
+WebIntegration._pageMod = undefined;
 
-Bootstrap.init = function () {
-  if (typeof Bootstrap._pageMod !== 'undefined') {
-    Bootstrap._pageMod.destroy();
-    Bootstrap._pageMod = undefined;
+WebIntegration.init = function () {
+  if (typeof WebIntegration._pageMod !== 'undefined') {
+    WebIntegration._pageMod.destroy();
+    WebIntegration._pageMod = undefined;
   }
 
-  Bootstrap._pageMod = new PageMod({
-    name: 'Bootstrap',
+  WebIntegration._pageMod = new PageMod({
+    name: 'WebIntegration',
     include: new RegExp('.*'),
     contentScriptWhen: 'ready',
     contentStyleFile: [],
@@ -38,9 +38,9 @@ Bootstrap.init = function () {
     ],
     attachTo: {existing: true, reload: false},
     onAttach: function (worker) {
-      Worker.add('Bootstrap', worker);
+      Worker.add('WebIntegration', worker);
       app.events.config.listen(worker);
     }
   });
 };
-exports.Bootstrap = Bootstrap;
+exports.WebIntegration = WebIntegration;

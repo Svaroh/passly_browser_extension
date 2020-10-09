@@ -2,7 +2,7 @@ const path = require('path');
 
 const config = {
   entry: {
-    'react-app': path.resolve(__dirname, './src/all/data/js/reactApp/ReactApp.js')
+    'app': path.resolve(__dirname, './src/all/data/js/app/App.js')
   },
   mode: 'production',
   module: {

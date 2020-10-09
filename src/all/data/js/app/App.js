@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.0.0
  */
-
 import React from "react";
 import ReactDOM from "react-dom";
 import ReactExtension from "passbolt-styleguide/src/react-extension/ReactExtension";
@@ -22,4 +21,29 @@ import Port from "../lib/port";
 
 const domContainer = document.querySelector('#app-container');
 const storage = browser.storage;
-ReactDOM.render(React.createElement(ReactExtension, {port: port, storage: storage}), domContainer);
+
+/**
+ * Wait until the background pagemod is ready.
+ * @returns {Promise}
+ */
+async function waitPagemodIsReady() {
+  let resolver;
+  const promise = new Promise(resolve => {resolver = resolve});
+
+  const checkInterval = setInterval(function() {
+    port.request("passbolt.pagemod.is-ready").then(() => {
+      resolver();
+      clearInterval(checkInterval);
+    });
+  }, 50);
+
+  return promise;
+}
+
+async function main() {
+  await waitPagemodIsReady();
+  port.request('passbolt.app.init');
+  ReactDOM.render(React.createElement(ReactExtension, {port: port, storage: storage}), domContainer);
+}
+
+main();
