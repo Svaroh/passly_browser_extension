@@ -52,7 +52,7 @@ class InsertClipboardIframe extends Component {
     };
 
     return (
-      <iframe id="passbolt-iframe-app" ref={this.iframeRef} style={style}/>
+      <iframe id="passbolt-iframe-clipboard" ref={this.iframeRef} style={style}/>
     );
   }
 }
