@@ -1,19 +1,19 @@
 /**
- * Setup bootstrap pagemod.
+ * Passbolt ~ Open source password manager for teams
+ * Copyright (c) Passbolt SA (https://www.passbolt.com)
  *
- * This pagemod help bootstrap the first step of the setup process from a passbolt server app page
- * The pattern for this url, driving the setup bootstrap, is defined in config.json
+ * Licensed under GNU Affero General Public License version 3 of the or any later version.
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
  *
- * @copyright (c) 2017 Passbolt SARL
- * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
+ * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
+ * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
+ * @link          https://www.passbolt.com Passbolt(tm)
  */
-var app = require('../app');
 const {PageMod} = require('../sdk/page-mod');
-var Worker = require('../model/worker');
-var Config = require('../model/config');
+const app = require('../app');
 
-var SetupBootstrap = function () {
-};
+const SetupBootstrap = function () {};
 SetupBootstrap._pageMod = undefined;
 
 SetupBootstrap.init = function () {
@@ -22,22 +22,21 @@ SetupBootstrap.init = function () {
     SetupBootstrap._pageMod = undefined;
   }
   const uuidRegex = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[0-5][a-fA-F0-9]{3}-[089aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}";
-  const setupBootstrapRegex = `(.*)\/setup\/(install|recover)\/(${uuidRegex})\/(${uuidRegex})`;
+  const setupBootstrapRegex = `(.*)\/setup\/install\/(${uuidRegex})\/(${uuidRegex})`;
   SetupBootstrap._pageMod = new PageMod({
     name: 'SetupBootstrap',
 		include: new RegExp(setupBootstrapRegex),
     contentScriptWhen: 'ready',
-    contentStyleFile: [],
     contentScriptFile: [
-      'data/vendors/jquery.js',
-      'data/js/lib/port.js',
-      'data/js/lib/message.js',
-      'data/js/lib/request.js',
-      'content_scripts/js/setup/bootstrap.js'
+      'content_scripts/js/dist/vendors.js',
+      'content_scripts/js/dist/setup.js',
     ],
     onAttach: function (worker) {
-      Worker.add('SetupBootstrap', worker);
-      app.events.setupbootstrap.listen(worker);
+      /*
+       * Keep the pagemod event listeners at the end of the list, it answers to an event that allows
+       * the content code to know when the background page is ready.
+       */
+      app.events.pagemod.listen(worker);
     }
   });
 };

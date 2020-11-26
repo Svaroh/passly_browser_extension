@@ -13,13 +13,12 @@
  */
 import React from "react";
 import ReactDOM from "react-dom";
-import ReactExtension from "passbolt-styleguide/src/react-extension/ReactExtension";
 import browser from "webextension-polyfill";
+import ExtApp from "passbolt-styleguide/src/react-extension/ExtApp";
 /* eslint-disable no-unused-vars */
 import Port from "../lib/port";
 /* eslint-enable no-unused-vars */
 
-const domContainer = document.querySelector('#app-container');
 const storage = browser.storage;
 
 /**
@@ -43,7 +42,9 @@ async function waitPagemodIsReady() {
 async function main() {
   await waitPagemodIsReady();
   port.request('passbolt.app.init');
-  ReactDOM.render(React.createElement(ReactExtension, {port: port, storage: storage}), domContainer);
+  const domContainer = document.createElement("div");
+  document.body.appendChild(domContainer);
+  ReactDOM.render(React.createElement(ExtApp, {port: port, storage: storage}), domContainer);
 }
 
 main();

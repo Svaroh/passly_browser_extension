@@ -9,49 +9,15 @@
  * @copyright     Copyright (c) 2020 Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since        3.0.0
  */
-import React, {Component} from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-import {Route, BrowserRouter as Router, Switch} from "react-router-dom";
+import ExtBootstrapApp from "passbolt-styleguide/src/react-extension/ExtBootstrapApp";
 /* eslint-disable no-unused-vars */
 import Port from "../../../data/js/lib/port";
 /* eslint-enable no-unused-vars */
-import InsertAppIframe from "./components/InsertAppIframe";
-import CleanupLegacyAppJs from "./components/CleanupLegacyAppJs";
-import InsertClipboardIframe from "./components/InsertClipboardIframe";
-import InsertFileIframe from "./components/InsertFileIframe";
 
-class App extends Component {
-  render() {
-    return (
-      <Router>
-        <Switch>
-          <Route exact path={[
-            "/app/folders/view/:filterByFolderId",
-            "/app/groups/view/:selectedGroupId",
-            "/app/passwords/view/:selectedResourceId",
-            "/app/passwords",
-            "/app/settings",
-            "/app/settings/keys",
-            "/app/settings/mfa",
-            "/app/settings/profile",
-            "/app/settings/theme",
-            "/app/users/view/:selectedUserId",
-            "/app/users",
-            "/",
-          ]}>
-            <CleanupLegacyAppJs/>
-            <InsertAppIframe/>
-            <InsertClipboardIframe/>
-            <InsertFileIframe/>
-          </Route>
-        </Switch>
-      </Router>
-    );
-  }
-}
-
-const manageReactAppIframeElement = document.createElement("div");
-document.body.appendChild(manageReactAppIframeElement);
-ReactDOM.render(React.createElement(App), manageReactAppIframeElement);
+const browserExtensionUrl = chrome.runtime.getURL("/");
+const domContainer = document.createElement("div");
+document.body.appendChild(domContainer);
+ReactDOM.render(<ExtBootstrapApp port={port} browserExtensionUrl={browserExtensionUrl}/>, domContainer);
