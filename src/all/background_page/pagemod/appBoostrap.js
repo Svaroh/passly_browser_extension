@@ -14,22 +14,22 @@ const GpgAuth = require('../model/gpgauth').GpgAuth;
 const User = require('../model/user').User;
 const AppInitController = require("../controller/app/appInitController").AppInitController;
 
-const PassboltApp = function () {
+const AppBoostrap = function () {
 };
-PassboltApp._pageMod = null;
+AppBoostrap._pageMod = null;
 
-PassboltApp.exists = function () {
-  return PassboltApp._pageMod !== null;
+AppBoostrap.exists = function () {
+  return AppBoostrap._pageMod !== null;
 };
 
-PassboltApp.destroy = function () {
-  if (PassboltApp.exists()) {
-    PassboltApp._pageMod.destroy();
-    PassboltApp._pageMod = null;
+AppBoostrap.destroy = function () {
+  if (AppBoostrap.exists()) {
+    AppBoostrap._pageMod.destroy();
+    AppBoostrap._pageMod = null;
   }
 };
 
-PassboltApp.initPageMod = function () {
+AppBoostrap.initPageMod = function () {
   // Attach on passbolt application pages.
   // By instance if your application domain is : https://demo.passbolt.com
   // The pagemod will be attached to the following pages :
@@ -46,7 +46,7 @@ PassboltApp.initPageMod = function () {
   const regex = new RegExp(url);
 
   return new PageMod({
-    name: 'PassboltApp',
+    name: 'AppBoostrap',
     include: regex,
     contentScriptWhen: 'ready',
     contentStyleFile: [
@@ -72,18 +72,18 @@ PassboltApp.initPageMod = function () {
   });
 };
 
-PassboltApp.init = function () {
+AppBoostrap.init = function () {
   return new Promise(function (resolve, reject) {
     // According to the user status :
     // * the pagemod should be initialized if the user is valid and logged in;
     // * the pagemod should be destroyed otherwise;
     const user = User.getInstance();
     if (user.isValid()) {
-      PassboltApp.destroy();
-      PassboltApp._pageMod = PassboltApp.initPageMod();
+      AppBoostrap.destroy();
+      AppBoostrap._pageMod = AppBoostrap.initPageMod();
       resolve();
     }
   });
 };
 
-exports.PassboltApp = PassboltApp;
+exports.AppBoostrap = AppBoostrap;

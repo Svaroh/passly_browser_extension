@@ -10,21 +10,20 @@ const Worker = require('../model/worker');
 const GpgAuth = require('../model/gpgauth').GpgAuth;
 
 /*
- * This pagemod help bootstrap the first step of the setup process from a passbolt server app page
- * The pattern for this url, driving the setup bootstrap, is defined in config.json
+ * This pagemod help bootstrap the passbolt application from a passbolt server app page
  */
-const ReactApp = function () {};
-ReactApp._pageMod = null;
+const App = function () {};
+App._pageMod = null;
 
-ReactApp.init = function () {
+App.init = function () {
 
-  if (ReactApp._pageMod) {
-    ReactApp._pageMod.destroy();
-    ReactApp._pageMod = null;
+  if (App._pageMod) {
+    App._pageMod.destroy();
+    App._pageMod = null;
   }
 
-  ReactApp._pageMod = new PageMod({
-    name: 'ReactApp',
+  App._pageMod = new PageMod({
+    name: 'App',
     include: 'about:blank?passbolt=passbolt-iframe-app',
     contentScriptWhen: 'end',
     contentScriptFile: [
@@ -66,4 +65,4 @@ ReactApp.init = function () {
   });
 };
 
-exports.ReactApp = ReactApp;
+exports.App = App;

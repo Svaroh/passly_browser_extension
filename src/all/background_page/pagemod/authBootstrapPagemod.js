@@ -9,16 +9,15 @@
 var app = require('../app');
 var User = require('../model/user').User;
 const {PageMod} = require('../sdk/page-mod');
-var Worker = require('../model/worker');
 
-var PassboltAuth = function () {};
-PassboltAuth._pageMod = undefined;
+var AuthBootstrap = function () {};
+AuthBootstrap._pageMod = undefined;
 
-PassboltAuth.init = function () {
+AuthBootstrap.init = function () {
 
-  if (typeof PassboltAuth._pageMod !== 'undefined') {
-    PassboltAuth._pageMod.destroy();
-    PassboltAuth._pageMod = undefined;
+  if (typeof AuthBootstrap._pageMod !== 'undefined') {
+    AuthBootstrap._pageMod.destroy();
+    AuthBootstrap._pageMod = undefined;
   }
 
   // The pagemod will be attached to the following pages:
@@ -34,30 +33,27 @@ PassboltAuth.init = function () {
   var url = '^' + escapedDomain + '/auth/login/?(#.*)?(\\?.*)?$';
   var regex = new RegExp(url);
 
-  PassboltAuth._pageMod = new PageMod({
-    name: 'Auth',
+  AuthBootstrap._pageMod = new PageMod({
+    name: 'AuthBootstrap',
     include: regex,
     contentScriptWhen: 'ready',
     contentStyleFile: [
       'data/css/themes/default/ext_external.min.css'
     ],
     contentScriptFile: [
-      'data/vendors/jquery.js',
-      'data/tpl/login.js',
-      'data/js/lib/port.js',
-      'data/js/lib/message.js',
-      'data/js/lib/request.js',
-      'data/js/lib/html.js',
-      'content_scripts/js/login/login.js'
+      'content_scripts/js/dist/vendors.js',
+      'content_scripts/js/dist/login.js',
     ],
     attachTo: {existing: true, reload: true},
     onAttach: function (worker) {
       user.flushMasterPassword();
-      Worker.add('Auth', worker);
-      app.events.keyring.listen(worker);
-      app.events.user.listen(worker);
-      app.events.auth.listen(worker);
+
+      /*
+       * Keep the pagemod event listeners at the end of the list, it answers to an event that allows
+       * the content code to know when the background page is ready.
+       */
+      app.events.pagemod.listen(worker);
     }
   });
 };
-exports.PassboltAuth = PassboltAuth;
+exports.AuthBootstrap = AuthBootstrap;
