@@ -9,27 +9,28 @@
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 const {PageMod} = require('../sdk/page-mod');
+const app = require('../app');
 const Worker = require('../model/worker');
 const GpgAuth = require('../model/gpgauth').GpgAuth;
 const User = require('../model/user').User;
 const AppInitController = require("../controller/app/appInitController").AppInitController;
 
-const AppBoostrap = function () {
+const AppBoostrapPagemod = function () {
 };
-AppBoostrap._pageMod = null;
+AppBoostrapPagemod._pageMod = null;
 
-AppBoostrap.exists = function () {
-  return AppBoostrap._pageMod !== null;
+AppBoostrapPagemod.exists = function () {
+  return AppBoostrapPagemod._pageMod !== null;
 };
 
-AppBoostrap.destroy = function () {
-  if (AppBoostrap.exists()) {
-    AppBoostrap._pageMod.destroy();
-    AppBoostrap._pageMod = null;
+AppBoostrapPagemod.destroy = function () {
+  if (AppBoostrapPagemod.exists()) {
+    AppBoostrapPagemod._pageMod.destroy();
+    AppBoostrapPagemod._pageMod = null;
   }
 };
 
-AppBoostrap.initPageMod = function () {
+AppBoostrapPagemod.initPageMod = function () {
   // Attach on passbolt application pages.
   // By instance if your application domain is : https://demo.passbolt.com
   // The pagemod will be attached to the following pages :
@@ -67,23 +68,28 @@ AppBoostrap.initPageMod = function () {
       const appInitController = new AppInitController(worker);
       await appInitController.main();
 
-      Worker.add('App', worker);
+      app.events.appBootstrap.listen(worker);
+
+      // Keep the pagemod event listeners at the end of the list.
+      app.events.pagemod.listen(worker);
+
+      Worker.add('AppBootstrap', worker);
     }
   });
 };
 
-AppBoostrap.init = function () {
+AppBoostrapPagemod.init = function () {
   return new Promise(function (resolve, reject) {
     // According to the user status :
     // * the pagemod should be initialized if the user is valid and logged in;
     // * the pagemod should be destroyed otherwise;
     const user = User.getInstance();
     if (user.isValid()) {
-      AppBoostrap.destroy();
-      AppBoostrap._pageMod = AppBoostrap.initPageMod();
+      AppBoostrapPagemod.destroy();
+      AppBoostrapPagemod._pageMod = AppBoostrapPagemod.initPageMod();
       resolve();
     }
   });
 };
 
-exports.AppBoostrap = AppBoostrap;
+exports.AppBoostrap = AppBoostrapPagemod;
