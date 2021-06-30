@@ -14,7 +14,7 @@
 /* eslint-disable no-unused-vars */
 import Port from "../../../data/js/lib/port";
 /* eslint-enable no-unused-vars */
-import {BrowserIntegrationBootstrap} from "passbolt-styleguide/src/web-integration/BrowserIntegrationBootstrap.js";
+import {BrowserIntegrationBootstrap} from "passbolt-styleguide/src/react-web-integration/BrowserIntegrationBootstrap.js";
 
 /**
  * Wait until the background pagemod is ready.
