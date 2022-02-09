@@ -184,11 +184,19 @@ class AccountRecoveryRequestEntity extends Entity {
   }
 
   /**
+   * Get the armored key
+   * @returns {string} armored_key
+   */
+  get armoredKey() {
+    return this._props.armored_key;
+  }
+
+  /**
    * AccountRecoveryRequestEntity.ALL_CONTAIN_OPTIONS
    * @returns {object} all contain options that can be used in toDto()
    */
   static get ALL_CONTAIN_OPTIONS() {
-    return {user: true, account_recovery_private_key_passwords: true};
+    return {account_recovery_private_key_passwords: true};
   }
 
   /*
