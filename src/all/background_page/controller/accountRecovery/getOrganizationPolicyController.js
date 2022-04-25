@@ -14,7 +14,7 @@
 
 const {AccountRecoveryModel} = require("../../model/accountRecovery/accountRecoveryModel");
 
-class GetAccountRecoveryOrganizationPolicyController {
+class GetOrganizationPolicyController {
   /**
    * Constructor
    * @param {Worker} worker
@@ -53,4 +53,4 @@ class GetAccountRecoveryOrganizationPolicyController {
   }
 }
 
-exports.GetAccountRecoveryOrganizationPolicyController = GetAccountRecoveryOrganizationPolicyController;
+exports.GetOrganizationPolicyController = GetOrganizationPolicyController;
