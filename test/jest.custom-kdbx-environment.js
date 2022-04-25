@@ -1,4 +1,4 @@
-const NodeEnvironment = require('jest-environment-node')
+const NodeEnvironment = require('jest-environment-node');
 
 class JestCustomKdbxEnvironment extends NodeEnvironment {
   constructor(config) {
@@ -9,7 +9,7 @@ class JestCustomKdbxEnvironment extends NodeEnvironment {
         Uint8Array: Uint8Array, // Node overrides this primitive making impossible to test the kdbx parsers
         ArrayBuffer: ArrayBuffer
       }
-    })
+    });
   }
 
   async setup() {
@@ -21,8 +21,8 @@ class JestCustomKdbxEnvironment extends NodeEnvironment {
   }
 
   runScript(script) {
-    return super.runScript(script)
+    return super.runScript(script);
   }
 }
 
-module.exports = JestCustomKdbxEnvironment
+module.exports = JestCustomKdbxEnvironment;

@@ -14,7 +14,7 @@
 
 import {enableFetchMocks} from "jest-fetch-mock";
 import {mockApiResponse} from "../../../tests/mocks/mockApiResponse";
-import {GetAccountRecoveryOrganizationPolicyController} from "./getAccountRecoveryOrganizationPolicyController";
+import {GetOrganizationPolicyController} from "./getOrganizationPolicyController";
 import {enabledAccountRecoveryOrganizationPolicyDto} from "../../model/entity/accountRecovery/accountRecoveryOrganizationPolicyEntity.test.data";
 import {AccountRecoveryOrganizationPolicyEntity} from "../../model/entity/accountRecovery/accountRecoveryOrganizationPolicyEntity";
 import {defaultApiClientOptions} from "../../service/api/apiClient/apiClientOptions.test.data";
@@ -23,14 +23,14 @@ beforeEach(() => {
   enableFetchMocks();
 });
 
-describe("GetAccountRecoveryOrganizationPolicyController", () => {
-  describe("GetAccountRecoveryOrganizationPolicyController::exec", () => {
+describe("GetOrganizationPolicyController", () => {
+  describe("GetOrganizationPolicyController::exec", () => {
     it("Should retrieve the account recovery organization policy.", async() => {
       // Mock API fetch account recovery organization policy response.
       const mockApiResult = enabledAccountRecoveryOrganizationPolicyDto();
       fetch.doMock(() => mockApiResponse(mockApiResult));
 
-      const controller = new GetAccountRecoveryOrganizationPolicyController(null, null, defaultApiClientOptions());
+      const controller = new GetOrganizationPolicyController(null, null, defaultApiClientOptions());
       const accountRecoveryOrganizationPolicy = await controller.exec();
 
       expect.assertions(1);

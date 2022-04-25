@@ -12,8 +12,23 @@
  * @since         3.6.0
  */
 
-describe("RecoverPrivateKeyService", () => {
-  describe("RecoverPrivateKeyService:recover", () => {
-    it.todo("To test");
-  });
-});
+import {assertKeys} from "../../background_page/utils/openpgp/openpgpAssertions";
+
+exports.toBeOpenpgpRevokedKey = async function(key) {
+  const {matcherHint} = this.utils;
+
+  const passMessage =
+    `${matcherHint('.not.toBeOpenpgpRevokedKey')
+    }\n\n` +
+    `Expected key not to be revoked`;
+
+  const failMessage =
+    `${matcherHint('.toBeOpenpgpRevokedKey')
+    }\n\n` +
+    `Expected key to be revoked`;
+
+  key = await assertKeys(key);
+  const pass = await key.isRevoked();
+
+  return {pass: pass, message: () => (pass ? passMessage : failMessage)};
+};
