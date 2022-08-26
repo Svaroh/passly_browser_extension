@@ -12,7 +12,7 @@
  * @since         3.7.3
  */
 import SsoConfigurationService from "../../service/api/sso/ssoConfigurationService";
-import SsoConfigurationEntity from "../entity/sso/SsoConfigurationEntity";
+import SsoConfigurationEntity from "../entity/sso/ssoConfigurationEntity";
 
 /**
  * Model related to the SSO configuration

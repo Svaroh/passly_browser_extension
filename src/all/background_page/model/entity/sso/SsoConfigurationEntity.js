@@ -18,13 +18,13 @@ const ENTITY_NAME = "SsoConfiguration";
 const AZURE = "azure";
 
 /**
- * Entity related to the account recovery organization policy
+ * Entity related to the SSO configuration
  */
 class SsoConfigurationEntity extends Entity {
   /**
    * Setup entity constructor
    *
-   * @param {Object} accountRecoveryOrganizationPolicyChangeDto account recovery organization policy DTO
+   * @param {Object} ssoConfigurationDto SSO configuration DTO
    * @throws EntityValidationError if the dto cannot be converted into an entity
    */
   constructor(ssoConfigurationDto) {
@@ -55,6 +55,28 @@ class SsoConfigurationEntity extends Entity {
         },
       }
     };
+  }
+
+  /*
+   * ==================================================
+   * Dynamic properties getters
+   * ==================================================
+   */
+
+  /**
+   * Get ther provider identifier
+   * @returns {string}
+   */
+  get provider() {
+    return this._props.provider;
+  }
+
+  /**
+   * Get provider specific data
+   * @returns {object}
+   */
+  get data() {
+    return this._props.data;
   }
 
   /*

@@ -38,7 +38,7 @@ class SsoConfigurationService extends AbstractService {
 
   /**
    * Get the SSO configuration from the server
-   * @returns {Promise<void>}
+   * @returns {Promise<SsoConfigurationDto>}
    */
   async find() {
     //@todo @mock
