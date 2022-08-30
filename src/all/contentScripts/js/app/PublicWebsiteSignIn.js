@@ -1,22 +1,20 @@
 /**
  * Passbolt ~ Open source password manager for teams
- * Copyright (c) 2020 Passbolt SA (https://www.passbolt.com)
+ * Copyright (c) 2022 Passbolt SA (https://www.passbolt.com)
  *
  * Licensed under GNU Affero General Public License version 3 of the or any later version.
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) 2020 Passbolt SA (https://www.passbolt.com)
+ * @copyright     Copyright (c) 2022 Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since        3.0.0
+ * @since         3.7.0
  */
-import React from "react";
-import ReactDOM from "react-dom";
-import ExtBootstrapRecover from "passbolt-styleguide/src/react-extension/ExtBootstrapRecover";
 /* eslint-disable no-unused-vars */
-import Port from "../../../data/js/lib/port";
+import Port from "../../../webAccessibleResources/js/lib/port";
 /* eslint-enable no-unused-vars */
+import {PublicWebsiteSignInBootstrap} from "passbolt-styleguide/src/public-website-sign-in/PublicWebsiteSignInBootstrap.js";
 
 /**
  * Wait until the background pagemod is ready.
@@ -38,10 +36,7 @@ async function waitPagemodIsReady() {
 
 async function main() {
   await waitPagemodIsReady();
-  const browserExtensionUrl = chrome.runtime.getURL("/");
-  const domContainer = document.createElement("div");
-  document.body.appendChild(domContainer);
-  ReactDOM.render(<ExtBootstrapRecover port={port} browserExtensionUrl={browserExtensionUrl}/>, domContainer);
+  PublicWebsiteSignInBootstrap.init();
 }
 
 main();

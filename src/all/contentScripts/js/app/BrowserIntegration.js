@@ -9,14 +9,12 @@
  * @copyright     Copyright (c) 2020 Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
+ * @since        3.4.0
  */
-import React from "react";
-import ReactDOM from "react-dom";
-import ExtBootstrapApp from "passbolt-styleguide/src/react-extension/ExtBootstrapApp";
 /* eslint-disable no-unused-vars */
-import Port from "../../../data/js/lib/port";
-import browser from "webextension-polyfill";
+import Port from "../../../webAccessibleResources/js/lib/port";
 /* eslint-enable no-unused-vars */
+import {BrowserIntegrationBootstrap} from "passbolt-styleguide/src/react-web-integration/BrowserIntegrationBootstrap.js";
 
 /**
  * Wait until the background pagemod is ready.
@@ -38,11 +36,7 @@ async function waitPagemodIsReady() {
 
 async function main() {
   await waitPagemodIsReady();
-  const storage = browser.storage;
-  const browserExtensionUrl = chrome.runtime.getURL("/");
-  const domContainer = document.createElement("div");
-  document.body.appendChild(domContainer);
-  ReactDOM.render(<ExtBootstrapApp port={port} storage={storage} browserExtensionUrl={browserExtensionUrl}/>, domContainer);
+  BrowserIntegrationBootstrap.init();
 }
 
 main();

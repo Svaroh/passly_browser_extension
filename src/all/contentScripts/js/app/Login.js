@@ -15,7 +15,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import ExtBootstrapLogin from "passbolt-styleguide/src/react-extension/ExtBootstrapLogin";
 /* eslint-disable no-unused-vars */
-import Port from "../../../data/js/lib/port";
+import Port from "../../../webAccessibleResources/js/lib/port";
 /* eslint-enable no-unused-vars */
 
 /**
