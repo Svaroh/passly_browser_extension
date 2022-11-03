@@ -16,7 +16,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import ExtBootstrapAccountRecovery from "passbolt-styleguide/src/react-extension/ExtBootstrapAccountRecovery";
 /* eslint-disable no-unused-vars */
-import Port from "../../../data/js/lib/port";
+import Port from "../../../webAccessibleResources/js/lib/port";
 /* eslint-enable no-unused-vars */
 
 async function main() {

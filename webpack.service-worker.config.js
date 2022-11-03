@@ -1,8 +1,9 @@
 const path = require('path');
+const TerserPlugin = require("terser-webpack-plugin");
 
 const config = {
   entry: {
-    'app': path.resolve(__dirname, './src/all/data/js/app/Clipboard.js')
+    'serviceWorker': path.resolve(__dirname, './src/chrome-mv3/serviceWorker.js'),
   },
   mode: 'production',
   module: {
@@ -18,6 +19,8 @@ const config = {
     ]
   },
   optimization: {
+    minimize: true,
+    minimizer: [new TerserPlugin()],
     splitChunks: {
       minSize: 0,
       cacheGroups: {
@@ -29,13 +32,11 @@ const config = {
       }
     },
   },
-  resolve: {
-    extensions: ["*", ".js", ".jsx"]
-  },
+  resolve: {extensions: ["*", ".js"], fallback: {crypto: false}},
   output: {
     // Set a unique name to ensure the cohabitation of multiple webpack loader on the same page.
-    chunkLoadingGlobal: 'dataClipboardChunkLoadingGlobal',
-    path: path.resolve(__dirname, './build/all/data/js/dist/clipboard'),
+    chunkLoadingGlobal: 'serviceWorkerIndexChunkLoadingGlobal',
+    path: path.resolve(__dirname, './build/all/serviceWorker'),
     pathinfo: true,
     filename: '[name].js'
   }
@@ -44,9 +45,11 @@ const config = {
 exports.default = function (env) {
   env = env || {};
   // Enable debug mode.
-  if (env && env.debug) {
+  if (env.debug) {
     config.mode = "development";
     config.devtool = "inline-source-map";
+    config.optimization.minimize = false;
+    config.optimization.minimizer = [];
   }
   return config;
 };

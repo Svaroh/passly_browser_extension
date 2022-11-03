@@ -34,7 +34,7 @@
       const cssFile = cssInfoTag.dataset.file;
       const baseUrl = window.location.origin;
 
-      this.getLinkTag().setAttribute("href", `${baseUrl}/data/css/themes/${this.theme}/${cssFile}`);
+      this.getLinkTag().setAttribute("href", `${baseUrl}/webAccessibleResources/css/themes/${this.theme}/${cssFile}`);
     }
 
     getLinkTag() {
@@ -92,7 +92,7 @@
     }
 
     isValidTheme(theme) {
-      const whitelist = ['default', 'midgar'];
+      const whitelist = ['default', 'midgar', 'solarized_light', 'solarized_dark'];
       return whitelist.includes(theme);
     }
   }

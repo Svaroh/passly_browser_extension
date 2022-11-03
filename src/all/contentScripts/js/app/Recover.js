@@ -13,9 +13,9 @@
  */
 import React from "react";
 import ReactDOM from "react-dom";
-import ExtBootstrapSetup from "passbolt-styleguide/src/react-extension/ExtBootstrapSetup";
+import ExtBootstrapRecover from "passbolt-styleguide/src/react-extension/ExtBootstrapRecover";
 /* eslint-disable no-unused-vars */
-import Port from "../../../data/js/lib/port";
+import Port from "../../../webAccessibleResources/js/lib/port";
 /* eslint-enable no-unused-vars */
 
 /**
@@ -41,8 +41,7 @@ async function main() {
   const browserExtensionUrl = chrome.runtime.getURL("/");
   const domContainer = document.createElement("div");
   document.body.appendChild(domContainer);
-  ReactDOM.render(<ExtBootstrapSetup port={port} browserExtensionUrl={browserExtensionUrl}/>, domContainer);
+  ReactDOM.render(<ExtBootstrapRecover port={port} browserExtensionUrl={browserExtensionUrl}/>, domContainer);
 }
 
 main();
-
