@@ -18,3 +18,14 @@
  * @returns {Promise<string>} The response serialized in JSON.
  */
 exports.mockApiResponse = (body = {}, header = {}) => Promise.resolve(JSON.stringify({header: header, body: body}));
+
+exports.mockApiResponseError = (status, errorMessage, body = {}) => Promise.resolve({
+  status: status,
+  body: JSON.stringify({
+    header: {
+      message: errorMessage,
+      status: status
+    },
+    body: body
+  })
+});
