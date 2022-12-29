@@ -1,4 +1,3 @@
-
 /**
  * Passbolt ~ Open source password manager for teams
  * Copyright (c) 2023 Passbolt SA (https://www.passbolt.com)
@@ -13,9 +12,20 @@
  * @since         4.0.0
  */
 import browser from "../all/background_page/sdk/polyfill/browserPolyfill";
+import PortManager from "./sdk/portManager";
+import PagemodManager from "./pagemod/pagemodManager";
 
-// TODO start listener browser events
 /**
  * Add listener on any on complete navigation
  */
-browser.webNavigation.onCompleted.addListener(details => console.log(details));
+browser.webNavigation.onCompleted.addListener(PagemodManager.exec);
+
+/**
+ * Add listener on connect port
+ */
+browser.runtime.onConnect.addListener(PortManager.onPortConnect);
+
+/**
+ * Add listener on tabs on removed
+ */
+browser.tabs.onRemoved.addListener(PortManager.onTabRemoved);
