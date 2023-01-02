@@ -54,8 +54,8 @@ describe("Recover", () => {
     });
   });
 
-  describe("Recover::isConstraintValidated", () => {
-    it("Should have the constraint not valid", async() => {
+  describe("Recover::canBeAttachedTo", () => {
+    it("Should have the canBeAttachedTo not valid", async() => {
       expect.assertions(1);
       // process
       const canBeAttachedTo = await Recover.canBeAttachedTo({});
