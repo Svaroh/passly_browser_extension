@@ -28,7 +28,7 @@ jest.spyOn(ScriptExecution.prototype, "injectJs").mockImplementation(jest.fn());
 jest.spyOn(AuthBootstrapEvents, "listen").mockImplementation(jest.fn());
 
 describe("AuthBootstrap", () => {
-  beforeEach(async() => {
+  beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
   });
@@ -67,6 +67,9 @@ describe("AuthBootstrap", () => {
     ]).describe("Should not be able to attach a pagemod to browser frame", _props => {
       it(`Should be able to attach a pagemod to browser frame: ${_props.scenario}`, async() => {
         expect.assertions(1);
+        // mock functions
+        jest.spyOn(User.getInstance(), "isValid").mockImplementation(() => true);
+        jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
         const result = await AuthBootstrap.canBeAttachedTo({frameId: _props.frameId, url: _props.url});
         expect(result).toBeFalsy();
       });
