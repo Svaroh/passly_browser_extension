@@ -13,12 +13,12 @@
  */
 import browser from "../all/background_page/sdk/polyfill/browserPolyfill";
 import PortManager from "./sdk/portManager";
-import PagemodManager from "./pagemod/pagemodManager";
+import WebNavigationService from "./service/webNavigation/webNavigationService";
 
 /**
  * Add listener on any on complete navigation
  */
-browser.webNavigation.onCompleted.addListener(PagemodManager.exec);
+browser.webNavigation.onCompleted.addListener(WebNavigationService.exec);
 
 /**
  * Add listener on connect port
