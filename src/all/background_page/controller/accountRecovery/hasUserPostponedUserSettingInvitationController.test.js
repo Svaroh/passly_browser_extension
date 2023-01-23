@@ -12,8 +12,8 @@
  * @since         3.6.0
  */
 
-import PostponedUserSettingInvitationService from "../../service/accountRecovery/postponedUserSettingInvitationService";
 import HasUserPostponedUserSettingInvitationController from "./hasUserPostponedUserSettingInvitationController";
+import PostponedUserSettingInvitationService from '../../service/api/invitation/postponedUserSettingInvitationService';
 
 describe("HasUserPostponedUserSettingInvitationController", () => {
   it("can get the account recovery enrollment invitation status", () => {
@@ -23,7 +23,7 @@ describe("HasUserPostponedUserSettingInvitationController", () => {
 
     expect(defaultValue).toBe(false);
 
-    PostponedUserSettingInvitationService.postpone();
+    PostponedUserSettingInvitationService.postponeAccountRecovery();
 
     const setValue = controller.exec();
     expect(setValue).toBe(true);
