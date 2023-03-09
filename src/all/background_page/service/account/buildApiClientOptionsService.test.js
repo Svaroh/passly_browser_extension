@@ -13,7 +13,10 @@
  */
 
 describe("BuildAccountApiClientOptionsService", () => {
-  describe("BuildAccountApiClientOptionsService:build", () => {
+  describe("BuildAccountApiClientOptionsService:buildFromAccount", () => {
+    it.todo("To test");
+  });
+  describe("BuildAccountApiClientOptionsService:buildFromDomain", () => {
     it.todo("To test");
   });
 });
