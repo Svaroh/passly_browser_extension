@@ -16,7 +16,7 @@ import Entity from "passbolt-styleguide/src/shared/models/entity/abstract/entity
 import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
 
 
-const ENTITY_NAME = 'Mfa-Setup-Totp';
+const ENTITY_NAME = 'MfaSetupTotp';
 
 class MfaSetupTotpEntity extends Entity {
   /**
