@@ -18,7 +18,7 @@ import MultiFactorAuthenticationModel from "../../model/multiFactorAuthenticatio
 
 class MfaSetupVerifyProviderController {
   /**
-   * MfaSetupVerifyProviderController constructor
+   * MfaSetupVerifyOtpCodeController constructor
    * @param {Worker} worker
    * @param {string} requestId uuid
    */
