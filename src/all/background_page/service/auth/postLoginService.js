@@ -13,14 +13,13 @@
  */
 
 import StartLoopAuthSessionCheckService from "./startLoopAuthSessionCheckService";
-import GpgAuth from "../../model/gpgauth";
 class PostLoginService {
   /**
    * Post login
    * @returns {Promise<void>}
    */
   static async postLogin() {
-    const startLoopAuthSessionCheckService = new StartLoopAuthSessionCheckService(new GpgAuth());
+    const startLoopAuthSessionCheckService = new StartLoopAuthSessionCheckService();
     await startLoopAuthSessionCheckService.exec();
     const event = new Event('passbolt.auth.after-login');
     self.dispatchEvent(event);
