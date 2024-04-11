@@ -19,8 +19,7 @@ class PostLoginService {
    * @returns {Promise<void>}
    */
   static async postLogin() {
-    const startLoopAuthSessionCheckService = new StartLoopAuthSessionCheckService();
-    await startLoopAuthSessionCheckService.exec();
+    await StartLoopAuthSessionCheckService.exec();
     const event = new Event('passbolt.auth.after-login');
     self.dispatchEvent(event);
   }
