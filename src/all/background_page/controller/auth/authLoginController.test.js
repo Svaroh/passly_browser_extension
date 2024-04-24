@@ -28,6 +28,7 @@ import {clientSsoKit} from "../../model/entity/sso/ssoKitClientPart.test.data";
 import PostLoginService from "../../service/auth/postLoginService";
 import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
 import each from "jest-each";
+import AccountTemporarySessionStorageService from "../../service/sessionStorage/accountTemporarySessionStorageService";
 
 beforeEach(async() => {
   enableFetchMocks();
@@ -66,6 +67,7 @@ describe("AuthLoginController", () => {
         jest.spyOn(PassphraseStorageService, "set");
         jest.spyOn(PostLoginService, "exec");
         jest.spyOn(browser.tabs, "update");
+        jest.spyOn(AccountTemporarySessionStorageService, "remove");
 
         expect.assertions(4);
 
