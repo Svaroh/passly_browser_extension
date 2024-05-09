@@ -13,6 +13,11 @@
  */
 import {v4 as uuidv4} from "uuid";
 
+export const minimalTagDto = (data = {}) => ({
+  slug: "minimal-tag",
+  ...data
+});
+
 export const defaultTagDto = (data = {}) => {
   const id = data?.id || uuidv4();
 
