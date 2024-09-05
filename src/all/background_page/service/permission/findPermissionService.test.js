@@ -17,22 +17,25 @@ import FindPermissionsService from "./findPermissionsService";
 import {v4 as uuidv4} from "uuid";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import {defaultAccountDto} from "../../model/entity/account/accountEntity.test.data";
+import {ownerPermissionDto} from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data.js";
 
 describe("FindPermissionService", () => {
   describe("FindPermissionService::exec", () => {
     it("Should call permission service to find all permission from a resource id", async() => {
-      expect.assertions(2);
+      expect.assertions(3);
       // initialisation
       const account = new AccountEntity(defaultAccountDto());
       const service = new FindPermissionsService(account, defaultApiClientOptions());
       const resourceId = uuidv4();
+      const expectedDto = [ownerPermissionDto()];
       // mocked function
-      jest.spyOn(service.permissionService, "findAllByAcoForeignKey").mockImplementationOnce(jest.fn());
+      jest.spyOn(service.permissionService, "findAllByAcoForeignKey").mockImplementationOnce(() => expectedDto);
       // process
-      await service.findAllByAcoForeignKeyForDisplay(resourceId);
+      const permissionsCollection = await service.findAllByAcoForeignKeyForDisplay(resourceId);
       // expectations
       expect(service.permissionService.findAllByAcoForeignKey).toHaveBeenCalledTimes(1);
       expect(service.permissionService.findAllByAcoForeignKey).toHaveBeenCalledWith(resourceId, FindPermissionsService.DEFAULT_CONTAIN);
+      expect(permissionsCollection.toDto()).toStrictEqual(expectedDto);
     });
 
     it("Should fail if the resource id is not a uuid", async() => {
