@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.9.4
  */
-import UpdateResourcesLocalStorageService from "../../service/resource/updateResourcesLocalStorageService";
+import FindAndUpdateResourcesLocalStorage from "../../service/resource/findAndUpdateResourcesLocalStorageService";
 
 class ResourceUpdateLocalStorageController {
   /**
@@ -25,7 +25,7 @@ class ResourceUpdateLocalStorageController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.updateResourcesLocalStorageService = new UpdateResourcesLocalStorageService(account, apiClientOptions);
+    this.findAndUpdateResourcesLocalStorage = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
   }
 
   /**
@@ -51,7 +51,7 @@ class ResourceUpdateLocalStorageController {
    * @returns {Promise<Object>} updated resource
    */
   async exec(options = {}) {
-    await this.updateResourcesLocalStorageService.updateAll(options);
+    await this.findAndUpdateResourcesLocalStorage.findAndUpdateAll(options);
   }
 }
 
