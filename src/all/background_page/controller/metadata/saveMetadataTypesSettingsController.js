@@ -15,7 +15,7 @@ import MetadataTypesSettingsEntity
   from "passbolt-styleguide/src/shared/models/entity/metadata/metadataTypesSettingsEntity";
 import SaveMetadataSettingsService from "../../service/metadata/saveMetadataSettingsService";
 
-class SaveMetadataTypesController {
+class SaveMetadataTypesSettingsController {
   /**
    * @constructor
    * @param {Worker} worker
@@ -54,4 +54,4 @@ class SaveMetadataTypesController {
   }
 }
 
-export default SaveMetadataTypesController;
+export default SaveMetadataTypesSettingsController;
