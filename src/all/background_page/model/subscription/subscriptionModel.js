@@ -28,31 +28,6 @@ class SubscriptionModel {
 
   /*
    * ==============================================================
-   *  Finders / remote calls
-   * ==============================================================
-   */
-
-  /**
-   * Find the subscription
-   *
-   * @returns {Promise<SubscriptionEntity>}
-   */
-  async find() {
-    try {
-      const subscriptionDto = await this.subscriptionService.find();
-      return new SubscriptionEntity(subscriptionDto);
-    } catch (error) {
-      const isPaymentRequired = error.data && error.data.code === 402;
-      if (isPaymentRequired) {
-        const subscription = new SubscriptionEntity(error.data.body);
-        throw new PassboltSubscriptionError(error.message, subscription);
-      }
-      throw error;
-    }
-  }
-
-  /*
-   * ==============================================================
    *  CRUD
    * ==============================================================
    */
