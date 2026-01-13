@@ -70,15 +70,6 @@ class GroupApiService extends AbstractService {
   }
 
   /**
-   * Return the list of supported orders for in API find operations
-   *
-   * @returns {Array<string>} list of supported option
-   */
-  static getSupportedOrdersOptions() {
-    return ["Group.name DESC", "Group.name ASC"];
-  }
-
-  /**
    * Get a group for a given id
    *
    * @param {string} id group uuid

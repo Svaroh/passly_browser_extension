@@ -10,7 +10,8 @@
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
  */
-import AbstractService from "../abstract/abstractService";
+
+import AbstractService from "passbolt-styleguide/src/shared/services/api/abstract/abstractService";
 
 const RESOURCE_SERVICE_RESOURCE_NAME = "resources";
 
@@ -82,8 +83,8 @@ class ResourceService extends AbstractService {
    *
    * @returns {Array<string>} list of supported option
    */
-  static getSupportedOrdersOptions() {
-    return ["Resource.modified DESC", "Resource.modified ASC"];
+  static getSupportedSortsOptions() {
+    return ["Resource.modified"];
   }
 
   /**
@@ -107,17 +108,23 @@ class ResourceService extends AbstractService {
    *
    * @param {Object} [contains] optional example: {permissions: true}
    * @param {Object} [filters] optional
-   * @param {Object} [orders] optional
+   * @param {Object} [pageOptions] optional
+   * @param {number} [pageOptions.page] optional
+   * @param {number} [pageOptions.limit] optional
+   * @param {Object} [pageOptions.sorts] optional
+   * @param {Array<string>} [pageOptions.orders] optional
    * @returns {Promise<*>} response body
    * @throws {Error} if options are invalid or API error
    * @public
    */
-  async findAll(contains, filters, orders) {
+  async findAll(contains, filters, pageOptions) {
     contains = contains ? this.formatContainOptions(contains, ResourceService.getSupportedContainOptions()) : null;
     filters = filters ? this.formatFilterOptions(filters, ResourceService.getSupportedFiltersOptions()) : null;
-    orders = orders ? this.formatOrderOptions(orders, ResourceService.getSupportedFiltersOptions()) : null;
-    const options = { ...contains, ...filters, ...orders };
+    pageOptions = pageOptions ? this.formatPageOptions(pageOptions, ResourceService.getSupportedSortsOptions()) : null;
+
+    const options = { ...contains, ...filters, ...pageOptions };
     const response = await this.apiClient.findAll(options);
+
     if (!response.body || !response.body.length) {
       return [];
     }
