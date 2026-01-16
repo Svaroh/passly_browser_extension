@@ -11,6 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  */
 
+import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 import AbstractService from "passbolt-styleguide/src/shared/services/api/abstract/abstractService";
 
 const RESOURCE_SERVICE_RESOURCE_NAME = "resources";
@@ -84,7 +85,7 @@ class ResourceService extends AbstractService {
    * @returns {Array<string>} list of supported option
    */
   static getSupportedSortsOptions() {
-    return ["Resource.modified"];
+    return ["Resources.modified"];
   }
 
   /**
@@ -123,12 +124,10 @@ class ResourceService extends AbstractService {
     pageOptions = pageOptions ? this.formatPageOptions(pageOptions, ResourceService.getSupportedSortsOptions()) : null;
 
     const options = { ...contains, ...filters, ...pageOptions };
-    const response = await this.apiClient.findAll(options);
+    const responseDto = await this.apiClient.findAll(options);
 
-    if (!response.body || !response.body.length) {
-      return [];
-    }
-    return response.body;
+    const responseDtoBody = !responseDto.body || !responseDto.body.length ? [] : responseDto.body;
+    return new PassboltResponseEntity({ header: responseDto.header, body: responseDtoBody });
   }
 
   /**
