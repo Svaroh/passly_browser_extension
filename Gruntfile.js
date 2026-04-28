@@ -60,20 +60,20 @@ module.exports = function (grunt) {
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
 
   grunt.registerTask('build-firefox', ['build-firefox-debug', 'build-firefox-prod']);
-  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_background_page_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:build_firefox_debug']);
-  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_background_page_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:build_firefox_prod']);
+  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_background_page_debug', 'shell:build_common_scripts_debug', 'shell:build_firefox_debug']);
+  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_background_page_prod', 'shell:build_common_scripts_prod', 'shell:build_firefox_prod']);
 
   grunt.registerTask('build-chromium-mv2', ['build-chromium-mv2-debug', 'build-chromium-mv2-prod']);
-  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_background_page_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:build_chromium_mv2_debug']);
-  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_background_page_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:build_chromium_mv2_prod']);
+  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_background_page_debug', 'shell:build_common_scripts_debug', 'shell:build_chromium_mv2_debug']);
+  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_background_page_prod', 'shell:build_common_scripts_prod', 'shell:build_chromium_mv2_prod']);
 
   grunt.registerTask('build-chromium-mv3', ['build-chromium-mv3-debug', 'build-chromium-mv3-prod']);
-  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:build_chromium_mv3_debug']);
-  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:build_chromium_mv3_prod']);
+  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_debug', 'shell:build_common_scripts_debug', 'shell:build_chromium_mv3_debug']);
+  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_prod', 'shell:build_common_scripts_prod', 'shell:build_chromium_mv3_prod']);
 
   grunt.registerTask('build-safari', ['build-safari-debug', 'build-safari-prod']);
-  grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug']);
-  grunt.registerTask('build-safari-prod', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod']);
+  grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_common_scripts_debug']);
+  grunt.registerTask('build-safari-prod', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_common_scripts_prod']);
 
   grunt.registerTask('externalize-locale-strings', ['shell:externalize']);
 
@@ -302,54 +302,16 @@ module.exports = function (grunt) {
       },
 
       /**
-       * Build content script
+       * Build common scripts (content scripts + web-accessible resources).
        */
-      build_content_script_prod: {
+      build_common_scripts_prod: {
         command: [
-          'npm run build:content-scripts'
+          'npm run build:common-scripts'
         ].join(' && ')
       },
-      build_content_script_debug: {
+      build_common_scripts_debug: {
         command: [
-          'npm run dev:build:content-scripts'
-        ].join(' && ')
-      },
-      build_content_script_app: {
-        command: [
-          'npm run dev:build:content-scripts:app'
-        ].join(' && ')
-      },
-      build_content_script_browser_integration: {
-        command: [
-          'npm run dev:build:content-scripts:browser-integration'
-        ].join(' && ')
-      },
-      build_content_script_public_website: {
-        command: [
-          'npm run dev:build:content-scripts:public-website'
-        ].join(' && ')
-      },
-      /**
-       * Build web accessible resources
-       */
-      build_web_accessible_resources_prod: {
-        command: [
-          'npm run build:web-accessible-resources'
-        ].join(' && ')
-      },
-      build_web_accessible_resources_debug: {
-        command: [
-          'npm run dev:build:web-accessible-resources'
-        ].join(' && ')
-      },
-      build_web_accessible_resources_app: {
-        command: [
-          'npm run dev:build:web-accessible-resources:app'
-        ].join(' && ')
-      },
-      build_web_accessible_resources_browser_integration: {
-        command: [
-          'npm run dev:build:web-accessible-resources:browser-integration'
+          'npm run dev:build:common-scripts'
         ].join(' && ')
       },
       // Execute the externalization command
