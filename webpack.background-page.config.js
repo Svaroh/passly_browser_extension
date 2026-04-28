@@ -53,8 +53,8 @@ exports.default = function (env) {
       browser: path.resolve(__dirname, './src/all/common/polyfill/browserPolyfill.js'),
     }),
   ];
-  // Enable debug mode.
-  if (env.debug) {
+  // Enable development mode when NODE_ENV=development; otherwise produce a production build.
+  if (process.env.NODE_ENV === "development") {
     config.mode = "development";
     config.devtool = "inline-source-map";
     config.optimization.minimize = false;

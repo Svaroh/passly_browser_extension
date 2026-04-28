@@ -86,10 +86,9 @@ const config = {
   }
 };
 
-exports.default = function (env) {
-  env = env || {};
-  // Enable debug mode.
-  if (env && env.debug) {
+exports.default = function () {
+  // Enable development mode when NODE_ENV=development; otherwise produce a production build.
+  if (process.env.NODE_ENV === "development") {
     config.mode = "development";
     config.devtool = "inline-source-map";
   }
