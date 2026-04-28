@@ -26,9 +26,6 @@ __snapshots__
 /dist
 /build-safari-extension
 
-# Config
-lib/config/config.json
-
 # OS generated files #
 ######################
 .DS_Store

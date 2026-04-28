@@ -1,21 +1,13 @@
 const webpack = require('webpack');
 const path = require('path');
 const TerserPlugin = require("terser-webpack-plugin");
+const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 
 const config = {
   entry: {
     'index': path.resolve(__dirname, './src/chrome-mv3/index.js'),
   },
   mode: 'production',
-  plugins: [
-    new webpack.ProvidePlugin({
-      // Inject browser polyfill as a global API, and adapt it depending on the environment (MV2/MV3/Windows app).
-      browser: path.resolve(__dirname, './src/all/common/polyfill/browserPolyfill.js'),
-      // Inject custom api client fetch to MV3 extension as workaround of the invalid certificate issue.
-      customApiClientFetch: path.resolve(__dirname, './src/chrome-mv3/polyfill/fetchOffscreenPolyfill.js'),
-      customNavigatorClipboard: path.resolve(__dirname, './src/chrome-mv3/polyfill/clipboardOffscreenPolyfill.js'),
-    })
-  ],
   module: {
     rules: [
       {
@@ -54,6 +46,16 @@ const config = {
 
 exports.default = function (env) {
   env = env || {};
+  config.plugins = [
+    buildPassboltEnvPlugin(env),
+    new webpack.ProvidePlugin({
+      // Inject browser polyfill as a global API, and adapt it depending on the environment (MV2/MV3/Windows app).
+      browser: path.resolve(__dirname, './src/all/common/polyfill/browserPolyfill.js'),
+      // Inject custom api client fetch to MV3 extension as workaround of the invalid certificate issue.
+      customApiClientFetch: path.resolve(__dirname, './src/chrome-mv3/polyfill/fetchOffscreenPolyfill.js'),
+      customNavigatorClipboard: path.resolve(__dirname, './src/chrome-mv3/polyfill/clipboardOffscreenPolyfill.js'),
+    }),
+  ];
   // Enable debug mode.
   if (env.debug) {
     config.mode = "development";

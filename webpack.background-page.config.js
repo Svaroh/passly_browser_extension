@@ -1,18 +1,13 @@
 const webpack = require('webpack');
 const path = require('path');
 const TerserPlugin = require("terser-webpack-plugin");
+const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 
 const config = {
   entry: {
     'index': path.resolve(__dirname, './src/all/background_page/index.js'),
   },
   mode: 'production',
-  plugins: [
-    new webpack.ProvidePlugin({
-      // Inject browser polyfill as a global API, and adapt it depending on the environment (MV2/MV3/Windows app).
-      browser: path.resolve(__dirname, './src/all/common/polyfill/browserPolyfill.js'),
-    })
-  ],
   module: {
     rules: [
       {
@@ -51,6 +46,13 @@ const config = {
 
 exports.default = function (env) {
   env = env || {};
+  config.plugins = [
+    buildPassboltEnvPlugin(env),
+    new webpack.ProvidePlugin({
+      // Inject browser polyfill as a global API, and adapt it depending on the environment (MV2/MV3/Windows app).
+      browser: path.resolve(__dirname, './src/all/common/polyfill/browserPolyfill.js'),
+    }),
+  ];
   // Enable debug mode.
   if (env.debug) {
     config.mode = "development";
