@@ -12,13 +12,16 @@
  * @since         5.12.0
  */
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const { svgRule, reactAlias, baseConfigPath } = require('./webpack/common-blocks');
+const I18nextExtractionPlugin = require('./webpack/i18nextExtractionPlugin');
 
 const resolveSrc = relPath => path.resolve(__dirname, relPath);
 
-const buildConfig = ({ entry, chunkLoadingGlobal, outputPath, withReact = false, withSvg = false }) => ({
+const buildConfig = ({ entry, chunkLoadingGlobal, outputPath, withReact = false, withSvg = false, extraPlugins = [] }) => ({
   extends: baseConfigPath,
   entry,
+  ...(extraPlugins.length ? { plugins: extraPlugins } : {}),
   ...(withSvg ? { module: { rules: [svgRule] } } : {}),
   resolve: {
     extensions: [".js", ".jsx"],
@@ -33,8 +36,28 @@ const buildConfig = ({ entry, chunkLoadingGlobal, outputPath, withReact = false,
   },
 });
 
+// Plugins attached to the first common config so they run once per build, regardless
+// of which top-level config (mv2, mv3, or common alone) consumes the array.
+const sharedExtraPlugins = [
+  new I18nextExtractionPlugin(),
+  new CopyWebpackPlugin({
+    patterns: [
+      {
+        from: resolveSrc('./src/all/locales'),
+        to: resolveSrc('./build/all/locales'),
+      },
+      {
+        from: resolveSrc('./src/all/_locales'),
+        to: resolveSrc('./build/all/_locales'),
+        globOptions: { ignore: ['**/*.test.js'] },
+      },
+    ],
+  }),
+];
+
 module.exports = [
-  // Content scripts — main app entries.
+  // Content scripts — main app entries. Hosts the i18next extraction + locales
+  // copy plugins so they execute exactly once per build.
   buildConfig({
     entry: {
       'app': resolveSrc('./src/all/contentScripts/js/app/App.js'),
@@ -45,6 +68,7 @@ module.exports = [
     },
     chunkLoadingGlobal: 'contentScriptChunkLoadingGlobal',
     outputPath: './build/all/contentScripts/js/dist',
+    extraPlugins: sharedExtraPlugins,
   }),
   // Content scripts — browser integration.
   buildConfig({

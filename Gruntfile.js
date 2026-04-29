@@ -50,8 +50,8 @@ module.exports = function (grunt) {
   grunt.registerTask('default', ['bundle']);
   grunt.registerTask('pre-dist', ['copy:styleguide']);
 
-  grunt.registerTask('bundle', ['externalize-locale-strings', 'copy:background_page', 'copy:web_accessible_resources', 'copy:locales']);
-  grunt.registerTask('bundle-mv3', ['externalize-locale-strings', 'copy:service_worker', 'copy:web_accessible_resources', 'copy:locales']);
+  grunt.registerTask('bundle', ['copy:background_page', 'copy:web_accessible_resources']);
+  grunt.registerTask('bundle-mv3', ['copy:service_worker', 'copy:web_accessible_resources']);
   grunt.registerTask('bundle-firefox', ['copy:manifest_firefox', 'bundle']);
   grunt.registerTask('bundle-chromium-mv2', ['copy:manifest_chromium_mv2', 'bundle']);
   grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3', 'bundle-mv3']);
@@ -74,8 +74,6 @@ module.exports = function (grunt) {
   grunt.registerTask('build-safari', ['build-safari-debug', 'build-safari-prod']);
   grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_common_scripts_debug']);
   grunt.registerTask('build-safari-prod', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_common_scripts_prod']);
-
-  grunt.registerTask('externalize-locale-strings', ['shell:externalize']);
 
   /**
    * Main grunt tasks configuration
@@ -110,12 +108,6 @@ module.exports = function (grunt) {
       web_accessible_resources: {
         files: [
           { expand: true, cwd: path.src_web_accessible_resources, src: ['js/themes/**', '*.html'], dest: path.build_web_accessible_resources }
-        ]
-      },
-      locales: {
-        files: [
-          { expand: true, cwd: path.src + 'locales', src: ['**'], dest: path.build + 'locales' },
-          { expand: true, cwd: path.src + '_locales', src: ['**', "!**/*.test.js"], dest: path.build + '_locales' }
         ]
       },
       // switch manifest file to firefox or chrome
@@ -312,12 +304,6 @@ module.exports = function (grunt) {
       build_common_scripts_debug: {
         command: [
           'npm run dev:build:common-scripts'
-        ].join(' && ')
-      },
-      // Execute the externalization command
-      externalize: {
-        command: [
-          'npm run i18n:externalize'
         ].join(' && ')
       },
       // Execute the eslint command
