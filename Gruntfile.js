@@ -60,12 +60,12 @@ module.exports = function (grunt) {
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
 
   grunt.registerTask('build-firefox', ['build-firefox-debug', 'build-firefox-prod']);
-  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_background_page_debug', 'shell:build_common_scripts_debug', 'shell:build_firefox_debug']);
-  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_background_page_prod', 'shell:build_common_scripts_prod', 'shell:build_firefox_prod']);
+  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_mv2_debug', 'shell:build_firefox_debug']);
+  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_mv2_prod', 'shell:build_firefox_prod']);
 
   grunt.registerTask('build-chromium-mv2', ['build-chromium-mv2-debug', 'build-chromium-mv2-prod']);
-  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_background_page_debug', 'shell:build_common_scripts_debug', 'shell:build_chromium_mv2_debug']);
-  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_background_page_prod', 'shell:build_common_scripts_prod', 'shell:build_chromium_mv2_prod']);
+  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_mv2_debug', 'shell:build_chromium_mv2_debug']);
+  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_mv2_prod', 'shell:build_chromium_mv2_prod']);
 
   grunt.registerTask('build-chromium-mv3', ['build-chromium-mv3-debug', 'build-chromium-mv3-prod']);
   grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_debug', 'shell:build_common_scripts_debug', 'shell:build_chromium_mv3_debug']);
@@ -267,9 +267,9 @@ module.exports = function (grunt) {
       /**
        * Build background page.
        */
-      build_background_page_prod: {
+      build_mv2_prod: {
         command: [
-          'npm run build:background-page'
+          'npm run build:mv2'
         ].join(' && ')
       },
       build_background_page_safari_prod: {
@@ -277,9 +277,9 @@ module.exports = function (grunt) {
           'npm run build:safari:background-page'
         ].join(' && ')
       },
-      build_background_page_debug: {
+      build_mv2_debug: {
         command: [
-          'npm run dev:build:background-page'
+          'npm run dev:build:mv2'
         ].join(' && ')
       },
       build_background_page_safari_debug: {

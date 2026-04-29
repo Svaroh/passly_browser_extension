@@ -44,10 +44,9 @@ const config = {
   }
 };
 
-exports.default = function (env) {
-  env = env || {};
+exports.default = function () {
   config.plugins = [
-    buildPassboltEnvPlugin(env),
+    buildPassboltEnvPlugin(),
     new webpack.ProvidePlugin({
       // Inject browser polyfill as a global API, and adapt it depending on the environment (MV2/MV3/Windows app).
       browser: path.resolve(__dirname, './src/safari/common/polyfill/safariBrowserPolyfill.js'),
