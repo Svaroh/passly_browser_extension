@@ -92,7 +92,7 @@ const buildConfig = ({ entry, chunkLoadingGlobal, outputPath, withReact = false,
       splitChunks: splitChunksConfig,
     },
     resolve: {
-      extensions: ["*", ".js", ".jsx"],
+      extensions: [".js", ".jsx"],
       ...(withReact ? { alias: reactAlias } : {}),
     },
     output: {
