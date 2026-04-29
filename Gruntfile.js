@@ -68,8 +68,8 @@ module.exports = function (grunt) {
   grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_mv2_prod', 'shell:build_chromium_mv2_prod']);
 
   grunt.registerTask('build-chromium-mv3', ['build-chromium-mv3-debug', 'build-chromium-mv3-prod']);
-  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_debug', 'shell:build_common_scripts_debug', 'shell:build_chromium_mv3_debug']);
-  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_service_worker_prod', 'shell:build_common_scripts_prod', 'shell:build_chromium_mv3_prod']);
+  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_mv3_debug', 'shell:build_chromium_mv3_debug']);
+  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_mv3_prod', 'shell:build_chromium_mv3_prod']);
 
   grunt.registerTask('build-safari', ['build-safari-debug', 'build-safari-prod']);
   grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_common_scripts_debug']);
@@ -288,16 +288,16 @@ module.exports = function (grunt) {
         ].join(' && ')
       },
       /**
-       * Build service worker.
+       * Build MV3 (service worker + offscreens).
        */
-      build_service_worker_prod: {
+      build_mv3_prod: {
         command: [
-          'npm run build:service-worker',
+          'npm run build:mv3',
         ].join(' && ')
       },
-      build_service_worker_debug: {
+      build_mv3_debug: {
         command: [
-          'npm run dev:build:service-worker',
+          'npm run dev:build:mv3',
         ].join(' && ')
       },
 
