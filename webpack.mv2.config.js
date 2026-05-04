@@ -12,6 +12,7 @@
  * @since         5.12.0
  */
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require("terser-webpack-plugin");
 const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 const { baseConfigPath } = require('./webpack/common-blocks');
@@ -24,7 +25,15 @@ const mv2BackgroundPageConfig = {
   entry: {
     'index': path.resolve(__dirname, './src/all/background_page/index.js'),
   },
-  plugins: [buildPassboltEnvPlugin()],
+  plugins: [
+    buildPassboltEnvPlugin(),
+    new CopyWebpackPlugin({
+      patterns: [{
+        from: path.resolve(__dirname, './src/all/background_page/index.html'),
+        to: path.resolve(__dirname, './build/all/index.html'),
+      }],
+    }),
+  ],
   optimization: {
     minimize: !isDevelopment,
     minimizer: isDevelopment ? [] : [new TerserPlugin()],

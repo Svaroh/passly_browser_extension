@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require("terser-webpack-plugin");
 const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 
@@ -54,6 +55,12 @@ exports.default = function () {
       customFileService: path.resolve(__dirname, './src/safari/background_page/service/file/fileService.js'),
     }),
     new webpack.NormalModuleReplacementPlugin(/service\/file\/fileService$/, "../../../../safari/background_page/service/file/fileService"),
+    new CopyWebpackPlugin({
+      patterns: [{
+        from: path.resolve(__dirname, './src/all/background_page/index.html'),
+        to: path.resolve(__dirname, './build/all/index.html'),
+      }],
+    }),
   ];
   // Enable development mode when NODE_ENV=development; otherwise produce a production build.
   if (process.env.NODE_ENV === "development") {

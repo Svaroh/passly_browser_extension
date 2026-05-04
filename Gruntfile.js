@@ -21,7 +21,6 @@ module.exports = function (grunt) {
 
     src: 'src/all/',
     test: 'test/',
-    src_background_page: 'src/all/background_page/',
     src_chromium_mv2: 'src/chrome/',
     src_chromium_mv3: 'src/chrome-mv3/',
     src_safari: 'src/safari/',
@@ -42,14 +41,10 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-copy');
 
-  grunt.registerTask('default', ['bundle']);
-
-  grunt.registerTask('bundle', ['copy:background_page']);
-  grunt.registerTask('bundle-mv3', ['copy:service_worker']);
-  grunt.registerTask('bundle-firefox', ['copy:manifest_firefox', 'bundle']);
-  grunt.registerTask('bundle-chromium-mv2', ['copy:manifest_chromium_mv2', 'bundle']);
-  grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3', 'bundle-mv3']);
-  grunt.registerTask('bundle-safari', ['copy:manifest_safari', 'bundle']);
+  grunt.registerTask('bundle-firefox', ['copy:manifest_firefox']);
+  grunt.registerTask('bundle-chromium-mv2', ['copy:manifest_chromium_mv2']);
+  grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3', 'copy:service_worker']);
+  grunt.registerTask('bundle-safari', ['copy:manifest_safari']);
 
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
 
@@ -88,11 +83,6 @@ module.exports = function (grunt) {
      * Copy operations
      */
     copy: {
-      background_page: {
-        files: [
-          { expand: true, cwd: path.src_background_page, src: 'index.html', dest: path.build }
-        ]
-      },
       service_worker: {
         files: [
           { expand: true, cwd: path.src_chromium_mv3, src: 'serviceWorker.js', dest: path.build + 'serviceWorker' },
