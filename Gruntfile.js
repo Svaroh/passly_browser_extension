@@ -29,8 +29,6 @@ module.exports = function (grunt) {
     src_chromium_mv3: 'src/chrome-mv3/',
     src_safari: 'src/safari/',
     src_firefox: 'src/firefox/',
-    src_content_scripts: 'src/all/contentScripts/',
-    src_web_accessible_resources: 'src/all/webAccessibleResources/',
   };
   const firefoxWebExtBuildName = 'passbolt_-_open_source_password_manager';
 
@@ -50,8 +48,8 @@ module.exports = function (grunt) {
   grunt.registerTask('default', ['bundle']);
   grunt.registerTask('pre-dist', ['copy:styleguide']);
 
-  grunt.registerTask('bundle', ['copy:background_page', 'copy:web_accessible_resources']);
-  grunt.registerTask('bundle-mv3', ['copy:service_worker', 'copy:web_accessible_resources']);
+  grunt.registerTask('bundle', ['copy:background_page']);
+  grunt.registerTask('bundle-mv3', ['copy:service_worker']);
   grunt.registerTask('bundle-firefox', ['copy:manifest_firefox', 'bundle']);
   grunt.registerTask('bundle-chromium-mv2', ['copy:manifest_chromium_mv2', 'bundle']);
   grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3', 'bundle-mv3']);
@@ -103,11 +101,6 @@ module.exports = function (grunt) {
         files: [
           { expand: true, cwd: path.src_chromium_mv3, src: 'serviceWorker.js', dest: path.build + 'serviceWorker' },
           { expand: true, cwd: `${path.src_chromium_mv3}/offscreens`, src: 'offscreen.html', dest: `${path.build}/offscreens` },
-        ]
-      },
-      web_accessible_resources: {
-        files: [
-          { expand: true, cwd: path.src_web_accessible_resources, src: ['js/themes/**', '*.html'], dest: path.build_web_accessible_resources }
         ]
       },
       // switch manifest file to firefox or chrome

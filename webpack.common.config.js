@@ -51,6 +51,15 @@ const sharedExtraPlugins = [
         to: resolveSrc('./build/all/_locales'),
         globOptions: { ignore: ['**/*.test.js'] },
       },
+      {
+        from: resolveSrc('./src/all/webAccessibleResources/js/themes'),
+        to: resolveSrc('./build/all/webAccessibleResources/js/themes'),
+      },
+      {
+        from: '*.html',
+        context: resolveSrc('./src/all/webAccessibleResources'),
+        to: resolveSrc('./build/all/webAccessibleResources'),
+      },
     ],
   }),
 ];
