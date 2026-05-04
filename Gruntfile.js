@@ -43,7 +43,7 @@ module.exports = function (grunt) {
 
   grunt.registerTask('bundle-firefox', ['copy:manifest_firefox']);
   grunt.registerTask('bundle-chromium-mv2', ['copy:manifest_chromium_mv2']);
-  grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3', 'copy:service_worker']);
+  grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3']);
   grunt.registerTask('bundle-safari', ['copy:manifest_safari']);
 
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
@@ -83,12 +83,6 @@ module.exports = function (grunt) {
      * Copy operations
      */
     copy: {
-      service_worker: {
-        files: [
-          { expand: true, cwd: path.src_chromium_mv3, src: 'serviceWorker.js', dest: path.build + 'serviceWorker' },
-          { expand: true, cwd: `${path.src_chromium_mv3}/offscreens`, src: 'offscreen.html', dest: `${path.build}/offscreens` },
-        ]
-      },
       // switch manifest file to firefox or chrome
       manifest_firefox: {
         files: [{

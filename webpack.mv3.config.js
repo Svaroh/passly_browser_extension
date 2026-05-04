@@ -13,6 +13,7 @@
  */
 const webpack = require('webpack');
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require("terser-webpack-plugin");
 const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 const { baseConfigPath } = require('./webpack/common-blocks');
@@ -42,6 +43,12 @@ const serviceWorkerConfig = {
       customApiClientFetch: path.resolve(__dirname, './src/chrome-mv3/polyfill/fetchOffscreenPolyfill.js'),
       customNavigatorClipboard: path.resolve(__dirname, './src/chrome-mv3/polyfill/clipboardOffscreenPolyfill.js'),
     }),
+    new CopyWebpackPlugin({
+      patterns: [{
+        from: path.resolve(__dirname, './src/chrome-mv3/serviceWorker.js'),
+        to: path.resolve(__dirname, './build/all/serviceWorker/serviceWorker.js'),
+      }],
+    }),
   ],
   optimization: sharedOptimization,
   resolve: sharedResolve,
@@ -59,6 +66,14 @@ const offscreensConfig = {
   entry: {
     'offscreen': path.resolve(__dirname, './src/chrome-mv3/offscreens/offscreen.js'),
   },
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [{
+        from: path.resolve(__dirname, './src/chrome-mv3/offscreens/offscreen.html'),
+        to: path.resolve(__dirname, './build/all/offscreens/offscreen.html'),
+      }],
+    }),
+  ],
   optimization: sharedOptimization,
   resolve: sharedResolve,
   output: {
