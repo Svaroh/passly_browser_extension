@@ -18,13 +18,6 @@ module.exports = function (grunt) {
     dist_chromium_mv3: 'dist/chromium-mv3/',
     dist_safari: 'dist/safari/',
     dist_firefox: 'dist/firefox/',
-
-    src: 'src/all/',
-    test: 'test/',
-    src_chromium_mv2: 'src/chrome/',
-    src_chromium_mv3: 'src/chrome-mv3/',
-    src_safari: 'src/safari/',
-    src_firefox: 'src/firefox/',
   };
   const firefoxWebExtBuildName = 'passbolt_-_open_source_password_manager';
 
@@ -39,30 +32,33 @@ module.exports = function (grunt) {
    */
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-contrib-clean');
-  grunt.loadNpmTasks('grunt-contrib-copy');
 
-  grunt.registerTask('bundle-firefox', ['copy:manifest_firefox']);
-  grunt.registerTask('bundle-chromium-mv2', ['copy:manifest_chromium_mv2']);
-  grunt.registerTask('bundle-chromium-mv3', ['copy:manifest_chromium_mv3']);
-  grunt.registerTask('bundle-safari', ['copy:manifest_safari']);
+  grunt.registerTask('bundle-firefox-debug', ['shell:bundle_firefox_debug']);
+  grunt.registerTask('bundle-firefox-prod', ['shell:bundle_firefox_prod']);
+  grunt.registerTask('bundle-chromium-mv2-debug', ['shell:bundle_chromium_mv2_debug']);
+  grunt.registerTask('bundle-chromium-mv2-prod', ['shell:bundle_chromium_mv2_prod']);
+  grunt.registerTask('bundle-chromium-mv3-debug', ['shell:bundle_chromium_mv3_debug']);
+  grunt.registerTask('bundle-chromium-mv3-prod', ['shell:bundle_chromium_mv3_prod']);
+  grunt.registerTask('bundle-safari-debug', ['shell:bundle_safari_debug']);
+  grunt.registerTask('bundle-safari-prod', ['shell:bundle_safari_prod']);
 
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
 
   grunt.registerTask('build-firefox', ['build-firefox-debug', 'build-firefox-prod']);
-  grunt.registerTask('build-firefox-debug', ['clean:build', 'bundle-firefox', 'shell:build_mv2_debug', 'shell:build_firefox_debug']);
-  grunt.registerTask('build-firefox-prod', ['clean:build', 'bundle-firefox', 'shell:build_mv2_prod', 'shell:build_firefox_prod']);
+  grunt.registerTask('build-firefox-debug', ['clean:build', 'bundle-firefox-debug', 'shell:build_firefox_debug']);
+  grunt.registerTask('build-firefox-prod', ['clean:build', 'bundle-firefox-prod', 'shell:build_firefox_prod']);
 
   grunt.registerTask('build-chromium-mv2', ['build-chromium-mv2-debug', 'build-chromium-mv2-prod']);
-  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'bundle-chromium-mv2', 'shell:build_mv2_debug', 'shell:build_chromium_mv2_debug']);
-  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'bundle-chromium-mv2', 'shell:build_mv2_prod', 'shell:build_chromium_mv2_prod']);
+  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'bundle-chromium-mv2-debug', 'shell:build_chromium_mv2_debug']);
+  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'bundle-chromium-mv2-prod', 'shell:build_chromium_mv2_prod']);
 
   grunt.registerTask('build-chromium-mv3', ['build-chromium-mv3-debug', 'build-chromium-mv3-prod']);
-  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'bundle-chromium-mv3', 'shell:build_mv3_debug', 'shell:build_chromium_mv3_debug']);
-  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'bundle-chromium-mv3', 'shell:build_mv3_prod', 'shell:build_chromium_mv3_prod']);
+  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'bundle-chromium-mv3-debug', 'shell:build_chromium_mv3_debug']);
+  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'bundle-chromium-mv3-prod', 'shell:build_chromium_mv3_prod']);
 
   grunt.registerTask('build-safari', ['build-safari-debug', 'build-safari-prod']);
-  grunt.registerTask('build-safari-debug', ['clean:build', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_common_scripts_debug']);
-  grunt.registerTask('build-safari-prod', ['clean:build', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_common_scripts_prod']);
+  grunt.registerTask('build-safari-debug', ['clean:build', 'bundle-safari-debug']);
+  grunt.registerTask('build-safari-prod', ['clean:build', 'bundle-safari-prod']);
 
   /**
    * Main grunt tasks configuration
@@ -80,87 +76,25 @@ module.exports = function (grunt) {
     },
 
     /**
-     * Copy operations
-     */
-    copy: {
-      // switch manifest file to firefox or chrome
-      manifest_firefox: {
-        files: [{
-          expand: true, cwd: path.src_firefox, src: 'manifest.json', dest: path.build
-        }]
-      },
-      manifest_chromium_mv2: {
-        files: [{
-          expand: true, cwd: path.src_chromium_mv2, src: 'manifest.json', dest: path.build
-        }]
-      },
-      manifest_chromium_mv3: {
-        files: [{
-          expand: true, cwd: path.src_chromium_mv3, src: 'manifest.json', dest: path.build
-        }]
-      },
-      manifest_safari: {
-        files: [{
-          expand: true, cwd: path.src_safari, src: 'manifest.json', dest: path.build
-        }]
-      }
-    },
-
-    /**
      * Shell commands
      */
     shell: {
       options: { stderr: false },
-      /**
-       * Build background page.
-       */
-      build_mv2_prod: {
-        command: [
-          'npm run build:mv2'
-        ].join(' && ')
-      },
-      build_background_page_safari_prod: {
-        command: [
-          'npm run build:safari:background-page'
-        ].join(' && ')
-      },
-      build_mv2_debug: {
-        command: [
-          'npm run dev:build:mv2'
-        ].join(' && ')
-      },
-      build_background_page_safari_debug: {
-        command: [
-          'npm run dev:build:safari:background-page'
-        ].join(' && ')
-      },
-      /**
-       * Build MV3 (service worker + offscreens).
-       */
-      build_mv3_prod: {
-        command: [
-          'npm run build:mv3',
-        ].join(' && ')
-      },
-      build_mv3_debug: {
-        command: [
-          'npm run dev:build:mv3',
-        ].join(' && ')
-      },
 
       /**
-       * Build common scripts (content scripts + web-accessible resources).
+       * Per-browser webpack bundling. Each command compiles the full extension
+       * (content scripts, web-accessible resources, background page / service worker,
+       * locales, styleguide assets, manifest) for the targeted browser.
        */
-      build_common_scripts_prod: {
-        command: [
-          'npm run build:common-scripts'
-        ].join(' && ')
-      },
-      build_common_scripts_debug: {
-        command: [
-          'npm run dev:build:common-scripts'
-        ].join(' && ')
-      },
+      bundle_firefox_prod: { command: 'npm run build:firefox' },
+      bundle_firefox_debug: { command: 'npm run dev:build:firefox' },
+      bundle_chromium_mv2_prod: { command: 'npm run build:chromium-mv2' },
+      bundle_chromium_mv2_debug: { command: 'npm run dev:build:chromium-mv2' },
+      bundle_chromium_mv3_prod: { command: 'npm run build:chromium-mv3' },
+      bundle_chromium_mv3_debug: { command: 'npm run dev:build:chromium-mv3' },
+      bundle_safari_prod: { command: 'npm run build:safari' },
+      bundle_safari_debug: { command: 'npm run dev:build:safari' },
+
       // Execute the eslint command
       eslint: {
         command: [

@@ -31,7 +31,7 @@ const sharedResolve = {
   fallback: { crypto: false },
 };
 
-const serviceWorkerConfig = {
+const buildServiceWorkerConfig = ({ manifestPath } = {}) => ({
   extends: baseConfigPath,
   entry: {
     'index': path.resolve(__dirname, './src/chrome-mv3/index.js'),
@@ -44,10 +44,16 @@ const serviceWorkerConfig = {
       customNavigatorClipboard: path.resolve(__dirname, './src/chrome-mv3/polyfill/clipboardOffscreenPolyfill.js'),
     }),
     new CopyWebpackPlugin({
-      patterns: [{
-        from: path.resolve(__dirname, './src/chrome-mv3/serviceWorker.js'),
-        to: path.resolve(__dirname, './build/all/serviceWorker/serviceWorker.js'),
-      }],
+      patterns: [
+        {
+          from: path.resolve(__dirname, './src/chrome-mv3/serviceWorker.js'),
+          to: path.resolve(__dirname, './build/all/serviceWorker/serviceWorker.js'),
+        },
+        ...(manifestPath ? [{
+          from: manifestPath,
+          to: path.resolve(__dirname, './build/all/manifest.json'),
+        }] : []),
+      ],
     }),
   ],
   optimization: sharedOptimization,
@@ -59,7 +65,7 @@ const serviceWorkerConfig = {
     pathinfo: true,
     filename: '[name].js',
   },
-};
+});
 
 const offscreensConfig = {
   extends: baseConfigPath,
@@ -84,4 +90,11 @@ const offscreensConfig = {
   },
 };
 
-module.exports = [...commonConfigs, serviceWorkerConfig, offscreensConfig];
+const buildMv3Configs = ({ manifestPath } = {}) => [
+  ...commonConfigs,
+  buildServiceWorkerConfig({ manifestPath }),
+  offscreensConfig,
+];
+
+module.exports = buildMv3Configs();
+module.exports.buildMv3Configs = buildMv3Configs;

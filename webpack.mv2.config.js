@@ -20,7 +20,7 @@ const commonConfigs = require('./webpack.common.config.js');
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
-const mv2BackgroundPageConfig = {
+const buildBackgroundPageConfig = ({ manifestPath } = {}) => ({
   extends: baseConfigPath,
   entry: {
     'index': path.resolve(__dirname, './src/all/background_page/index.js'),
@@ -28,10 +28,16 @@ const mv2BackgroundPageConfig = {
   plugins: [
     buildPassboltEnvPlugin(),
     new CopyWebpackPlugin({
-      patterns: [{
-        from: path.resolve(__dirname, './src/all/background_page/index.html'),
-        to: path.resolve(__dirname, './build/all/index.html'),
-      }],
+      patterns: [
+        {
+          from: path.resolve(__dirname, './src/all/background_page/index.html'),
+          to: path.resolve(__dirname, './build/all/index.html'),
+        },
+        ...(manifestPath ? [{
+          from: manifestPath,
+          to: path.resolve(__dirname, './build/all/manifest.json'),
+        }] : []),
+      ],
     }),
   ],
   optimization: {
@@ -49,6 +55,12 @@ const mv2BackgroundPageConfig = {
     pathinfo: true,
     filename: '[name].min.js',
   },
-};
+});
 
-module.exports = [...commonConfigs, mv2BackgroundPageConfig];
+const buildMv2Configs = ({ manifestPath } = {}) => [
+  ...commonConfigs,
+  buildBackgroundPageConfig({ manifestPath }),
+];
+
+module.exports = buildMv2Configs();
+module.exports.buildMv2Configs = buildMv2Configs;
