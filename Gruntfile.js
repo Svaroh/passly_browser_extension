@@ -12,10 +12,7 @@ module.exports = function (grunt) {
    * Path shortcuts
    */
   var path = {
-    node_modules: 'node_modules/',
-
     build: 'build/all/',
-    build_web_accessible_resources: 'build/all/webAccessibleResources/',
 
     dist_chromium_mv2: 'dist/chromium-mv2/',
     dist_chromium_mv3: 'dist/chromium-mv3/',
@@ -46,7 +43,6 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-copy');
 
   grunt.registerTask('default', ['bundle']);
-  grunt.registerTask('pre-dist', ['copy:styleguide']);
 
   grunt.registerTask('bundle', ['copy:background_page']);
   grunt.registerTask('bundle-mv3', ['copy:service_worker']);
@@ -58,20 +54,20 @@ module.exports = function (grunt) {
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
 
   grunt.registerTask('build-firefox', ['build-firefox-debug', 'build-firefox-prod']);
-  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_mv2_debug', 'shell:build_firefox_debug']);
-  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'bundle-firefox', 'shell:build_mv2_prod', 'shell:build_firefox_prod']);
+  grunt.registerTask('build-firefox-debug', ['clean:build', 'bundle-firefox', 'shell:build_mv2_debug', 'shell:build_firefox_debug']);
+  grunt.registerTask('build-firefox-prod', ['clean:build', 'bundle-firefox', 'shell:build_mv2_prod', 'shell:build_firefox_prod']);
 
   grunt.registerTask('build-chromium-mv2', ['build-chromium-mv2-debug', 'build-chromium-mv2-prod']);
-  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_mv2_debug', 'shell:build_chromium_mv2_debug']);
-  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv2', 'shell:build_mv2_prod', 'shell:build_chromium_mv2_prod']);
+  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'bundle-chromium-mv2', 'shell:build_mv2_debug', 'shell:build_chromium_mv2_debug']);
+  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'bundle-chromium-mv2', 'shell:build_mv2_prod', 'shell:build_chromium_mv2_prod']);
 
   grunt.registerTask('build-chromium-mv3', ['build-chromium-mv3-debug', 'build-chromium-mv3-prod']);
-  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_mv3_debug', 'shell:build_chromium_mv3_debug']);
-  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'bundle-chromium-mv3', 'shell:build_mv3_prod', 'shell:build_chromium_mv3_prod']);
+  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'bundle-chromium-mv3', 'shell:build_mv3_debug', 'shell:build_chromium_mv3_debug']);
+  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'bundle-chromium-mv3', 'shell:build_mv3_prod', 'shell:build_chromium_mv3_prod']);
 
   grunt.registerTask('build-safari', ['build-safari-debug', 'build-safari-prod']);
-  grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_common_scripts_debug']);
-  grunt.registerTask('build-safari-prod', ['clean:build', 'pre-dist', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_common_scripts_prod']);
+  grunt.registerTask('build-safari-debug', ['clean:build', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_common_scripts_debug']);
+  grunt.registerTask('build-safari-prod', ['clean:build', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_common_scripts_prod']);
 
   /**
    * Main grunt tasks configuration
@@ -122,124 +118,6 @@ module.exports = function (grunt) {
       manifest_safari: {
         files: [{
           expand: true, cwd: path.src_safari, src: 'manifest.json', dest: path.build
-        }]
-      },
-      // Copy styleguide elements
-      styleguide: {
-        files: [{
-          // Avatar
-          nonull: true,
-          cwd: path.node_modules + 'passbolt-styleguide/src/img/avatar',
-          src: ['group_default.png'],
-          dest: path.build_web_accessible_resources + 'img/avatar',
-          expand: true
-        }, {
-          // Controls
-          nonull: true,
-          cwd: path.node_modules + 'passbolt-styleguide/src/img/controls',
-          src: ['check_tick.svg'],
-          dest: path.build_web_accessible_resources + 'img/controls',
-          expand: true
-        },
-        {
-          // Icons / logo
-          nonull: true,
-          cwd: path.node_modules + 'passbolt-styleguide/src/img/logo',
-          src: [
-            'icon-48.png',
-            'logo.svg', 'logo_white.svg',
-            'icon-without-badge.svg',
-            'icon-inactive.svg',
-            'icon-badge-1.svg',
-            'icon-badge-2.svg',
-            'icon-badge-3.svg',
-            'icon-badge-4.svg',
-            'icon-badge-5.svg',
-            'icon-badge-5+.svg',
-          ],
-          dest: path.build_web_accessible_resources + 'img/logo',
-          expand: true
-        }, {
-          // Branding
-          nonull: true,
-          cwd: path.node_modules + 'passbolt-styleguide/src/img/logo',
-          src: [
-            'icon-16.png',
-            'icon-32.png',
-            'icon-32-signout.png',
-            'icon-32-badge-1.png',
-            'icon-32-badge-2.png',
-            'icon-32-badge-3.png',
-            'icon-32-badge-4.png',
-            'icon-32-badge-5.png',
-            'icon-32-badge-5+.png',
-            'icon-48.png',
-            'icon-128.png'],
-          dest: path.build_web_accessible_resources + 'img/icons',
-          expand: true
-        }, {
-          // Illustrations
-          nonull: true,
-          cwd: path.node_modules + 'passbolt-styleguide/src/img/illustrations',
-          src: ['passphrase_intro.svg', 'pin_passbolt.gif', 'wave-pin_my_extension.svg', 'email.png'],
-          dest: path.build_web_accessible_resources + 'img/illustrations',
-          expand: true
-        }, {
-          // Third party logos
-          nonull: true,
-          cwd: path.node_modules + 'passbolt-styleguide/src/img/third_party',
-          src: ['appstore.svg', 'playstore.svg'],
-          dest: path.build_web_accessible_resources + 'img/third_party',
-          expand: true
-        }, {
-          // CSS files default
-          cwd: path.node_modules + 'passbolt-styleguide/build/css/themes/default',
-          src: [
-            'ext_external.min.css', 'ext_login.min.css', 'ext_legacy.min.css', 'ext_in_form_cta.min.css',
-            'ext_setup.min.css', 'ext_quickaccess.min.css', 'ext_app.min.css', 'ext_authentication.min.css',
-            'ext_in_form_menu.min.css'
-          ],
-          dest: path.build_web_accessible_resources + 'css/themes/default',
-          expand: true
-        }, {
-          // CSS files midgar
-          cwd: path.node_modules + 'passbolt-styleguide/build/css/themes/midgar',
-          src: [
-            'ext_login.min.css', 'ext_in_form_cta.min.css', 'ext_setup.min.css', 'ext_quickaccess.min.css',
-            'ext_app.min.css', 'ext_authentication.min.css', 'ext_in_form_menu.min.css'
-          ],
-          dest: path.build_web_accessible_resources + 'css/themes/midgar',
-          expand: true
-        }, {
-          // CSS files solarized light
-          cwd: path.node_modules + 'passbolt-styleguide/build/css/themes/solarized_light',
-          src: [
-            'ext_login.min.css', 'ext_in_form_cta.min.css', 'ext_setup.min.css', 'ext_quickaccess.min.css',
-            'ext_app.min.css', 'ext_authentication.min.css', 'ext_in_form_menu.min.css'
-          ],
-          dest: path.build_web_accessible_resources + 'css/themes/solarized_light',
-          expand: true
-        }, {
-          // CSS files solarized dark
-          cwd: path.node_modules + 'passbolt-styleguide/build/css/themes/solarized_dark',
-          src: [
-            'ext_login.min.css', 'ext_in_form_cta.min.css', 'ext_setup.min.css', 'ext_quickaccess.min.css',
-            'ext_app.min.css', 'ext_authentication.min.css', 'ext_in_form_menu.min.css'
-          ],
-          dest: path.build_web_accessible_resources + 'css/themes/solarized_dark',
-          expand: true
-        }, {
-          // Fonts
-          cwd: path.node_modules + 'passbolt-styleguide/src/fonts',
-          src: ['opensans-variable-font.ttf', 'opensans-italic-variable-font.ttf', 'obfuscation-regular.otf', 'inconsolata-regular.ttf'],
-          dest: path.build_web_accessible_resources + 'fonts',
-          expand: true
-        }, {
-          // Locales
-          cwd: path.node_modules + 'passbolt-styleguide/src/locales',
-          src: ['**'],
-          dest: path.build_web_accessible_resources + 'locales',
-          expand: true
         }]
       }
     },

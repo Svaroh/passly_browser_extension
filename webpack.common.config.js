@@ -17,6 +17,10 @@ const { svgRule, reactAlias, baseConfigPath } = require('./webpack/common-blocks
 const I18nextExtractionPlugin = require('./webpack/i18nextExtractionPlugin');
 
 const resolveSrc = relPath => path.resolve(__dirname, relPath);
+const styleguidePath = relPath => resolveSrc(path.join('node_modules/passbolt-styleguide', relPath));
+const warBuildPath = relPath => resolveSrc(path.join('build/all/webAccessibleResources', relPath));
+
+const themeCss = '{ext_login.min.css,ext_in_form_cta.min.css,ext_setup.min.css,ext_quickaccess.min.css,ext_app.min.css,ext_authentication.min.css,ext_in_form_menu.min.css}';
 
 const buildConfig = ({ entry, chunkLoadingGlobal, outputPath, withReact = false, withSvg = false, extraPlugins = [] }) => ({
   extends: baseConfigPath,
@@ -60,6 +64,43 @@ const sharedExtraPlugins = [
         context: resolveSrc('./src/all/webAccessibleResources'),
         to: resolveSrc('./build/all/webAccessibleResources'),
       },
+      // Styleguide assets
+      { from: 'group_default.png', context: styleguidePath('src/img/avatar'), to: warBuildPath('img/avatar') },
+      { from: 'check_tick.svg', context: styleguidePath('src/img/controls'), to: warBuildPath('img/controls') },
+      {
+        from: '{icon-48.png,logo.svg,logo_white.svg,icon-without-badge.svg,icon-inactive.svg,icon-badge-1.svg,icon-badge-2.svg,icon-badge-3.svg,icon-badge-4.svg,icon-badge-5.svg,icon-badge-5+.svg}',
+        context: styleguidePath('src/img/logo'),
+        to: warBuildPath('img/logo'),
+      },
+      {
+        from: '{icon-16.png,icon-32.png,icon-32-signout.png,icon-32-badge-1.png,icon-32-badge-2.png,icon-32-badge-3.png,icon-32-badge-4.png,icon-32-badge-5.png,icon-32-badge-5+.png,icon-48.png,icon-128.png}',
+        context: styleguidePath('src/img/logo'),
+        to: warBuildPath('img/icons'),
+      },
+      {
+        from: '{passphrase_intro.svg,pin_passbolt.gif,wave-pin_my_extension.svg,email.png}',
+        context: styleguidePath('src/img/illustrations'),
+        to: warBuildPath('img/illustrations'),
+      },
+      {
+        from: '{appstore.svg,playstore.svg}',
+        context: styleguidePath('src/img/third_party'),
+        to: warBuildPath('img/third_party'),
+      },
+      {
+        from: '{ext_external.min.css,ext_login.min.css,ext_legacy.min.css,ext_in_form_cta.min.css,ext_setup.min.css,ext_quickaccess.min.css,ext_app.min.css,ext_authentication.min.css,ext_in_form_menu.min.css}',
+        context: styleguidePath('build/css/themes/default'),
+        to: warBuildPath('css/themes/default'),
+      },
+      { from: themeCss, context: styleguidePath('build/css/themes/midgar'), to: warBuildPath('css/themes/midgar') },
+      { from: themeCss, context: styleguidePath('build/css/themes/solarized_light'), to: warBuildPath('css/themes/solarized_light') },
+      { from: themeCss, context: styleguidePath('build/css/themes/solarized_dark'), to: warBuildPath('css/themes/solarized_dark') },
+      {
+        from: '{opensans-variable-font.ttf,opensans-italic-variable-font.ttf,obfuscation-regular.otf,inconsolata-regular.ttf}',
+        context: styleguidePath('src/fonts'),
+        to: warBuildPath('fonts'),
+      },
+      { from: styleguidePath('src/locales'), to: warBuildPath('locales') },
     ],
   }),
 ];
