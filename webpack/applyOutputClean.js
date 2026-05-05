@@ -11,19 +11,19 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.12.0
  *
- * Production-only build/all cleanup. Skipped in development so that incremental
- * rebuilds keep webpack's caches warm.
- *
  * Two layers, in order:
  *   1) A one-shot wipe of the entire build root before any config starts
- *      compiling. Replaces what `grunt clean:build` used to do, and guarantees
- *      the folder is empty even for files that no config "owns" (e.g. stale
- *      top-level artefacts from a previous browser target).
- *   2) `output.clean` on every config so subsequent passes / watch rebuilds
- *      keep each config's output directory in sync with its current emit list.
- *      For configs whose `output.path` is the build root (mv2 / safari background
- *      page), all sub-directories are kept — other configs and CopyWebpackPlugin
- *      patterns write into them.
+ *      compiling — applied to every browser, regardless of NODE_ENV. Each
+ *      browser writes to the shared `build/all/` directory and zips it via
+ *      WebExtPlugin, so wiping between browsers is mandatory for correctness
+ *      (otherwise stale files from the previous browser leak into the next
+ *      browser's archive). Replaces what `grunt clean:build` used to do.
+ *
+ *   2) `output.clean` on every config — production-only — so subsequent
+ *      passes / watch rebuilds keep each config's output directory in sync
+ *      with its current emit list. For configs whose `output.path` is the
+ *      build root (mv2 / safari background page), all sub-directories are
+ *      kept — other configs and CopyWebpackPlugin patterns write into them.
  */
 const fs = require('fs');
 const path = require('path');
@@ -48,12 +48,13 @@ class WipeBuildRootPlugin {
 }
 
 module.exports = function applyOutputClean(configs) {
-  if (process.env.NODE_ENV === 'development') {
-    return;
-  }
   const wipePlugin = new WipeBuildRootPlugin();
+  const isDevelopment = process.env.NODE_ENV === 'development';
   configs.forEach(config => {
     config.plugins = [wipePlugin, ...(config.plugins || [])];
+    if (isDevelopment) {
+      return;
+    }
     const isRootOutput = path.resolve(config.output.path) === BUILD_ROOT;
     config.output = {
       ...config.output,

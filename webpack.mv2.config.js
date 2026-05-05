@@ -16,7 +16,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require("terser-webpack-plugin");
 const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 const { baseConfigPath } = require('./webpack/common-blocks');
-const commonConfigs = require('./webpack.common.config.js');
+const buildCommonConfigs = require('./webpack.common.config.js');
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
@@ -58,9 +58,8 @@ const buildBackgroundPageConfig = ({ manifestPath } = {}) => ({
 });
 
 const buildMv2Configs = ({ manifestPath } = {}) => [
-  ...commonConfigs,
+  ...buildCommonConfigs(),
   buildBackgroundPageConfig({ manifestPath }),
 ];
 
-module.exports = buildMv2Configs();
-module.exports.buildMv2Configs = buildMv2Configs;
+module.exports = { buildMv2Configs };

@@ -4,6 +4,9 @@
 npm-debug.log
 /bower_components
 
+# Local env overrides (non-secret defaults are documented in webpack/passboltEnvPlugin.js)
+.env
+
 # Less files
 data/less
 

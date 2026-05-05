@@ -60,8 +60,6 @@
     "filereader": "^0.10.3",
     "formdata-node": "^6.0.3",
     "globals": "^16.4.0",
-    "grunt": "^1.0.3",
-    "grunt-shell": "^4.0.0",
     "i18next-cli": "^1.56.7",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
@@ -82,7 +80,7 @@
     "uuid": "^14.0.0"
   },
   "scripts": {
-    "build": "npx grunt build",
+    "build": "webpack",
     "build:firefox": "webpack --config webpack.firefox.config.js",
     "build:chromium-mv2": "webpack --config webpack.chromium-mv2.config.js",
     "build:chromium-mv3": "webpack --config webpack.chromium-mv3.config.js",
@@ -91,7 +89,7 @@
     "dev:build:chromium-mv2": "NODE_ENV=development webpack --config webpack.chromium-mv2.config.js",
     "dev:build:chromium-mv3": "NODE_ENV=development webpack --config webpack.chromium-mv3.config.js",
     "dev:build:safari": "NODE_ENV=development webpack --config webpack.safari.config.js",
-    "dev:safari:build": "grunt build-safari-debug;",
+    "dev:safari:build": "npm run dev:build:safari",
     "dev:safari:convert": "xcrun safari-web-extension-converter --app-name Passbolt-Safari-Extension --swift --macos-only --project-location ./build-safari-extension --bundle-identifier com.passbolt.safari-extension --force --no-open build/all/",
     "dev:watch:build:firefox": "npm run dev:build:firefox -- -w",
     "dev:watch:build:chromium-mv2": "npm run dev:build:chromium-mv2 -- -w",

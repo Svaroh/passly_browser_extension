@@ -5,11 +5,13 @@ const TerserPlugin = require("terser-webpack-plugin");
 const buildPassboltEnvPlugin = require('./webpack/passboltEnvPlugin');
 
 const buildSafariBackgroundConfig = ({ manifestPath } = {}) => {
-  const config = {
+  const isDevelopment = process.env.NODE_ENV === "development";
+  return {
     entry: {
       'index': path.resolve(__dirname, './src/safari/background_page/index.js'),
     },
-    mode: 'production',
+    mode: isDevelopment ? 'development' : 'production',
+    devtool: isDevelopment ? 'inline-source-map' : false,
     module: {
       rules: [
         {
@@ -23,8 +25,8 @@ const buildSafariBackgroundConfig = ({ manifestPath } = {}) => {
       ]
     },
     optimization: {
-      minimize: true,
-      minimizer: [new TerserPlugin()],
+      minimize: !isDevelopment,
+      minimizer: isDevelopment ? [] : [new TerserPlugin()],
       splitChunks: {
         minSize: 0,
         cacheGroups: {
@@ -67,14 +69,6 @@ const buildSafariBackgroundConfig = ({ manifestPath } = {}) => {
       }),
     ],
   };
-  if (process.env.NODE_ENV === "development") {
-    config.mode = "development";
-    config.devtool = "inline-source-map";
-    config.optimization.minimize = false;
-    config.optimization.minimizer = [];
-  }
-  return config;
 };
 
-module.exports = buildSafariBackgroundConfig();
-module.exports.buildSafariBackgroundConfig = buildSafariBackgroundConfig;
+module.exports = { buildSafariBackgroundConfig };

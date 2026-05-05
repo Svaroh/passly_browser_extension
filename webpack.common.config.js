@@ -42,7 +42,9 @@ const buildConfig = ({ entry, chunkLoadingGlobal, outputPath, withReact = false,
 
 // Plugins attached to the first common config so they run once per build, regardless
 // of which top-level config (mv2, mv3, or common alone) consumes the array.
-const sharedExtraPlugins = [
+// Built fresh on each `buildCommonConfigs()` call so that mutations applied by the
+// per-browser entry configs (`applyOutputClean`, etc.) stay scoped to that browser.
+const buildSharedExtraPlugins = () => [
   new I18nextExtractionPlugin(),
   new CopyWebpackPlugin({
     patterns: [
@@ -105,7 +107,7 @@ const sharedExtraPlugins = [
   }),
 ];
 
-module.exports = [
+const buildCommonConfigs = () => [
   // Content scripts — main app entries. Hosts the i18next extraction + locales
   // copy plugins so they execute exactly once per build.
   buildConfig({
@@ -118,7 +120,7 @@ module.exports = [
     },
     chunkLoadingGlobal: 'contentScriptChunkLoadingGlobal',
     outputPath: './build/all/contentScripts/js/dist',
-    extraPlugins: sharedExtraPlugins,
+    extraPlugins: buildSharedExtraPlugins(),
   }),
   // Content scripts — browser integration.
   buildConfig({
@@ -180,3 +182,5 @@ module.exports = [
     withSvg: true,
   }),
 ];
+
+module.exports = buildCommonConfigs;
