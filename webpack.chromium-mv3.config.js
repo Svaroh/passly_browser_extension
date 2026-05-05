@@ -14,12 +14,15 @@
 const path = require('path');
 const { buildMv3Configs } = require('./webpack.mv3.config.js');
 const WebExtPlugin = require('./webpack/webExtPlugin');
+const applyOutputClean = require('./webpack/applyOutputClean');
 const pkg = require('./package.json');
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const configs = buildMv3Configs({
   manifestPath: path.resolve(__dirname, './src/chrome-mv3/manifest.json'),
 });
+
+applyOutputClean(configs);
 
 const webExtPlugin = new WebExtPlugin({
   sourceDir: path.resolve(__dirname, './build/all'),

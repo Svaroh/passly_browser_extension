@@ -14,12 +14,15 @@
 const path = require('path');
 const { buildMv2Configs } = require('./webpack.mv2.config.js');
 const WebExtPlugin = require('./webpack/webExtPlugin');
+const applyOutputClean = require('./webpack/applyOutputClean');
 const pkg = require('./package.json');
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const configs = buildMv2Configs({
   manifestPath: path.resolve(__dirname, './src/firefox/manifest.json'),
 });
+
+applyOutputClean(configs);
 
 const webExtPlugin = new WebExtPlugin({
   sourceDir: path.resolve(__dirname, './build/all'),

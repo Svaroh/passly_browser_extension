@@ -15,6 +15,7 @@ const path = require('path');
 const commonConfigs = require('./webpack.common.config.js');
 const { buildSafariBackgroundConfig } = require('./webpack.safari-background-page.config.js');
 const WebExtPlugin = require('./webpack/webExtPlugin');
+const applyOutputClean = require('./webpack/applyOutputClean');
 const pkg = require('./package.json');
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -24,6 +25,8 @@ const configs = [
     manifestPath: path.resolve(__dirname, './src/safari/manifest.json'),
   }),
 ];
+
+applyOutputClean(configs);
 
 const webExtPlugin = new WebExtPlugin({
   sourceDir: path.resolve(__dirname, './build/all'),
