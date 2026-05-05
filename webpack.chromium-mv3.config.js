@@ -13,7 +13,23 @@
  */
 const path = require('path');
 const { buildMv3Configs } = require('./webpack.mv3.config.js');
+const WebExtPlugin = require('./webpack/webExtPlugin');
+const pkg = require('./package.json');
 
-module.exports = buildMv3Configs({
+const isDevelopment = process.env.NODE_ENV === 'development';
+const configs = buildMv3Configs({
   manifestPath: path.resolve(__dirname, './src/chrome-mv3/manifest.json'),
 });
+
+const webExtPlugin = new WebExtPlugin({
+  sourceDir: path.resolve(__dirname, './build/all'),
+  artifactsDir: path.resolve(__dirname, './dist/chromium-mv3'),
+  filename: `passbolt-${pkg.version}${isDevelopment ? '-debug' : ''}.zip`,
+  expectedCount: configs.length,
+});
+
+configs.forEach(config => {
+  config.plugins = [...(config.plugins || []), webExtPlugin];
+});
+
+module.exports = configs;

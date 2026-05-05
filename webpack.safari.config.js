@@ -14,10 +14,26 @@
 const path = require('path');
 const commonConfigs = require('./webpack.common.config.js');
 const { buildSafariBackgroundConfig } = require('./webpack.safari-background-page.config.js');
+const WebExtPlugin = require('./webpack/webExtPlugin');
+const pkg = require('./package.json');
 
-module.exports = [
+const isDevelopment = process.env.NODE_ENV === 'development';
+const configs = [
   ...commonConfigs,
   buildSafariBackgroundConfig({
     manifestPath: path.resolve(__dirname, './src/safari/manifest.json'),
   }),
 ];
+
+const webExtPlugin = new WebExtPlugin({
+  sourceDir: path.resolve(__dirname, './build/all'),
+  artifactsDir: path.resolve(__dirname, './dist/safari'),
+  filename: `passbolt-${pkg.version}${isDevelopment ? '-debug' : ''}.zip`,
+  expectedCount: configs.length,
+});
+
+configs.forEach(config => {
+  config.plugins = [...(config.plugins || []), webExtPlugin];
+});
+
+module.exports = configs;
