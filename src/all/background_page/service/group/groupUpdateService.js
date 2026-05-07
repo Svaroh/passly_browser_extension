@@ -216,7 +216,9 @@ class GroupUpdateService {
 
       this.progressService.updateStepMessage(progressMessage);
       const groupUpdateOperation = groupUpdateSingleOperationList.items[i];
-      const groupDto = await this.groupApiService.update(groupUpdateOperation.id, groupUpdateOperation.toDto());
+      const groupDto = await this.groupApiService.update(groupUpdateOperation.id, groupUpdateOperation.toDto(), {
+        my_group_user: true,
+      });
       const updatedGroupEntity = new GroupEntity(groupDto, { ignoreInvalidEntity: true });
       await this.groupLocalStorage.updateGroup(updatedGroupEntity);
     }
