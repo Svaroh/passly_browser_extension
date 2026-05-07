@@ -25,6 +25,7 @@ import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity
 import { v4 as uuidv4 } from "uuid";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import PermissionEntity from "../permission/permissionEntity";
+import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
 
 describe("Resource entity", () => {
   describe("ResourceEntity::getSchema", () => {
@@ -114,24 +115,31 @@ describe("Resource entity", () => {
 
       assertEntityProperty.assert(ResourceEntity, "metadata", successScenario, failScenario, "type");
     });
+
+    it("validates offline property", () => {
+      const dto = defaultResourceDto();
+      const successScenarios = [{ scenario: "a valid option", value: defaultOfflineItemDto() }];
+      const failScenarios = [{ scenario: "with invalid offline entity", value: {} }];
+      assertEntityProperty.assertAssociation(ResourceEntity, "offline", dto, successScenarios, failScenarios);
+    });
   });
 
   it("constructor works if valid DTO is provided", () => {
     expect.assertions(1);
-
-    const contain = {
-      secrets: true,
-      permissions: true,
-      permission: true,
-      tags: true,
-      favorite: true,
-      creator: true,
-      modifier: true,
-    };
-    const dto = defaultResourceDto({}, contain);
+    const dto = defaultResourceDto(
+      {},
+      {
+        withPermissions: true,
+        withTags: true,
+        withFavorite: true,
+        withCreator: true,
+        withModifier: true,
+        withOffline: true,
+      },
+    );
     const entity = new ResourceEntity(dto);
 
-    expect(entity.toDto(contain)).toEqual(ResourceEntity.transformDtoFromV4toV5(dto));
+    expect(entity.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toEqual(dto);
   });
 
   it("constructor returns validation error if dto required fields are missing", () => {
@@ -376,6 +384,25 @@ describe("Resource entity", () => {
       const entity = new ResourceEntity(resourceDTO);
 
       expect(entity.soleOwnerId).toStrictEqual(resourceDTO.permissions[0].aro_foreign_key);
+    });
+  });
+
+  describe("getter::offline", () => {
+    it("Should return null if no offline is set", () => {
+      expect.assertions(1);
+
+      const entity = new ResourceEntity(defaultResourceDto());
+
+      expect(entity.offline).toBeNull();
+    });
+
+    it("Should return offline object", () => {
+      expect.assertions(1);
+
+      const resourceDTO = defaultResourceDto({}, { withOffline: true });
+      const entity = new ResourceEntity(resourceDTO);
+
+      expect(entity.offline.toDto()).toStrictEqual(resourceDTO.offline);
     });
   });
 
