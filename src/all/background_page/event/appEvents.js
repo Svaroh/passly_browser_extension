@@ -86,6 +86,11 @@ import OpenAdministrationPageController from "../controller/tab/openAdministrati
 import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainTabController";
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
 import OpenResourceUriTabController from "../controller/tab/openResourceUriTabController";
+import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
+import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
+import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
+import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
+import MarkItemOfflineUnavailableController from "../controller/offline/markItemOfflineUnavailableController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
@@ -901,6 +906,69 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.tabs.open-resource-uri", async (requestId, uri) => {
     const controller = new OpenResourceUriTabController(worker, requestId);
     await controller._exec(uri);
+  });
+
+  /*
+   * ==================================================================================
+   *  Offline events
+   * ==================================================================================
+   */
+  /*
+   * Find offline settings.
+   *
+   * @listens passbolt.offline.find-settings
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.offline.find-settings", async (requestId) => {
+    const controller = new FindOfflineSettingsController(worker, requestId, apiClientOptions);
+    await controller._exec();
+  });
+
+  /*
+   * Save offline settings.
+   *
+   * @listens passbolt.offline.save-settings
+   * @param requestId {uuid} The request identifier
+   * @param offlineSettingsDto {Object} The offline settings dto
+   */
+  worker.port.on("passbolt.offline.save-settings", async (requestId, offlineSettingsDto) => {
+    const controller = new SaveOfflineSettingsController(worker, requestId, apiClientOptions);
+    await controller._exec(offlineSettingsDto);
+  });
+
+  /*
+   * Delete offline settings.
+   *
+   * @listens passbolt.offline.delete-settings
+   * @param requestId {uuid} The request identifier
+   * @param id {uuid} The offline settings id
+   */
+  worker.port.on("passbolt.offline.delete-settings", async (requestId, id) => {
+    const controller = new DeleteOfflineSettingsController(worker, requestId, apiClientOptions);
+    await controller._exec(id);
+  });
+
+  /*
+   * Mark a resource as offline available.
+   *
+   * @listens passbolt.offline.mark-offline
+   * @param requestId {uuid} The request identifier
+   * @param id {uuid} resourceId
+   */
+  worker.port.on("passbolt.offline.mark-offline", async (requestId, id) => {
+    const controller = new MarkResourceOfflineAvailableController(worker, requestId, apiClientOptions);
+    await controller._exec(id);
+  });
+  /*
+   * Remove a resource's offline availability.
+   *
+   * @listens passbolt.offline.unmark-offline
+   * @param requestId {uuid} The request identifier
+   * @param id {uuid} resourceId
+   */
+  worker.port.on("passbolt.offline.unmark-offline", async (requestId, id) => {
+    const controller = new MarkItemOfflineUnavailableController(worker, requestId, apiClientOptions);
+    await controller._exec(id);
   });
 };
 
