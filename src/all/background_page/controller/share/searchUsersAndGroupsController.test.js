@@ -22,9 +22,6 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import { enableFetchMocks } from "jest-fetch-mock";
 import { mockApiResponse } from "../../../../../test/mocks/mockApiResponse";
 
-jest.mock("../../service/progress/progressService");
-jest.mock("../../service/passphrase/getPassphraseService");
-
 beforeEach(() => {
   jest.clearAllMocks();
   enableFetchMocks();
