@@ -23,7 +23,6 @@ import EntityV2 from "passbolt-styleguide/src/shared/models/entity/abstract/enti
 import UserEntity from "../user/userEntity";
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import CanSuggestService from "passbolt-styleguide/src/shared/services/canSuggestService/canSuggestService";
-import OfflineItemEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity";
 
 const ENTITY_NAME = "Resource";
 
@@ -85,16 +84,6 @@ class ResourceEntity extends EntityV2 {
       this._metadata = new ResourceMetadataEntity(this._props.metadata, { ...options, clone: false });
       delete this._props.metadata;
     }
-  }
-
-  /**
-   *  @inheritDoc
-   * @returns {{offline: OfflineItemEntity}}
-   */
-  static get associations() {
-    return {
-      offline: OfflineItemEntity,
-    };
   }
 
   /**
@@ -199,7 +188,6 @@ class ResourceEntity extends EntityV2 {
         tags: TagsCollection.getSchema(),
         creator: userSchema,
         modifier: userSchema,
-        offline: OfflineItemEntity.getSchema(),
       },
     };
   }
@@ -242,9 +230,6 @@ class ResourceEntity extends EntityV2 {
     }
     if (this._modifier && contain.modifier) {
       result.modifier = this._modifier.toDto(UserEntity.ALL_CONTAIN_OPTIONS);
-    }
-    if (this._offline && contain.offline) {
-      result.offline = this._offline.toDto();
     }
 
     return result;
@@ -598,14 +583,6 @@ class ResourceEntity extends EntityV2 {
     return null;
   }
 
-  /**
-   * Get offline object for the current user
-   * @returns {(OfflineItemEntity|null)}
-   */
-  get offline() {
-    return this._offline || null;
-  }
-
   /*
    * ==================================================
    * Setters
@@ -849,7 +826,6 @@ class ResourceEntity extends EntityV2 {
       tag: true,
       creator: true,
       modifier: true,
-      offline: true,
     };
   }
 }
