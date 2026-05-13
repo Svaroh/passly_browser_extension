@@ -12,7 +12,7 @@
  * @since         5.13.0
  */
 
-import FindOfflineSettingsService from "../../service/offline/findOfflineSettingsService";
+import FindAndUpdateOfflineSettingsLocalStorageService from "../../service/offline/findAndUpdateOfflineSettingsLocalStorageService";
 
 class FindOfflineSettingsController {
   /**
@@ -20,11 +20,15 @@ class FindOfflineSettingsController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions the api client options
+   * @param {AccountEntity} account the user account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.findOfflineSettingsService = new FindOfflineSettingsService(apiClientOptions);
+    this.findAndUpdateOfflineSettingsLocalStorageService = new FindAndUpdateOfflineSettingsLocalStorageService(
+      account,
+      apiClientOptions,
+    );
   }
 
   /**
@@ -42,11 +46,11 @@ class FindOfflineSettingsController {
   }
 
   /**
-   * Find offline settings.
+   * Find offline settings from the API and update the local storage.
    * @returns {Promise<OfflineSettingsEntity|null>} The offline settings entity or null if not found
    */
   async exec() {
-    return await this.findOfflineSettingsService.get();
+    return await this.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate();
   }
 }
 

@@ -16,45 +16,49 @@ import FindOfflineSettingsController from "./findOfflineSettingsController";
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("FindOfflineSettingsController", () => {
-  let apiClientOptions, controller;
+  let apiClientOptions, account, controller;
 
   beforeEach(() => {
     apiClientOptions = defaultApiClientOptions();
-    controller = new FindOfflineSettingsController(null, null, apiClientOptions);
+    account = new AccountEntity(defaultAccountDto());
+    controller = new FindOfflineSettingsController(null, null, apiClientOptions, account);
   });
 
   describe("::exec", () => {
-    it("should find offline settings", async () => {
+    it("should find and update offline settings", async () => {
       expect.assertions(2);
-      const offlineSettingsDto = defaultOfflineSettingsDto();
-      const offlineSettingsEntity = new OfflineSettingsEntity(offlineSettingsDto);
-      jest.spyOn(controller.findOfflineSettingsService, "get").mockResolvedValue(offlineSettingsEntity);
+      const offlineSettingsEntity = new OfflineSettingsEntity(defaultOfflineSettingsDto());
+      jest
+        .spyOn(controller.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate")
+        .mockResolvedValue(offlineSettingsEntity);
 
       const result = await controller.exec();
 
       expect(result).toEqual(offlineSettingsEntity);
-      expect(controller.findOfflineSettingsService.get).toHaveBeenCalled();
+      expect(controller.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate).toHaveBeenCalled();
     });
 
     it("should return null when no offline settings are found", async () => {
       expect.assertions(2);
-      jest.spyOn(controller.findOfflineSettingsService, "get").mockResolvedValue(null);
+      jest.spyOn(controller.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate").mockResolvedValue(null);
 
       const result = await controller.exec();
 
       expect(result).toBeNull();
-      expect(controller.findOfflineSettingsService.get).toHaveBeenCalled();
+      expect(controller.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate).toHaveBeenCalled();
     });
 
     it("should handle errors when finding offline settings", async () => {
       expect.assertions(2);
       const error = new Error("Failed to find offline settings");
-      jest.spyOn(controller.findOfflineSettingsService, "get").mockRejectedValue(error);
+      jest.spyOn(controller.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate").mockRejectedValue(error);
 
       await expect(controller.exec()).rejects.toThrow(error.message);
-      expect(controller.findOfflineSettingsService.get).toHaveBeenCalled();
+      expect(controller.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate).toHaveBeenCalled();
     });
   });
 });
