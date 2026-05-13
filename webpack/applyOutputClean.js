@@ -21,15 +21,18 @@
  *
  *   2) `output.clean` on every config — production-only — so subsequent
  *      passes / watch rebuilds keep each config's output directory in sync
- *      with its current emit list. For configs whose `output.path` is the
- *      build root (mv2 / safari background page), all sub-directories are
- *      kept — other configs and CopyWebpackPlugin patterns write into them.
+ *      with its current emit list. Configs whose `output.path` is an
+ *      ancestor of another config's `output.path` (e.g. the build root for
+ *      mv2 / safari background page, or `contentScripts/js/dist` which
+ *      hosts nested `browser-integration/` and `public-website-sign-in/`
+ *      child outputs) keep all sub-directories — other configs and
+ *      CopyWebpackPlugin patterns write into them.
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const BUILD_ROOT = path.resolve(__dirname, '../build/all');
-const PLUGIN_NAME = 'WipeBuildRootPlugin';
+const BUILD_ROOT = path.resolve(__dirname, "../build/all");
+const PLUGIN_NAME = "WipeBuildRootPlugin";
 
 class WipeBuildRootPlugin {
   constructor() {
@@ -49,16 +52,18 @@ class WipeBuildRootPlugin {
 
 module.exports = function applyOutputClean(configs) {
   const wipePlugin = new WipeBuildRootPlugin();
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  configs.forEach(config => {
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const resolvedPaths = configs.map((c) => path.resolve(c.output.path));
+  const hasNestedChildOutput = (i) =>
+    resolvedPaths.some((other, j) => j !== i && other.startsWith(resolvedPaths[i] + path.sep));
+  configs.forEach((config, i) => {
     config.plugins = [wipePlugin, ...(config.plugins || [])];
     if (isDevelopment) {
       return;
     }
-    const isRootOutput = path.resolve(config.output.path) === BUILD_ROOT;
     config.output = {
       ...config.output,
-      clean: isRootOutput ? { keep: asset => asset.includes('/') } : true,
+      clean: hasNestedChildOutput(i) ? { keep: (asset) => asset.includes("/") } : true,
     };
   });
 };

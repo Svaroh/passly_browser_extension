@@ -15,20 +15,30 @@
  * MultiCompiler have finished emitting, producing a ready-to-load .zip
  * archive of `build/all/` (no store signature applied).
  *
+ * Before zipping, asserts that every path in `expectedFiles` exists under
+ * `sourceDir` and throws otherwise. This guards against output-cleanup
+ * races (see `webpack/applyOutputClean.js`) where a parent config's clean
+ * could wipe a nested child config's output, silently producing an
+ * incomplete archive.
+ *
  * Brought in-house and trimmed for our needs from:
  *   https://github.com/HaNdTriX/web-ext-webpack-plugin (MPL-2.0)
  *
  * `web-ext` is ESM-only since v8; loaded via dynamic import from this CJS
  * module.
  */
-const PLUGIN_NAME = 'WebExtPlugin';
+const fs = require("fs");
+const path = require("path");
+
+const PLUGIN_NAME = "WebExtPlugin";
 
 class WebExtPlugin {
-  constructor({ sourceDir, artifactsDir, filename, expectedCount = 1 }) {
+  constructor({ sourceDir, artifactsDir, filename, expectedCount = 1, expectedFiles = [] }) {
     this.sourceDir = sourceDir;
     this.artifactsDir = artifactsDir;
     this.filename = filename;
     this.expectedCount = expectedCount;
+    this.expectedFiles = expectedFiles;
     this.completedCount = 0;
   }
 
@@ -41,7 +51,14 @@ class WebExtPlugin {
       // Reset for watch-mode rebuilds.
       this.completedCount = 0;
 
-      const { default: webExt } = await import('web-ext');
+      const missing = this.expectedFiles.filter((rel) => !fs.existsSync(path.join(this.sourceDir, rel)));
+      if (missing.length > 0) {
+        throw new Error(
+          `${PLUGIN_NAME}: expected build artifacts missing under ${this.sourceDir}:\n  - ${missing.join("\n  - ")}`,
+        );
+      }
+
+      const { default: webExt } = await import("web-ext");
       await webExt.cmd.build(
         {
           sourceDir: this.sourceDir,
