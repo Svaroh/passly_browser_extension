@@ -15,13 +15,13 @@
 import { assertUuid } from "../../utils/assertions";
 import UnmarkOfflineItemApiService from "../api/offline/unmarkOfflineItemApiService";
 
-class UnmarkOfflineResourceService {
+class UnmarkOfflineItemService {
   /**
    * @constructor
    * @param {ApiClientOptions} apiClientOptions The api client options
    */
   constructor(apiClientOptions) {
-    this.unmarkOfflineResourceApiService = new UnmarkOfflineItemApiService(apiClientOptions);
+    this.unmarkOfflineItemApiService = new UnmarkOfflineItemApiService(apiClientOptions);
   }
 
   /**
@@ -31,9 +31,9 @@ class UnmarkOfflineResourceService {
    */
   async delete(offlineItemId) {
     assertUuid(offlineItemId);
-    const result = await this.unmarkOfflineResourceApiService.delete(offlineItemId);
+    const result = await this.unmarkOfflineItemApiService.delete(offlineItemId);
     return result.body;
   }
 }
 
-export default UnmarkOfflineResourceService;
+export default UnmarkOfflineItemService;
