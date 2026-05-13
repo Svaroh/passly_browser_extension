@@ -1,0 +1,39 @@
+/**
+ * Passbolt ~ Open source password manager for teams
+ * Copyright (c) Passbolt SA (https://www.passbolt.com)
+ *
+ * Licensed under GNU Affero General Public License version 3 of the or any later version.
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
+ * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
+ * @link          https://www.passbolt.com Passbolt(tm)
+ * @since         5.13.0
+ */
+
+import { assertUuid } from "../../utils/assertions";
+import UnmarkOfflineItemApiService from "../api/offline/unmarkOfflineItemApiService";
+
+class UnmarkOfflineResourceService {
+  /**
+   * @constructor
+   * @param {ApiClientOptions} apiClientOptions The api client options
+   */
+  constructor(apiClientOptions) {
+    this.unmarkOfflineResourceApiService = new UnmarkOfflineItemApiService(apiClientOptions);
+  }
+
+  /**
+   * Unmark an offline item available offline
+   * @param {string} offlineItemId The offline item id
+   * @returns {Promise<null>} A null response
+   */
+  async delete(offlineItemId) {
+    assertUuid(offlineItemId);
+    const result = await this.unmarkOfflineResourceApiService.delete(offlineItemId);
+    return result.body;
+  }
+}
+
+export default UnmarkOfflineResourceService;
