@@ -1,4 +1,5 @@
-Passbolt 5.11.3 is a Safari specific version to align with the current version 5.11.2 while not supporting Avatars yet.
+Passbolt 5.12.1 fixes some slowlyness issues on Safari during navigation
 
-### Maintenance
-- PB-50013 - Remove avatar handling on Safari
+### Fixed
+- PB-51546 On Safari after log out, the login page does not show until the page is refreshed
+- PB-51547 On Safari after log in, some pages take a lot of time to display
