@@ -53,7 +53,6 @@ import ResourceSecretsCollection from "../../../model/entity/secret/resource/res
 import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import GetDecryptedUserPrivateKeyService from "../../account/getDecryptedUserPrivateKeyService";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
-import ShareModel from "../../../model/share/shareModel";
 import { ownerFolderPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
@@ -491,7 +490,7 @@ describe("ResourceCreateService", () => {
         .mockImplementation(() => metadataKeysSettingsDto);
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
       jest.spyOn(FolderService.prototype, "findAllForShare").mockImplementation(() => [folderDto]);
-      jest.spyOn(ShareModel.prototype, "bulkShareResources");
+      jest.spyOn(resourceCreateService.shareResourceService, "shareAll");
       jest.spyOn(resourceCreateService, "share");
       //Decrypt secret
       const decryptionKey = await OpenpgpAssertion.readKeyOrFail(pgpKeys.ada.private_decrypted);
@@ -506,7 +505,7 @@ describe("ResourceCreateService", () => {
       await decryptMetadataService.decryptMetadataWithGpgKey(resourceEntityUpdated, privateKeyDecrypted);
 
       expect(resourceCreateService.share).toHaveBeenCalledTimes(1);
-      expect(ShareModel.prototype.bulkShareResources).toHaveBeenCalledTimes(0);
+      expect(resourceCreateService.shareResourceService.shareAll).toHaveBeenCalledTimes(0);
       //Metadata decrypted should be equal
       expect(resourceEntityUpdated.metadata.toDto()).toEqual(resourceDto.metadata);
       // Resource local storage should add the resource
