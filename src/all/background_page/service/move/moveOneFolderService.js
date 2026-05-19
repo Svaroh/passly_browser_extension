@@ -16,8 +16,6 @@ import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../share/shareResourceService";
 import { assertString, assertType, assertUuid } from "../../utils/assertions";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
-import PermissionEntity from "../../model/entity/permission/permissionEntity";
-import PermissionsCollection from "../../model/entity/permission/permissionsCollection";
 import i18n from "../../sdk/i18n";
 import MoveService from "../api/move/moveService";
 import ShareFoldersService, { PROGRESS_STEPS_SHARE_FOLDERS_SHARE_ONE } from "../share/shareFoldersService";
@@ -26,9 +24,9 @@ import FoldersCollection from "../../model/entity/folder/foldersCollection";
 import FindResourcesService from "../resource/findResourcesService";
 import FolderEntity from "../../model/entity/folder/folderEntity";
 import FindAndUpdateFoldersLocalStorageService from "../folder/findAndUpdateFoldersLocalStorageService";
-import ResourceModel from "../../model/resource/resourceModel";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ConfirmMoveStrategyService from "./confirmMoveStrategyService";
+import CalculatePermissionsChangesForMoveService from "./calculatePermissionsChangesForMoveService";
 
 const STEPS_TO_COMPLETE_SHARE = PROGRESS_STEPS_SHARE_FOLDERS_SHARE_ONE + PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL;
 
@@ -62,7 +60,6 @@ class MoveOneFolderService {
     this.findFoldersService = new FindFoldersService(apiClientOptions);
     this.findResourcesService = new FindResourcesService(account, apiClientOptions);
     this.moveApiService = new MoveService(apiClientOptions);
-    this.resourceModel = new ResourceModel(apiClientOptions);
     this.findAndUpdateFoldersLocalStorage = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
   }
 
@@ -267,7 +264,7 @@ class MoveOneFolderService {
 
     const permissionChanges = new PermissionChangesCollection([]);
     for (const folderToShare of foldersToShare) {
-      const childrenFolderPermissionChange = this.calculatePermissionsChangesForMove(
+      const childrenFolderPermissionChange = CalculatePermissionsChangesForMoveService.forFolder(
         folderToShare,
         parentFolder,
         destinationFolder,
@@ -276,60 +273,6 @@ class MoveOneFolderService {
     }
 
     return permissionChanges;
-  }
-
-  /**
-   * Calculate permission changes for a move.
-   * From current permissions, remove the parent folder permissions, add the destination permissions.
-   * From this new set of permissions and the original permissions calculate the needed changes.
-   *
-   * NOTE: This function requires permissions to be set for all objects.
-   *
-   * @param {FolderEntity} folderEntity
-   * @param {(FolderEntity|null)} parentFolder
-   * @param {(FolderEntity|null)} destFolder
-   * @returns {PermissionChangesCollection}
-   * @private
-   */
-  calculatePermissionsChangesForMove(folderEntity, parentFolder, destFolder) {
-    let remainingPermissions = new PermissionsCollection([], { assertAtLeastOneOwner: false });
-
-    // Remove permissions from parent if any
-    if (parentFolder) {
-      if (!folderEntity.permissions || !parentFolder.permissions) {
-        throw new TypeError("Resource model calculatePermissionsChangesForMove requires permissions to be set.");
-      }
-      remainingPermissions = PermissionsCollection.diff(folderEntity.permissions, parentFolder.permissions, false);
-    }
-    // Add parent permissions
-    let permissionsFromParent = new PermissionsCollection([], { assertAtLeastOneOwner: false });
-    if (destFolder) {
-      if (!destFolder.permissions) {
-        throw new TypeError(
-          "Resource model calculatePermissionsChangesForMove requires destination permissions to be set.",
-        );
-      }
-      permissionsFromParent = destFolder.permissions.cloneForAco(PermissionEntity.ACO_FOLDER, folderEntity.id, false);
-    }
-
-    const newPermissions = PermissionsCollection.sum(remainingPermissions, permissionsFromParent, false);
-    if (!destFolder) {
-      /*
-       * If the move is toward the root
-       * Reuse highest permission
-       */
-      newPermissions.addOrReplace(
-        new PermissionEntity({
-          aco: PermissionEntity.ACO_FOLDER,
-          aco_foreign_key: folderEntity.id,
-          aro: folderEntity.permission.aro,
-          aro_foreign_key: folderEntity.permission.aroForeignKey,
-          type: PermissionEntity.PERMISSION_OWNER,
-        }),
-      );
-    }
-    newPermissions.assertAtLeastOneOwner();
-    return PermissionChangesCollection.calculateChanges(folderEntity.permissions, newPermissions);
   }
 
   /**
@@ -345,7 +288,7 @@ class MoveOneFolderService {
 
     const resourcePermissionChanges = new PermissionChangesCollection([]);
     for (const resourceToShare of resourcesToShare) {
-      const resourcePermissionChange = this.resourceModel.calculatePermissionsChangesForMove(
+      const resourcePermissionChange = CalculatePermissionsChangesForMoveService.forResource(
         resourceToShare,
         parentFolder,
         destinationFolder,
