@@ -45,7 +45,8 @@ import {
   plaintextSecretPasswordStringDto,
   plaintextSecretTotpDto,
 } from "passbolt-styleguide/src/shared/models/entity/plaintextSecret/plaintextSecretEntity.test.data";
-import FolderService from "../../api/folder/folderService";
+import FindFoldersService from "../../folder/findFoldersService";
+import FolderEntity from "../../../model/entity/folder/folderEntity";
 import ShareService from "../../api/share/shareService";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import { defaultDecryptedSharedMetadataKeysDtos } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection.test.data";
@@ -376,8 +377,10 @@ describe("ResourceCreateService", () => {
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => resourceDto);
       jest
-        .spyOn(FolderService.prototype, "findAllForShare")
-        .mockImplementation(() => [defaultFolderDto({ id: folderId }, { withPermissions: true })]);
+        .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
+        .mockImplementation(
+          async () => new FolderEntity(defaultFolderDto({ id: folderId }, { withPermissions: true })),
+        );
       jest.spyOn(ShareService.prototype, "simulateShareResource").mockImplementation(() => shareResourceChanges);
       jest.spyOn(ShareService.prototype, "shareFolder").mockImplementation(() => shareResourceChanges);
       jest.spyOn(ShareService.prototype, "shareResource").mockImplementation(() => jest.fn());
@@ -426,8 +429,10 @@ describe("ResourceCreateService", () => {
       });
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
       jest
-        .spyOn(FolderService.prototype, "findAllForShare")
-        .mockImplementation(() => [defaultFolderDto({ id: folderId }, { withPermissions: { count: 2 } })]);
+        .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
+        .mockImplementation(
+          async () => new FolderEntity(defaultFolderDto({ id: folderId }, { withPermissions: { count: 2 } })),
+        );
       jest.spyOn(ShareService.prototype, "simulateShareResource").mockImplementation(() => shareResourceChanges);
       jest.spyOn(ShareService.prototype, "shareFolder").mockImplementation(() => shareResourceChanges);
       jest.spyOn(ShareService.prototype, "shareResource").mockImplementation(() => jest.fn());
@@ -489,7 +494,9 @@ describe("ResourceCreateService", () => {
         )
         .mockImplementation(() => metadataKeysSettingsDto);
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
-      jest.spyOn(FolderService.prototype, "findAllForShare").mockImplementation(() => [folderDto]);
+      jest
+        .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
+        .mockImplementation(async () => new FolderEntity(folderDto));
       jest.spyOn(resourceCreateService.shareResourceService, "shareAll");
       jest.spyOn(resourceCreateService, "share");
       //Decrypt secret
