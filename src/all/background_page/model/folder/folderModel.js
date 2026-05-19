@@ -21,7 +21,6 @@ import FolderService from "../../service/api/folder/folderService";
 import ShareService from "../../service/api/share/shareService";
 import splitBySize from "../../utils/array/splitBySize";
 import FindAndUpdateFoldersLocalStorageService from "../../service/folder/findAndUpdateFoldersLocalStorageService";
-import { assertUuid } from "../../utils/assertions";
 
 const BULK_OPERATION_SIZE = 5;
 
@@ -86,25 +85,6 @@ class FolderModel {
           outputCollection.merge(children);
         }
       }
-    }
-    return outputCollection;
-  }
-
-  /**
-   * Get all the children for the folder provided as input
-   *
-   * @param {array} folderIds The folder ids
-   * @return {FoldersCollection}
-   * @deprecated should use getOrFindFoldersService and collection filtering. See shareFoldersService usage.
-   */
-  async getAllChildren(folderIds) {
-    const foldersDto = await FolderLocalStorage.get();
-    const inputCollection = new FoldersCollection(foldersDto);
-    const outputCollection = new FoldersCollection([]);
-    for (const i in folderIds) {
-      const folderId = folderIds[i];
-      const children = FoldersCollection.getAllChildren(folderId, inputCollection, outputCollection);
-      outputCollection.merge(children);
     }
     return outputCollection;
   }
@@ -338,32 +318,6 @@ class FolderModel {
       console.error(error);
       errorCallback(error, collectionIndex);
       throw error;
-    }
-  }
-
-  /*
-   * ============================================
-   * Assertions
-   * ============================================
-   */
-  /**
-   * Assert for a given folder id that the folder is in the local storage
-   *
-   * @param {(string|null)} folderId folderId
-   * @throws {Error} if the folder does not exist
-   * @deprecated should use getOrFindFoldersService.
-   */
-  async assertFolderExists(folderId) {
-    if (folderId === null) {
-      return;
-    }
-
-    assertUuid(folderId, `Folder exists check expect a uuid.`);
-
-    const folderDto = await FolderLocalStorage.getFolderById(folderId);
-    if (!folderDto) {
-      // TODO check remotely?
-      throw new Error(`Folder with id ${folderId} does not exist.`);
     }
   }
 }
