@@ -12,7 +12,7 @@
  * @since         4.10.0
  */
 
-import FolderModel from "../../../model/folder/folderModel";
+import FindFoldersService from "../../folder/findFoldersService";
 import { OpenpgpAssertion } from "../../../utils/openpgp/openpgpAssertions";
 import EncryptMessageService from "../../crypto/encryptMessageService";
 import ResourceSecretsCollection from "../../../model/entity/secret/resource/resourceSecretsCollection";
@@ -37,7 +37,7 @@ class ResourceCreateService {
     this.account = account;
     this.resourceService = new ResourceService(apiClientOptions);
     this.resourceTypeModel = new ResourceTypeModel(apiClientOptions);
-    this.folderModel = new FolderModel(apiClientOptions, account);
+    this.findFoldersService = new FindFoldersService(apiClientOptions);
     this.progressService = progressService;
     this.resourceModel = new ResourceModel(apiClientOptions, this.account);
     this.encryptMetadataKeysService = new EncryptMetadataKeysService(apiClientOptions, this.account);
@@ -63,7 +63,7 @@ class ResourceCreateService {
     let permissionChanges = new PermissionChangesCollection([]);
     let destinationFolder;
     if (resource.folderParentId) {
-      destinationFolder = await this.folderModel.findForShare(resource.folderParentId);
+      destinationFolder = await this.findFoldersService.findByIdWithPermissions(resource.folderParentId);
       if (
         destinationFolder.permissions.length > 1 ||
         destinationFolder.permissions.items[0].aroForeignKey !== this.account.userId

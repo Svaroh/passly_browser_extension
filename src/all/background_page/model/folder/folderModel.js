@@ -110,36 +110,6 @@ class FolderModel {
   }
 
   /*
-   * ============================================
-   * Finders
-   * ============================================
-   */
-  /**
-   * Get all folders from API and map API result to folder collection
-   *
-   * @returns {Promise<FoldersCollection>}
-   * @deprecated should use findFoldersService.
-   */
-  async findAllForShare(foldersIds) {
-    const foldersDtos = await this.folderService.findAllForShare(foldersIds);
-    return new FoldersCollection(foldersDtos);
-  }
-
-  /**
-   * Get folder from API and map API result to folder Entity
-   *
-   * @returns {Promise<FolderEntity>}
-   * @deprecated should use findFoldersService.
-   */
-  async findForShare(folderId) {
-    const foldersDtos = await this.folderService.findAllForShare([folderId]);
-    if (!foldersDtos.length) {
-      throw new Error(`Folder ${folderId} not found`);
-    }
-    return new FolderEntity(foldersDtos[0]);
-  }
-
-  /*
    * ==============================================================
    *  Permission changes
    * ==============================================================
