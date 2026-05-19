@@ -16,7 +16,6 @@ import PermissionsCollection from "../entity/permission/permissionsCollection";
 import FolderEntity from "../entity/folder/folderEntity";
 import FoldersCollection from "../entity/folder/foldersCollection";
 import PermissionChangesCollection from "../entity/permission/change/permissionChangesCollection";
-import MoveService from "../../service/api/move/moveService";
 import FolderService from "../../service/api/folder/folderService";
 import ShareService from "../../service/api/share/shareService";
 import splitBySize from "../../utils/array/splitBySize";
@@ -34,7 +33,6 @@ class FolderModel {
    */
   constructor(apiClientOptions, account) {
     this.folderService = new FolderService(apiClientOptions);
-    this.moveService = new MoveService(apiClientOptions);
     this.shareService = new ShareService(apiClientOptions);
     this.findAndUpdateFoldersLocalStorageService = new FindAndUpdateFoldersLocalStorageService(
       account,
@@ -95,59 +93,6 @@ class FolderModel {
    * ==============================================================
    */
   /**
-   * Calculate permission changes for a move
-   * From current permissions, remove the parent folder permissions, add the destination permissions
-   * From this new set of permission and the original permission calculate the needed changed
-   *
-   * NOTE: This function requires permissions to be set for all objects
-   *
-   * @param {ResourceEntity} folderEntity
-   * @param {(FolderEntity|null)} parentFolder
-   * @param {(FolderEntity|null)} destFolder
-   * @returns {PermissionChangesCollection}
-   */
-  calculatePermissionsChangesForMove(folderEntity, parentFolder, destFolder) {
-    let remainingPermissions = new PermissionsCollection([], { assertAtLeastOneOwner: false });
-
-    // Remove permissions from parent if any
-    if (parentFolder) {
-      if (!folderEntity.permissions || !parentFolder.permissions) {
-        throw new TypeError("Resource model calculatePermissionsChangesForMove requires permissions to be set.");
-      }
-      remainingPermissions = PermissionsCollection.diff(folderEntity.permissions, parentFolder.permissions, false);
-    }
-    // Add parent permissions
-    let permissionsFromParent = new PermissionsCollection([], { assertAtLeastOneOwner: false });
-    if (destFolder) {
-      if (!destFolder.permissions) {
-        throw new TypeError(
-          "Resource model calculatePermissionsChangesForMove requires destination permissions to be set.",
-        );
-      }
-      permissionsFromParent = destFolder.permissions.cloneForAco(PermissionEntity.ACO_FOLDER, folderEntity.id, false);
-    }
-
-    const newPermissions = PermissionsCollection.sum(remainingPermissions, permissionsFromParent, false);
-    if (!destFolder) {
-      /*
-       * If the move is toward the root
-       * Reuse highest permission
-       */
-      newPermissions.addOrReplace(
-        new PermissionEntity({
-          aco: PermissionEntity.ACO_FOLDER,
-          aco_foreign_key: folderEntity.id,
-          aro: folderEntity.permission.aro,
-          aro_foreign_key: folderEntity.permission.aroForeignKey,
-          type: PermissionEntity.PERMISSION_OWNER,
-        }),
-      );
-    }
-    newPermissions.assertAtLeastOneOwner();
-    return PermissionChangesCollection.calculateChanges(folderEntity.permissions, newPermissions);
-  }
-
-  /**
    * Calculate permission changes for a create
    * From current permissions add the destination permissions
    *
@@ -188,24 +133,6 @@ class FolderModel {
     const updatedFolderEntity = new FolderEntity(folderDto);
     await FolderLocalStorage.addFolder(updatedFolderEntity);
     return updatedFolderEntity;
-  }
-
-  /**
-   * Move a folder using Passbolt API
-   *
-   * @param {string} folderId the folder to move
-   * @param {string} folderParentId the destination folder
-   * @returns {Promise<FolderEntity>}
-   */
-  async move(folderId, folderParentId) {
-    const folderDto = await FolderLocalStorage.getFolderById(folderId);
-    const folderEntity = new FolderEntity(folderDto);
-    folderEntity.folderParentId = folderParentId;
-    await this.moveService.moveFolder(folderId, folderParentId);
-    // TODO update modified date
-    await FolderLocalStorage.updateFolder(folderEntity);
-
-    return folderEntity;
   }
 
   /**
