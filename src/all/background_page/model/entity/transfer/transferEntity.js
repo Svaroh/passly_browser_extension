@@ -13,6 +13,7 @@
  */
 import Entity from "passbolt-styleguide/src/shared/models/entity/abstract/entity";
 import AuthenticationTokenEntity from "../authenticationToken/authenticationTokenEntity";
+import UserEntity from "../user/userEntity";
 import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
 
 const ENTITY_NAME = "transfer";
@@ -34,6 +35,10 @@ class TransferEntity extends Entity {
     if (this._props.authentication_token) {
       this._authentication_token = new AuthenticationTokenEntity(this._props.authentication_token, { clone: false });
       delete this._props.authentication_token;
+    }
+    if (this._props.user) {
+      this._user = new UserEntity(this._props.user, { clone: false });
+      delete this._props.user;
     }
   }
 
@@ -83,6 +88,7 @@ class TransferEntity extends Entity {
         },
         // Associated models
         authentication_token: AuthenticationTokenEntity.getSchema(),
+        user: UserEntity.getSchema(),
       },
     };
   }
@@ -105,6 +111,13 @@ class TransferEntity extends Entity {
     if (this._authentication_token && contain.authentication_token) {
       result.authentication_token = this._authentication_token.toDto();
     }
+    if (this.user && contain.user) {
+      if (contain.user === true) {
+        result.user = this.user.toDto();
+      } else {
+        result.user = this.user.toDto(contain.user);
+      }
+    }
     return result;
   }
 
@@ -123,6 +136,7 @@ class TransferEntity extends Entity {
   static get ALL_CONTAIN_OPTIONS() {
     return {
       authentication_token: true,
+      user: UserEntity.ALL_CONTAIN_OPTIONS,
     };
   }
 
@@ -153,6 +167,14 @@ class TransferEntity extends Entity {
    */
   get modified() {
     return this._props.modified || null;
+  }
+
+  /**
+   * Get user
+   * @returns {UserEntity|null}
+   */
+  get user() {
+    return this._user || null;
   }
 
   /*

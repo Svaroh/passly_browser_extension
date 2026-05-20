@@ -43,6 +43,14 @@ describe("Transfer entity", () => {
         created: "2020-04-25 12:52:00",
         modified: "2020-04-25 12:52:01",
       },
+      user: {
+        id: "7f077753-0835-4054-92ee-556660ea04f2",
+        username: "ada@passbolt.com",
+        profile: {
+          first_name: "Ada",
+          last_name: "Lovelace",
+        },
+      },
       _type: "none",
     };
     const filtered = {
@@ -53,6 +61,17 @@ describe("Transfer entity", () => {
       total_pages: 3,
       created: "2020-04-25 12:52:00",
       modified: "2020-04-25 12:52:01",
+    };
+    const filteredWithUser = {
+      ...filtered,
+      user: {
+        id: "7f077753-0835-4054-92ee-556660ea04f2",
+        username: "ada@passbolt.com",
+        profile: {
+          first_name: "Ada",
+          last_name: "Lovelace",
+        },
+      },
     };
     const filteredWithAssoc = {
       id: "7f077753-0835-4054-92ee-556660ea04f1",
@@ -74,6 +93,7 @@ describe("Transfer entity", () => {
 
     const transferEntity = new TransferEntity(dto);
     expect(transferEntity.toDto()).toEqual(filtered);
+    expect(transferEntity.toDto({ user: { profile: true } })).toEqual(filteredWithUser);
     expect(transferEntity.toDto({ authentication_token: true })).toEqual(filteredWithAssoc);
 
     // test getters

@@ -90,11 +90,13 @@ class MobileTransferService extends AbstractService {
    * @throws {TypeError} if transfer id/auth token are not uuid or data is empty
    * @public
    */
-  async updateNoSession(transferId, authenticationToken, transferDto) {
+  async updateNoSession(transferId, authenticationToken, transferDto, contain = {}) {
     this.assertValidId(transferId);
     this.assertValidId(authenticationToken);
     this.assertNonEmptyData(transferDto);
-    const response = await this.apiClient.update(`${transferId}/${authenticationToken}`, transferDto);
+    const supportedContainOptions = ["user", "user.profile"];
+    const urlOptions = this.formatContainOptions(contain, supportedContainOptions);
+    const response = await this.apiClient.update(`${transferId}/${authenticationToken}`, transferDto, urlOptions);
     return response.body;
   }
 }

@@ -12,16 +12,16 @@
  * @since         5.10.0
  */
 
-import BrowserTabService from "./browserTab.service";
-
-const PASSBOLT_GETTING_STARTED_URL = "https://www.passbolt.com/start";
+const MOBILE_TRANSFER_ENTRYPOINT_URL =
+  "webAccessibleResources/mobile-transfer-entrypoint.html?passbolt=mobile-transfer-entrypoint";
 
 export default class OpenWebsiteGettingStartedPageService {
   /**
-   * Opens the Passbolt getting started page in a new tab
+   * Opens the local Passbolt setup/recover entrypoint in a new tab.
    * @returns {Promise<void>}
    */
   async openTab() {
-    await BrowserTabService.openTab(PASSBOLT_GETTING_STARTED_URL);
+    const entrypointUrl = browser.runtime.getURL(MOBILE_TRANSFER_ENTRYPOINT_URL);
+    await browser.tabs.create({ url: entrypointUrl });
   }
 }
