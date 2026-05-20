@@ -70,14 +70,13 @@ class QuickAccess extends Pagemod {
       account = await GetActiveAccountService.get();
       apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
     } catch (error) {
-      if (isMissingAccountError(error)) {
-        return;
+      if (!isMissingAccountError(error)) {
+        //Ensure the application does not crash completely if the legacy account cannot be retrieved
+        console.error(
+          "quickaccessPagemod::attach legacy account cannot be retrieved, please contact your administrator.",
+        );
+        console.error(error);
       }
-      //Ensure the application does not crash completely if the legacy account cannot be retrieved
-      console.error(
-        "quickaccessPagemod::attach legacy account cannot be retrieved, please contact your administrator.",
-      );
-      console.error(error);
     }
 
     const worker = { port: port, tab: port._port.sender.tab, name: this.appName };
