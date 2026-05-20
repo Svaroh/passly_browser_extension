@@ -104,6 +104,29 @@ describe("QuickAccess", () => {
       expect(QuickAccess.mustReloadOnExtensionUpdate).toBeFalsy();
       expect(QuickAccess.appName).toBe("QuickAccess");
     });
+
+    it("Should attach events when the extension has no configured account yet", async () => {
+      expect.assertions(4);
+      const port = {
+        _port: {
+          sender: {},
+        },
+      };
+      const missingAccountError = new Error("The user is not set");
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {
+        throw missingAccountError;
+      });
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+
+      await QuickAccess.attachEvents(port);
+
+      const expectedArgument = { port: port, tab: port._port.sender.tab, name: QuickAccess.appName };
+      expect(ConfigEvents.listen).toHaveBeenCalledWith(expectedArgument, undefined, undefined);
+      expect(AuthEvents.listen).toHaveBeenCalledWith(expectedArgument, undefined, undefined);
+      expect(AccountEvents.listen).toHaveBeenCalledWith(expectedArgument, undefined, undefined);
+      expect(console.error).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
   });
 
   describe("QuickAccess::canBeAttachedTo", () => {
