@@ -32,6 +32,9 @@ class PortManager {
     if (await this.isQuickAccessPort(port.sender)) {
       // Quickaccess is not stored in the session storage and there is no worker entity referenced
       await this.registerAndAttachEvent(port, "QuickAccess");
+    } else if (await this.isMobileTransferEntrypointPort(port)) {
+      // The local setup/recover entrypoint is an extension tab and does not have a bootstrap worker.
+      await this.registerAndAttachEvent(port, "MobileTransferEntrypoint");
     } else {
       await this.connectPortFromTab(port);
     }
@@ -80,6 +83,16 @@ class PortManager {
     const quickAppUrl = await browser.runtime.getURL("/webAccessibleResources/quickaccess.html");
     const isPortUrlAQuickAppUrl = sender.url.startsWith(quickAppUrl);
     return isPortUrlAQuickAppUrl;
+  }
+
+  /**
+   * Is mobile transfer entrypoint port
+   * @param port
+   * @returns {Promise<boolean>}
+   */
+  async isMobileTransferEntrypointPort(port) {
+    const entrypointUrl = await browser.runtime.getURL("/webAccessibleResources/mobile-transfer-entrypoint.html");
+    return port.name === "mobile-transfer-entrypoint" && port.sender.url.startsWith(entrypointUrl);
   }
 
   /**

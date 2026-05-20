@@ -67,11 +67,12 @@ class MobileTransferModel {
    * @param {object} transferDto transfer data
    * @returns {Promise<TransferEntity>}
    */
-  async updateNoSession(transferId, authenticationToken, transferDto) {
+  async updateNoSession(transferId, authenticationToken, transferDto, contain = {}) {
     const updatedTransferDto = await this.mobileTransferService.updateNoSession(
       transferId,
       authenticationToken,
       transferDto,
+      contain,
     );
     return new TransferEntity(updatedTransferDto);
   }

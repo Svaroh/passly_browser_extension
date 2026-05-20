@@ -67,6 +67,34 @@ describe("PortManager", () => {
       expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
     });
 
+    it("Should connect new port if it is the local mobile transfer entrypoint", async () => {
+      expect.assertions(5);
+      // data mocked
+      const entrypointUrl =
+        "chrome-extension://extensionId/webAccessibleResources/mobile-transfer-entrypoint.html?passbolt=mobile-transfer-entrypoint";
+      const port = mockPort({ name: "mobile-transfer-entrypoint", url: entrypointUrl });
+      // mock functions
+      jest
+        .spyOn(browser.runtime, "getURL")
+        .mockImplementation((path) =>
+          path.includes("mobile-transfer-entrypoint.html")
+            ? "chrome-extension://extensionId/webAccessibleResources/mobile-transfer-entrypoint.html"
+            : "chrome-extension://extensionId/webAccessibleResources/quickaccess.html",
+        );
+      jest.spyOn(PagemodManager, "attachEventToPort");
+      // process
+      await PortManager.onPortConnect(port);
+      // expectations
+      expect(browser.runtime.getURL).toHaveBeenCalled();
+      expect(PortManager._ports[port.name]).toBeDefined();
+      expect(PortManager._ports[port.name]._port).toBe(port);
+      expect(PagemodManager.attachEventToPort).toHaveBeenCalledWith(
+        PortManager._ports[port.name],
+        "MobileTransferEntrypoint",
+      );
+      expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
+    });
+
     it("Should not connect new port if it is not in the workersSessionStorage", async () => {
       expect.assertions(3);
       // data mocked

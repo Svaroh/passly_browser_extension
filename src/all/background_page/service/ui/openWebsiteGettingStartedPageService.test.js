@@ -12,7 +12,6 @@
  * @since         5.10.0
  */
 import OpenWebsiteGettingStartedPageService from "./openWebsiteGettingStartedPageService";
-import BrowserTabService from "./browserTab.service";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -20,23 +19,29 @@ beforeEach(() => {
 
 describe("OpenWebsiteGettingStartedPageService", () => {
   describe("::openTab", () => {
-    it("Should open a new tab with the Passbolt getting started URL", async () => {
-      expect.assertions(1);
+    it("Should open a new tab with the local setup/recover entrypoint URL", async () => {
+      expect.assertions(2);
       // mock functions
-      jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
+      jest.spyOn(browser.runtime, "getURL");
+      jest.spyOn(browser.tabs, "create").mockImplementation(() => {});
       // process
       const service = new OpenWebsiteGettingStartedPageService();
       await service.openTab();
       // expectations
-      expect(BrowserTabService.openTab).toHaveBeenCalledWith("https://www.passbolt.com/start");
+      expect(browser.runtime.getURL).toHaveBeenCalledWith(
+        "webAccessibleResources/mobile-transfer-entrypoint.html?passbolt=mobile-transfer-entrypoint",
+      );
+      expect(browser.tabs.create).toHaveBeenCalledWith({
+        url: "chrome-extension://didegimhafipceonhjepacocaffmoppf/webAccessibleResources/mobile-transfer-entrypoint.html?passbolt=mobile-transfer-entrypoint",
+      });
     });
 
-    it("Should propagate errors from BrowserTabService", async () => {
+    it("Should propagate errors from tabs.create", async () => {
       expect.assertions(1);
       // mock data
       const error = new Error("Cannot open tab due to an invalid URL");
       // mock functions
-      jest.spyOn(BrowserTabService, "openTab").mockRejectedValue(error);
+      jest.spyOn(browser.tabs, "create").mockRejectedValue(error);
       // process
       const service = new OpenWebsiteGettingStartedPageService();
       // expectations

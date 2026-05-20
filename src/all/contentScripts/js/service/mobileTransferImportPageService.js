@@ -21,8 +21,12 @@ const TRANSFER_STATUS_ERROR = "error";
 const TRANSFER_STATUS_CANCEL = "cancel";
 
 class MobileTransferQrParser {
-  constructor(currentUrl = window.location.href) {
+  constructor(currentUrl = window.location.href, options = {}) {
     this.currentUrl = currentUrl;
+    this.options = {
+      assertCurrentUrlMatchesMetadata: true,
+      ...options,
+    };
     this.reset();
   }
 
@@ -72,7 +76,9 @@ class MobileTransferQrParser {
 
     const metadata = JSON.parse(qrPage.payload);
     this.assertValidMetadata(metadata);
-    this.assertCurrentUrlMatchesMetadata(metadata);
+    if (this.options.assertCurrentUrlMatchesMetadata) {
+      this.assertCurrentUrlMatchesMetadata(metadata);
+    }
 
     this.metadata = metadata;
     this.pages.set(qrPage.page, null);
@@ -112,7 +118,7 @@ class MobileTransferQrParser {
     };
   }
 
-  assembleKey() {
+  assembleKeyData() {
     if (!this.metadata) {
       throw new Error("The transfer metadata is missing.");
     }
@@ -131,7 +137,11 @@ class MobileTransferQrParser {
 
     const assembledKey = JSON.parse(keyJson);
     this.assertValidAssembledKey(assembledKey);
-    return assembledKey.armored_key;
+    return assembledKey;
+  }
+
+  assembleKey() {
+    return this.assembleKeyData().armored_key;
   }
 
   hash(value) {
@@ -148,6 +158,10 @@ class MobileTransferQrParser {
     }
     if (!Number.isInteger(metadata.total_pages) || metadata.total_pages < 2) {
       throw new Error("The transfer QR code has an invalid page count.");
+    }
+    const domain = new URL(metadata.domain);
+    if (!["https:", "http:"].includes(domain.protocol)) {
+      throw new Error("The transfer QR code has an invalid Passbolt server URL.");
     }
   }
 

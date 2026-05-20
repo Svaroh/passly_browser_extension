@@ -26,6 +26,7 @@ import InFormCallToActionPagemod from "./informCallToActionPagemod";
 import InFormMenuPagemod from "./informMenuPagemod";
 import AccountRecoveryBootstrapPagemod from "./accountRecoveryBootstrapPagemod";
 import AccountRecoveryPagemod from "./accountRecoveryPagemod";
+import MobileTransferEntrypointPagemod from "./mobileTransferEntrypointPagemod";
 
 /**
  * The pagemod manager have the role of dispatching the process to the correct pagemod
@@ -47,6 +48,7 @@ class PagemodManager {
       AuthPagemod,
       AppPagemod,
       QuickAccessPagemod,
+      MobileTransferEntrypointPagemod,
       InFormCallToActionPagemod,
       InFormMenuPagemod,
       AccountRecoveryPagemod,

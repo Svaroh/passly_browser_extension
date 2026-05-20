@@ -8,7 +8,8 @@ const config = {
     'setup': path.resolve(__dirname, './src/all/webAccessibleResources/js/app/Setup.js'),
     'recover': path.resolve(__dirname, './src/all/webAccessibleResources/js/app/Recover.js'),
     'login': path.resolve(__dirname, './src/all/webAccessibleResources/js/app/Login.js'),
-    'quickaccess': path.resolve(__dirname, './src/all/webAccessibleResources/js/app/QuickAccess.js')
+    'quickaccess': path.resolve(__dirname, './src/all/webAccessibleResources/js/app/QuickAccess.js'),
+    'mobile-transfer-entrypoint': path.resolve(__dirname, './src/all/webAccessibleResources/js/app/MobileTransferEntrypoint.js')
   },
   mode: 'production',
   plugins: [
