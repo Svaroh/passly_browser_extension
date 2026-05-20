@@ -16,6 +16,7 @@ import AuthVerifyServerChallengeService from "../../service/auth/authVerifyServe
 import AuthVerifyServerKeyService from "../../service/api/auth/authVerifyServerKeyService";
 import BuildApiClientOptionsService from "../../service/account/buildApiClientOptionsService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
+import storage from "../../sdk/storage";
 
 class ImportMobileTransferAccountController {
   /**
@@ -84,7 +85,16 @@ class ImportMobileTransferAccountController {
     );
 
     await new AccountModel().add(account);
+    await this.persistLegacyStorage();
     return account;
+  }
+
+  /**
+   * Persist the legacy active-account storage writes before opening the Passbolt web app.
+   * @returns {Promise<void>}
+   */
+  async persistLegacyStorage() {
+    await browser.storage.local.set({ _passbolt_data: storage._data });
   }
 
   /**

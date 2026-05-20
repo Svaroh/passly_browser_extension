@@ -87,5 +87,12 @@ describe("GetAccountController", () => {
       expect(accountDto.authentication_token_token).toBeUndefined();
       expect(accountDto.account_recovery_request_id).toBeUndefined();
     });
+
+    it("Should reject if no active account is attached to the worker.", async () => {
+      const controller = new GetAccountController(null, null);
+
+      expect.assertions(1);
+      await expect(controller.exec()).rejects.toThrow("Cannot retrieve account, no active account is configured.");
+    });
   });
 });

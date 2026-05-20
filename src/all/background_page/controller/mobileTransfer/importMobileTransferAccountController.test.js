@@ -55,11 +55,12 @@ describe("ImportMobileTransferAccountController", () => {
     });
     jest.spyOn(AuthVerifyServerChallengeService.prototype, "verifyAndValidateServerChallenge").mockResolvedValue();
     jest.spyOn(AccountModel.prototype, "add").mockResolvedValue();
+    jest.spyOn(browser.storage.local, "set").mockResolvedValue();
   });
 
   describe("::exec", () => {
     it("Should import a transferred mobile account locally", async () => {
-      expect.assertions(8);
+      expect.assertions(9);
 
       const controller = new ImportMobileTransferAccountController(worker, "request-id");
       const account = await controller.exec(transferAccountDto);
@@ -75,6 +76,7 @@ describe("ImportMobileTransferAccountController", () => {
         expect.stringContaining("-----BEGIN PGP PUBLIC KEY BLOCK-----"),
       );
       expect(AccountModel.prototype.add).toHaveBeenCalledWith(account);
+      expect(browser.storage.local.set).toHaveBeenCalledWith({ _passbolt_data: expect.any(Object) });
     });
 
     it("Should reject a transfer where the user id does not match the key payload", async () => {
