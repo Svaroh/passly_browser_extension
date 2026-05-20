@@ -9,7 +9,7 @@
  * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since         5.11.3
+ * @since         5.13.0
  */
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
 import PermissionEntity from "../../model/entity/permission/permissionEntity";
@@ -59,6 +59,16 @@ class CalculatePermissionsChangesForMoveService {
   }
 
   /**
+   * Shared permission-change calculation for `forFolder` and `forResource`.
+   * Removes the parent folder permissions from the entity, adds the destination folder permissions,
+   * and returns the changes against the entity's original permissions. When moving to the root,
+   * the highest permission on the entity is preserved.
+   *
+   * @param {FolderEntity|ResourceEntity} entity The folder or resource being moved.
+   * @param {(FolderEntity|null)} parentFolder The current parent folder, or null if moving from the root.
+   * @param {(FolderEntity|null)} destFolder The destination folder, or null if moving to the root.
+   * @param {string} aco One of `PermissionEntity.ACO_FOLDER` or `PermissionEntity.ACO_RESOURCE`; not exposed on the public callers, which hardcode the value matching the entity type.
+   * @returns {PermissionChangesCollection}
    * @private
    */
   static _calculate(entity, parentFolder, destFolder, aco) {
