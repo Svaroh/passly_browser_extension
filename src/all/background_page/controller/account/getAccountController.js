@@ -46,6 +46,9 @@ class GetAccountController {
    * @return {Promise<object>} The account dto.
    */
   async exec() {
+    if (!this.account) {
+      throw new Error("Cannot retrieve account, no active account is configured.");
+    }
     // Ensure the account information returned to the content code doesn't include sensitive data.
     const contains = { security_token: true };
     return this.account.toDto(contains);

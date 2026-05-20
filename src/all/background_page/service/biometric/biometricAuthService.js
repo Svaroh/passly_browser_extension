@@ -25,7 +25,7 @@ class BiometricAuthService {
    */
   constructor(account) {
     this.account = account;
-    this.storage = new BiometricAuthLocalStorage(account);
+    this.storage = account?.id ? new BiometricAuthLocalStorage(account) : null;
   }
 
   /**
@@ -55,6 +55,9 @@ class BiometricAuthService {
    * @returns {Promise<boolean>}
    */
   async isConfigured() {
+    if (!this.storage) {
+      return false;
+    }
     const storedData = await this.storage.get();
     return this.isValidConfiguration(storedData);
   }
@@ -77,6 +80,7 @@ class BiometricAuthService {
     if (typeof passphrase !== "string") {
       throw new Error("The passphrase should be a string.");
     }
+    const storage = this.getStorageOrFail();
     await this.assertAvailable();
 
     const salt = this.getRandomBytes(PRF_SALT_SIZE);
@@ -87,7 +91,7 @@ class BiometricAuthService {
     const prfSecret = this.getPrfSecretOrFail(credential);
     const encryptedPassphrase = await this.encryptPassphrase(passphrase, prfSecret);
 
-    await this.storage.set({
+    await storage.set({
       version: BIOMETRIC_AUTH_STORAGE_VERSION,
       credential_id: this.arrayBufferToBase64Url(credentialId),
       salt: this.arrayBufferToBase64Url(salt),
@@ -102,6 +106,9 @@ class BiometricAuthService {
    * @returns {Promise<object|null>}
    */
   async getConfiguration() {
+    if (!this.storage) {
+      return null;
+    }
     const storedData = await this.storage.get();
     if (!this.isValidConfiguration(storedData)) {
       return null;
@@ -118,7 +125,7 @@ class BiometricAuthService {
     if (!this.isValidConfiguration(data)) {
       throw new Error("The biometric auth configuration is invalid.");
     }
-    await this.storage.set({
+    await this.getStorageOrFail().set({
       version: BIOMETRIC_AUTH_STORAGE_VERSION,
       credential_id: data.credential_id,
       key_storage: data.key_storage,
@@ -135,9 +142,10 @@ class BiometricAuthService {
    * @returns {Promise<string>}
    */
   async unlock() {
+    const storage = this.getStorageOrFail();
     await this.assertAvailable();
 
-    const storedData = await this.storage.get();
+    const storedData = await storage.get();
     if (!storedData) {
       throw new Error("Biometric auth is not configured.");
     }
@@ -165,7 +173,9 @@ class BiometricAuthService {
    * @returns {Promise<void>}
    */
   async disable() {
-    await this.storage.flush();
+    if (this.storage) {
+      await this.storage.flush();
+    }
   }
 
   /**
@@ -302,6 +312,17 @@ class BiometricAuthService {
    */
   importAesGcmKey(prfSecret, keyUsages) {
     return crypto.subtle.importKey("raw", prfSecret, "AES-GCM", false, keyUsages);
+  }
+
+  /**
+   * Get account-scoped storage or fail from an executor.
+   * @returns {BiometricAuthLocalStorage}
+   */
+  getStorageOrFail() {
+    if (!this.storage) {
+      throw new Error("Cannot retrieve account id, necessary to get a biometric auth storage key.");
+    }
+    return this.storage;
   }
 
   /**

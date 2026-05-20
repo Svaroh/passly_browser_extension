@@ -64,6 +64,17 @@ describe("BiometricAuthService", () => {
 
       await expect(service.getStatus()).resolves.toEqual({ available: true, configured: false });
     });
+
+    it("Should not fail when no account is available yet.", async () => {
+      const service = new BiometricAuthService();
+
+      await expect(service.getStatus()).resolves.toEqual({ available: true, configured: false });
+      await expect(service.getConfiguration()).resolves.toBeNull();
+      await expect(service.disable()).resolves.toBeUndefined();
+      await expect(service.unlock()).rejects.toThrow(
+        "Cannot retrieve account id, necessary to get a biometric auth storage key.",
+      );
+    });
   });
 
   describe("BiometricAuthService::enable / unlock", () => {
