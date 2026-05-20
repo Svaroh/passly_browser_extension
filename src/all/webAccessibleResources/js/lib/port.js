@@ -65,7 +65,6 @@ class Port {
    */
   initListener() {
     this._port.onDisconnect.addListener(() => {
-      console.warn(`port disconnected from addon code: ${this._name}`);
       this._connected = false;
     });
 

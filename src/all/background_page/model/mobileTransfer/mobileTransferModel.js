@@ -58,23 +58,6 @@ class MobileTransferModel {
     const transferDto = await this.mobileTransferService.update(transferEntity.id, transferEntity.toDto());
     return new TransferEntity(transferDto);
   }
-
-  /**
-   * Update a transfer using the transfer authentication token.
-   *
-   * @param {string} transferId uuid
-   * @param {string} authenticationToken uuid
-   * @param {object} transferDto transfer data
-   * @returns {Promise<TransferEntity>}
-   */
-  async updateNoSession(transferId, authenticationToken, transferDto) {
-    const updatedTransferDto = await this.mobileTransferService.updateNoSession(
-      transferId,
-      authenticationToken,
-      transferDto,
-    );
-    return new TransferEntity(updatedTransferDto);
-  }
 }
 
 export default MobileTransferModel;

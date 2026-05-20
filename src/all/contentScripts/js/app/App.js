@@ -16,6 +16,7 @@ import Port from "../../../webAccessibleResources/js/lib/port";
 import MessageService from "../service/messageService";
 import MessageEventHandler from "../message/messageEventHandler";
 import ConnectPortController from "../controller/connectPortController";
+import BiometricAuthPageService from "../service/biometricAuthPageService";
 import { createRoot } from "react-dom/client";
 
 async function main() {
@@ -28,6 +29,7 @@ async function main() {
   const messageService = new MessageService();
   const messageEventHandler = new MessageEventHandler(messageService);
   messageEventHandler.listen("passbolt.port.connect", ConnectPortController, port);
+  BiometricAuthPageService.listen(port);
   // Start ExtBootstrapApp
   const storage = browser.storage;
   const browserExtensionUrl = chrome.runtime.getURL("/");

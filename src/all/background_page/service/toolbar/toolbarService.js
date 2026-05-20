@@ -20,6 +20,7 @@ import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
 import OpenTrustedDomainTabService from "../ui/openTrustedDomainTabService";
+import isMissingAccountError from "../account/isMissingAccountError";
 
 export const QUICKACCESS_POPUP_URL = "webAccessibleResources/quickaccess.html?passbolt=quickaccess";
 
@@ -216,7 +217,9 @@ class ToolbarService {
 
       BrowserExtensionIconService.setSuggestedResourcesCount(suggestedResourcesCount);
     } catch (error) {
-      // Error happens only if no account is associate
+      if (isMissingAccountError(error)) {
+        return;
+      }
       console.error(error);
     }
   }
@@ -232,6 +235,9 @@ class ToolbarService {
       const authStatus = await checkAuthStatusService.checkAuthStatus(false);
       return authStatus.isAuthenticated;
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return false;
+      }
       console.error(error);
       // Service is unavailable, do nothing...
       Log.write({

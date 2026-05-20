@@ -15,6 +15,7 @@ import Pagemod from "./pagemod";
 import { PortEvents } from "../event/portEvents";
 import ParseAuthUrlService from "../service/auth/parseAuthUrlService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class AuthBootstrap extends Pagemod {
   /**
@@ -79,6 +80,9 @@ class AuthBootstrap extends Pagemod {
       await GetActiveAccountService.get();
       return ParseAuthUrlService.test(frameDetails.url);
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return false;
+      }
       console.log(error);
       return false;
     }

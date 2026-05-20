@@ -18,7 +18,6 @@ import { SetupEvents } from "../event/setupEvents";
 import BuildAccountSetupService from "../service/setup/buildAccountSetupService";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import OrganizationSettingsModel from "../model/organizationSettings/organizationSettingsModel";
-import { MobileEvents } from "../event/mobileEvents";
 
 class Setup extends Pagemod {
   /**
@@ -33,7 +32,7 @@ class Setup extends Pagemod {
    * @inheritDoc
    */
   get events() {
-    return [ConfigEvents, SetupEvents, MobileEvents, PownedPasswordEvents];
+    return [ConfigEvents, SetupEvents, PownedPasswordEvents];
   }
 
   /**

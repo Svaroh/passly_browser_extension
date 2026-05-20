@@ -103,12 +103,21 @@ class Pagemod {
     await WorkersSessionStorage.addWorker(new WorkerEntity(worker));
     // a helper to handle insertion of scripts, variables and css in target page
     const scriptExecution = new ScriptExecution(tabId, frameId);
-    // Inject port name
-    scriptExecution.injectPortname(worker.id);
-    // Insert Css files
-    scriptExecution.injectCss(this.contentStyleFiles);
-    // Insert script files
-    scriptExecution.injectJs(this.contentScriptFiles);
+    try {
+      // Inject port name
+      await scriptExecution.injectPortname(worker.id);
+      // Insert Css files
+      await scriptExecution.injectCss(this.contentStyleFiles);
+      // Insert script files
+      await scriptExecution.injectJs(this.contentScriptFiles);
+    } catch (error) {
+      await WorkersSessionStorage.deleteById(worker.id);
+      if (ScriptExecution.isAccessDeniedError(error)) {
+        console.debug(`Pagemod "${this.appName}" cannot be injected into tab ${tabId}.`, error);
+        return;
+      }
+      throw error;
+    }
   }
 
   /**

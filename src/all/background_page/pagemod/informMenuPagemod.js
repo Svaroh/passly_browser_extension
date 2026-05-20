@@ -16,6 +16,7 @@ import { InformMenuEvents } from "../event/informMenuEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import { AccountEvents } from "../event/accountEvents";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class InFormMenu extends Pagemod {
   /**
@@ -46,6 +47,9 @@ class InFormMenu extends Pagemod {
         event.listen({ port, tab, name }, apiClientOptions, account);
       }
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
       /*
        * Ensure the application does not crash completely if the legacy account cannot be retrieved.
        * The following controllers won't work as expected:

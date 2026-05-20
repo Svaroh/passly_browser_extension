@@ -64,15 +64,29 @@ class ScriptExecution {
   }
 
   /**
+   * Check if the error is raised because the browser forbids script injection on the target page.
+   * @param {Error} error
+   * @returns {boolean}
+   */
+  static isAccessDeniedError(error) {
+    const message = error?.message || "";
+    return (
+      message.includes("Cannot access contents of the page") ||
+      message.includes("Extension manifest must request permission") ||
+      message.includes("Missing host permission")
+    );
+  }
+
+  /**
    * Insert javascript files in the page
    * @param {Array<string>} fileArray
    */
-  injectJs(fileArray) {
+  async injectJs(fileArray) {
     if (fileArray.length === 0) {
       return;
     }
 
-    browser.scripting.executeScript({
+    await browser.scripting.executeScript({
       files: fileArray,
       target: {
         tabId: this.tabId,
@@ -87,12 +101,12 @@ class ScriptExecution {
    * Inject an array of css files in a page
    * @param {Array<string>} fileArray
    */
-  injectCss(fileArray) {
+  async injectCss(fileArray) {
     if (fileArray.length === 0) {
       return;
     }
 
-    browser.scripting.insertCSS({
+    await browser.scripting.insertCSS({
       files: fileArray,
       target: {
         tabId: this.tabId,
@@ -105,8 +119,8 @@ class ScriptExecution {
    * Injects the portname as a global variable.
    * @param {string} portName
    */
-  injectPortname(portName) {
-    browser.scripting.executeScript({
+  async injectPortname(portName) {
+    await browser.scripting.executeScript({
       func: globalSetPortname,
       args: [portName],
       target: {
@@ -139,8 +153,8 @@ class ScriptExecution {
    * Injects the url to revoke.
    * @param {string} url The url to revoke
    */
-  injectURLToRevoke(url) {
-    browser.scripting.executeScript({
+  async injectURLToRevoke(url) {
+    await browser.scripting.executeScript({
       func: revokeObjectURL,
       args: [url],
       target: {

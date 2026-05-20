@@ -15,6 +15,7 @@ import Pagemod from "./pagemod";
 import { InformCallToActionEvents } from "../event/informCallToActionEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class InFormCallToAction extends Pagemod {
   /**
@@ -45,6 +46,9 @@ class InFormCallToAction extends Pagemod {
         event.listen({ port, tab, name }, apiClientOptions, account);
       }
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
       /*
        * Ensure the application does not crash completely if the legacy account cannot be retrieved.
        * The following controllers won't work as expected:

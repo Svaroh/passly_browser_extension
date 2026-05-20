@@ -208,7 +208,8 @@ describe("ToolbarService", () => {
     });
 
     it("Given an anonymous user switches to another application, it should not change the passbolt icon.", async () => {
-      expect.assertions(1);
+      expect.assertions(2);
+      jest.spyOn(console, "error").mockImplementation(() => {});
 
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => {
         throw Error("The user is not set");
@@ -216,6 +217,20 @@ describe("ToolbarService", () => {
 
       await toolbarService.handleSuggestedResourcesOnActivatedTab();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenCalledTimes(0);
+      expect(console.error).not.toHaveBeenCalled();
+    });
+
+    it("Given the focused window is cleared before an account is configured, it should not log an error.", async () => {
+      expect.assertions(2);
+      jest.spyOn(console, "error").mockImplementation(() => {});
+      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockImplementation(() => {
+        throw Error("The user is not set");
+      });
+
+      await toolbarService.handleSuggestedResourcesOnFocusedWindow(browser.windows.WINDOW_ID_NONE);
+
+      expect(browserExtensionIconServiceSetCountMock).toHaveBeenCalledTimes(0);
+      expect(console.error).not.toHaveBeenCalled();
     });
   });
 
