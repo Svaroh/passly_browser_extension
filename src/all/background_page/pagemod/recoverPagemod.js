@@ -18,6 +18,7 @@ import BuildAccountRecoverService from "../service/recover/buildAccountRecoverSe
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import OrganizationSettingsModel from "../model/organizationSettings/organizationSettingsModel";
+import { MobileEvents } from "../event/mobileEvents";
 
 class Recover extends Pagemod {
   /**
@@ -33,7 +34,7 @@ class Recover extends Pagemod {
    * @returns {[]}
    */
   get events() {
-    return [ConfigEvents, RecoverEvents, PownedPasswordEvents];
+    return [ConfigEvents, RecoverEvents, MobileEvents, PownedPasswordEvents];
   }
 
   /**
