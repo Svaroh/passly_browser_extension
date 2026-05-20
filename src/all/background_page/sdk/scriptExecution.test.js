@@ -31,7 +31,7 @@ describe("ScriptExecution", () => {
         world: "ISOLATED",
       };
 
-      scriptExecution.injectPortname(portname);
+      await scriptExecution.injectPortname(portname);
 
       expect(mockedScriptingJS).toHaveBeenCalledWith(option);
     });
@@ -53,7 +53,7 @@ describe("ScriptExecution", () => {
         world: "ISOLATED",
       };
 
-      scriptExecution.injectJs(files);
+      await scriptExecution.injectJs(files);
 
       expect(mockedScriptingJS).toHaveBeenCalledWith(option);
     });
@@ -74,7 +74,7 @@ describe("ScriptExecution", () => {
         },
       };
 
-      scriptExecution.injectCss(files);
+      await scriptExecution.injectCss(files);
 
       expect(mockedScriptingCSS).toHaveBeenCalledWith(option);
     });
@@ -134,7 +134,7 @@ describe("ScriptExecution", () => {
       });
       // process
       const scriptExecution = new ScriptExecution(1);
-      scriptExecution.injectURLToRevoke(url);
+      await scriptExecution.injectURLToRevoke(url);
       // expectation
       expect(mockedScriptingJS).toHaveBeenCalledWith(option);
       expect(self.URL.revokeObjectURL).toHaveBeenCalledWith(url);

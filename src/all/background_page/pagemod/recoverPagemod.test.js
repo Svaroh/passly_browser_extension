@@ -18,13 +18,11 @@ import { ConfigEvents } from "../event/configEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import { enableFetchMocks } from "jest-fetch-mock";
-import { MobileEvents } from "../event/mobileEvents";
 
 jest.spyOn(BuildAccountRecoverService, "buildFromRecoverUrl");
 jest.spyOn(BuildApiClientOptionsService, "buildFromAccount");
 jest.spyOn(ConfigEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(RecoverEvents, "listen").mockImplementation(jest.fn());
-jest.spyOn(MobileEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(PownedPasswordEvents, "listen").mockImplementation(jest.fn());
 
 describe("Recover", () => {
@@ -36,7 +34,7 @@ describe("Recover", () => {
 
   describe("Recover::attachEvents", () => {
     it("Should attach events", async () => {
-      expect.assertions(9);
+      expect.assertions(8);
       // data mocked
       const port = {
         _port: {
@@ -55,9 +53,8 @@ describe("Recover", () => {
       expect(BuildApiClientOptionsService.buildFromAccount).toHaveBeenCalled();
       expect(ConfigEvents.listen).toHaveBeenCalled();
       expect(RecoverEvents.listen).toHaveBeenCalled();
-      expect(MobileEvents.listen).toHaveBeenCalled();
       expect(PownedPasswordEvents.listen).toHaveBeenCalled();
-      expect(Recover.events).toStrictEqual([ConfigEvents, RecoverEvents, MobileEvents, PownedPasswordEvents]);
+      expect(Recover.events).toStrictEqual([ConfigEvents, RecoverEvents, PownedPasswordEvents]);
       expect(Recover.mustReloadOnExtensionUpdate).toBeFalsy();
       expect(Recover.appName).toBe("Recover");
     });

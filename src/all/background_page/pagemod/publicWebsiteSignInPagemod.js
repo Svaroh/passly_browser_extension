@@ -15,6 +15,7 @@ import Pagemod from "./pagemod";
 import { PublicWebsiteSignInEvents } from "../event/publicWebsiteSignInEvents";
 import ParsePublicWebsiteUrlService from "../service/publicWebsite/parsePublicWebsiteUrlService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class PublicWebsiteSignIn extends Pagemod {
   /**
@@ -64,6 +65,9 @@ class PublicWebsiteSignIn extends Pagemod {
         event.listen({ port, tab }, null, account);
       }
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
       // Unexpected error, this pagemod shouldn't have been initialized as the PublicWebsiteSignPagemod should have raised an exception and not inject the content script.
       console.error(
         "PublicWebsiteSignIn::attach legacy account cannot be retrieved, please contact your administrator.",
@@ -99,6 +103,9 @@ class PublicWebsiteSignIn extends Pagemod {
       await GetActiveAccountService.get();
       return true;
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return false;
+      }
       console.log(error);
       return false;
     }

@@ -18,6 +18,7 @@ import { OrganizationSettingsEvents } from "../event/organizationSettingsEvents"
 import { PortEvents } from "../event/portEvents";
 import ParseWebIntegrationUrlService from "../service/webIntegration/parseWebIntegrationUrlService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class WebIntegration extends Pagemod {
   /**
@@ -78,6 +79,9 @@ class WebIntegration extends Pagemod {
       await GetActiveAccountService.get();
       return ParseWebIntegrationUrlService.test(frameDetails.url);
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return false;
+      }
       console.log(error);
       return false;
     }

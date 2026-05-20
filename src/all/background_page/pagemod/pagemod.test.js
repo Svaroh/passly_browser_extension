@@ -17,6 +17,7 @@ import ScriptExecution from "../sdk/scriptExecution";
 import WorkerEntity from "../model/entity/worker/workerEntity";
 
 const spyAddWorker = jest.spyOn(WorkersSessionStorage, "addWorker");
+const spyDeleteWorkerById = jest.spyOn(WorkersSessionStorage, "deleteById");
 jest.spyOn(ScriptExecution.prototype, "injectPortname").mockImplementation(jest.fn());
 jest.spyOn(ScriptExecution.prototype, "injectCss").mockImplementation(jest.fn());
 jest.spyOn(ScriptExecution.prototype, "injectJs").mockImplementation(jest.fn());
@@ -53,6 +54,23 @@ describe("Pagemod", () => {
       expect(pagemod.events).toStrictEqual([]);
       expect(pagemod.mustReloadOnExtensionUpdate).toBeFalsy();
       expect(await pagemod.canBeAttachedTo({})).toBeFalsy();
+    });
+
+    it("Should ignore browser access denied errors when injecting files", async () => {
+      expect.assertions(5);
+      const error = new Error(
+        "Cannot access contents of the page. Extension manifest must request permission to access the respective host.",
+      );
+      jest.spyOn(console, "debug").mockImplementationOnce(jest.fn());
+      ScriptExecution.prototype.injectPortname.mockRejectedValueOnce(error);
+
+      const pagemod = new Pagemod();
+      await expect(pagemod.injectFiles(1, 0)).resolves.toBeUndefined();
+
+      expect(spyAddWorker).toHaveBeenCalledWith(expect.any(WorkerEntity));
+      expect(spyDeleteWorkerById).toHaveBeenCalledTimes(1);
+      expect(ScriptExecution.prototype.injectCss).not.toHaveBeenCalled();
+      expect(ScriptExecution.prototype.injectJs).not.toHaveBeenCalled();
     });
   });
 });

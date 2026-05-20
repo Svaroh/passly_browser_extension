@@ -23,6 +23,13 @@ import GetServerKeyController from "../controller/auth/getServerKeyController";
 import ReplaceServerKeyController from "../controller/auth/replaceServerKeyController";
 import ReloadTabController from "../controller/tab/reloadTabController";
 import RedirectPostLoginController from "../controller/auth/redirectPostLoginController";
+import BiometricAuthStatusController from "../controller/biometric/biometricAuthStatusController";
+import EnableBiometricAuthController from "../controller/biometric/enableBiometricAuthController";
+import DisableBiometricAuthController from "../controller/biometric/disableBiometricAuthController";
+import LoginWithBiometricAuthController from "../controller/biometric/loginWithBiometricAuthController";
+import GetBiometricAuthConfigurationController from "../controller/biometric/getBiometricAuthConfigurationController";
+import SaveBiometricAuthConfigurationController from "../controller/biometric/saveBiometricAuthConfigurationController";
+import BiometricAuthPageRelayService from "../service/biometric/biometricAuthPageRelayService";
 
 /**
  * Listens to the authentication events
@@ -122,6 +129,142 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.auth.login", async (requestId, passphrase, remember) => {
     const controller = new AuthLoginController(worker, requestId, apiClientOptions, account);
     await controller._exec(passphrase, remember);
+  });
+
+  /*
+   * Get the biometric authentication status for the current user.
+   *
+   * @listens passbolt.biometric-auth.get-status
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.biometric-auth.get-status", async (requestId) => {
+    const controller = new BiometricAuthStatusController(worker, requestId, account);
+    await controller._exec();
+  });
+
+  /*
+   * Get the encrypted biometric authentication configuration for the current user.
+   *
+   * @listens passbolt.biometric-auth.get-configuration
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.biometric-auth.get-configuration", async (requestId) => {
+    const controller = new GetBiometricAuthConfigurationController(worker, requestId, account);
+    await controller._exec();
+  });
+
+  /*
+   * Check biometric authentication availability from the Passbolt HTTPS page origin.
+   *
+   * @listens passbolt.biometric-auth.is-available-in-page
+   * @param requestId {uuid} The request identifier
+   * @param rpId {string|null} The relying party id
+   */
+  worker.port.on("passbolt.biometric-auth.is-available-in-page", async (requestId, rpId) => {
+    try {
+      const result = await BiometricAuthPageRelayService.request(
+        worker,
+        "passbolt.biometric-auth.is-available-in-page",
+        rpId,
+      );
+      worker.port.emit(requestId, "SUCCESS", result);
+    } catch (error) {
+      console.error(error);
+      worker.port.emit(requestId, "ERROR", error);
+    }
+  });
+
+  /*
+   * Create a biometric authentication configuration from the Passbolt HTTPS page origin.
+   *
+   * @listens passbolt.biometric-auth.create-configuration-in-page
+   * @param requestId {uuid} The request identifier
+   * @param passphrase {string} The passphrase to protect
+   * @param rpId {string|null} The relying party id
+   */
+  worker.port.on("passbolt.biometric-auth.create-configuration-in-page", async (requestId, passphrase, rpId) => {
+    try {
+      const result = await BiometricAuthPageRelayService.request(
+        worker,
+        "passbolt.biometric-auth.create-configuration-in-page",
+        passphrase,
+        rpId,
+      );
+      worker.port.emit(requestId, "SUCCESS", result);
+    } catch (error) {
+      console.error(error);
+      worker.port.emit(requestId, "ERROR", error);
+    }
+  });
+
+  /*
+   * Unlock a biometric authentication configuration from the Passbolt HTTPS page origin.
+   *
+   * @listens passbolt.biometric-auth.unlock-in-page
+   * @param requestId {uuid} The request identifier
+   * @param configuration {object} The encrypted configuration
+   * @param rpId {string|null} The relying party id
+   */
+  worker.port.on("passbolt.biometric-auth.unlock-in-page", async (requestId, configuration, rpId) => {
+    try {
+      const result = await BiometricAuthPageRelayService.request(
+        worker,
+        "passbolt.biometric-auth.unlock-in-page",
+        configuration,
+        rpId,
+      );
+      worker.port.emit(requestId, "SUCCESS", result);
+    } catch (error) {
+      console.error(error);
+      worker.port.emit(requestId, "ERROR", error);
+    }
+  });
+
+  /*
+   * Save an encrypted biometric authentication configuration for the current user.
+   *
+   * @listens passbolt.biometric-auth.save-configuration
+   * @param requestId {uuid} The request identifier
+   * @param data {object} The encrypted configuration
+   */
+  worker.port.on("passbolt.biometric-auth.save-configuration", async (requestId, data) => {
+    const controller = new SaveBiometricAuthConfigurationController(worker, requestId, account);
+    await controller._exec(data);
+  });
+
+  /*
+   * Enable biometric authentication for the current user.
+   *
+   * @listens passbolt.biometric-auth.enable
+   * @param requestId {uuid} The request identifier
+   * @param passphrase {string} The passphrase to protect with the platform authenticator
+   */
+  worker.port.on("passbolt.biometric-auth.enable", async (requestId, passphrase) => {
+    const controller = new EnableBiometricAuthController(worker, requestId, account);
+    await controller._exec(passphrase);
+  });
+
+  /*
+   * Disable biometric authentication for the current user.
+   *
+   * @listens passbolt.biometric-auth.disable
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.biometric-auth.disable", async (requestId) => {
+    const controller = new DisableBiometricAuthController(worker, requestId, account);
+    await controller._exec();
+  });
+
+  /*
+   * Sign in with biometric authentication.
+   *
+   * @listens passbolt.biometric-auth.login
+   * @param requestId {uuid} The request identifier
+   * @param rememberMe {boolean} whether to remember the passphrase for the current session
+   */
+  worker.port.on("passbolt.biometric-auth.login", async (requestId, rememberMe) => {
+    const controller = new LoginWithBiometricAuthController(worker, requestId, apiClientOptions, account);
+    await controller._exec(rememberMe);
   });
 
   /*

@@ -18,13 +18,11 @@ import BuildApiClientOptionsService from "../service/account/buildApiClientOptio
 import BuildAccountSetupService from "../service/setup/buildAccountSetupService";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import { enableFetchMocks } from "jest-fetch-mock";
-import { MobileEvents } from "../event/mobileEvents";
 
 jest.spyOn(BuildAccountSetupService, "buildFromSetupUrl");
 jest.spyOn(BuildApiClientOptionsService, "buildFromAccount");
 jest.spyOn(ConfigEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(SetupEvents, "listen").mockImplementation(jest.fn());
-jest.spyOn(MobileEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(PownedPasswordEvents, "listen").mockImplementation(jest.fn());
 
 describe("Setup", () => {
@@ -36,7 +34,7 @@ describe("Setup", () => {
 
   describe("Setup::attachEvents", () => {
     it("Should attach events", async () => {
-      expect.assertions(9);
+      expect.assertions(8);
       // data mocked
       const port = {
         _port: {
@@ -55,9 +53,8 @@ describe("Setup", () => {
       expect(BuildApiClientOptionsService.buildFromAccount).toHaveBeenCalled();
       expect(ConfigEvents.listen).toHaveBeenCalled();
       expect(SetupEvents.listen).toHaveBeenCalled();
-      expect(MobileEvents.listen).toHaveBeenCalled();
       expect(PownedPasswordEvents.listen).toHaveBeenCalled();
-      expect(Setup.events).toStrictEqual([ConfigEvents, SetupEvents, MobileEvents, PownedPasswordEvents]);
+      expect(Setup.events).toStrictEqual([ConfigEvents, SetupEvents, PownedPasswordEvents]);
       expect(Setup.mustReloadOnExtensionUpdate).toBeFalsy();
       expect(Setup.appName).toBe("Setup");
     });

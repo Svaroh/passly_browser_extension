@@ -28,6 +28,7 @@ import { ResourceTypeEvents } from "../event/resourceTypeEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import { AccountEvents } from "../event/accountEvents";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class QuickAccess extends Pagemod {
   /**
@@ -69,6 +70,9 @@ class QuickAccess extends Pagemod {
       account = await GetActiveAccountService.get();
       apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
       //Ensure the application does not crash completely if the legacy account cannot be retrieved
       console.error(
         "quickaccessPagemod::attach legacy account cannot be retrieved, please contact your administrator.",

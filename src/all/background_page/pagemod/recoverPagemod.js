@@ -18,7 +18,6 @@ import BuildAccountRecoverService from "../service/recover/buildAccountRecoverSe
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import OrganizationSettingsModel from "../model/organizationSettings/organizationSettingsModel";
-import { MobileEvents } from "../event/mobileEvents";
 
 class Recover extends Pagemod {
   /**
@@ -34,7 +33,7 @@ class Recover extends Pagemod {
    * @returns {[]}
    */
   get events() {
-    return [ConfigEvents, RecoverEvents, MobileEvents, PownedPasswordEvents];
+    return [ConfigEvents, RecoverEvents, PownedPasswordEvents];
   }
 
   /**
@@ -48,7 +47,7 @@ class Recover extends Pagemod {
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
       await new OrganizationSettingsModel(apiClientOptions).getOrFind(true);
       for (const event of this.events) {
-        event.listen({ port, tab }, apiClientOptions, account);
+        event.listen({ port, tab, name: this.appName }, apiClientOptions, account);
       }
     } catch (error) {
       // Unexpected error, this pagemod shouldn't have been initialized as the bootstrapRecoverPagemod should have raised an exception and not inject this iframe.

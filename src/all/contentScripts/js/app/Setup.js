@@ -18,7 +18,6 @@ import Port from "../../../webAccessibleResources/js/lib/port";
 import MessageService from "../service/messageService";
 import MessageEventHandler from "../message/messageEventHandler";
 import ConnectPortController from "../controller/connectPortController";
-import MobileTransferImportPageService from "../service/mobileTransferImportPageService";
 
 async function main() {
   // Port connection
@@ -37,7 +36,6 @@ async function main() {
 
   const root = createRoot(domContainer);
   root.render(<ExtBootstrapSetup port={port} browserExtensionUrl={browserExtensionUrl} />);
-  MobileTransferImportPageService.listen(port);
 }
 
 main();

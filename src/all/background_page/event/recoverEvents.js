@@ -36,6 +36,9 @@ import IsExtensionAllowedOnEveryWebsiteController from "../controller/extension/
 import OpenSafariExtensionSettingsController from "../controller/extension/openSafariExtensionSettingsController";
 import StartCheckingForPermissionUpdateController from "../controller/extension/startCheckingForPermissionUpdateController";
 import StopCheckingForPermissionUpdateController from "../controller/extension/stopCheckingForPermissionUpdateController";
+import GetBiometricAuthConfigurationController from "../controller/biometric/getBiometricAuthConfigurationController";
+import SaveBiometricAuthConfigurationController from "../controller/biometric/saveBiometricAuthConfigurationController";
+import BiometricAuthPageRelayService from "../service/biometric/biometricAuthPageRelayService";
 
 const listen = (worker, apiClientOptions, account) => {
   worker.port.on("passbolt.recover.first-install", async (requestId) => {
@@ -116,6 +119,60 @@ const listen = (worker, apiClientOptions, account) => {
   worker.port.on("passbolt.recover.validate-private-key", async (requestId, key) => {
     const controller = new ValidatePrivateGpgKeyRecoverController(worker, requestId);
     await controller._exec(key);
+  });
+
+  worker.port.on("passbolt.biometric-auth.get-configuration", async (requestId) => {
+    const controller = new GetBiometricAuthConfigurationController(worker, requestId, account);
+    await controller._exec();
+  });
+
+  worker.port.on("passbolt.biometric-auth.save-configuration", async (requestId, data) => {
+    const controller = new SaveBiometricAuthConfigurationController(worker, requestId, account);
+    await controller._exec(data);
+  });
+
+  worker.port.on("passbolt.biometric-auth.is-available-in-page", async (requestId, rpId) => {
+    try {
+      const result = await BiometricAuthPageRelayService.request(
+        worker,
+        "passbolt.biometric-auth.is-available-in-page",
+        rpId,
+      );
+      worker.port.emit(requestId, "SUCCESS", result);
+    } catch (error) {
+      console.error(error);
+      worker.port.emit(requestId, "ERROR", error);
+    }
+  });
+
+  worker.port.on("passbolt.biometric-auth.create-configuration-in-page", async (requestId, passphrase, rpId) => {
+    try {
+      const result = await BiometricAuthPageRelayService.request(
+        worker,
+        "passbolt.biometric-auth.create-configuration-in-page",
+        passphrase,
+        rpId,
+      );
+      worker.port.emit(requestId, "SUCCESS", result);
+    } catch (error) {
+      console.error(error);
+      worker.port.emit(requestId, "ERROR", error);
+    }
+  });
+
+  worker.port.on("passbolt.biometric-auth.unlock-in-page", async (requestId, configuration, rpId) => {
+    try {
+      const result = await BiometricAuthPageRelayService.request(
+        worker,
+        "passbolt.biometric-auth.unlock-in-page",
+        configuration,
+        rpId,
+      );
+      worker.port.emit(requestId, "SUCCESS", result);
+    } catch (error) {
+      console.error(error);
+      worker.port.emit(requestId, "ERROR", error);
+    }
   });
 
   worker.port.on("passbolt.recover.request-help-credentials-lost", async (requestId) => {

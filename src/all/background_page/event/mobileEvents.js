@@ -72,28 +72,6 @@ const listen = function (worker, apiClientOptions) {
       worker.port.emit(requestId, "ERROR", error);
     }
   });
-
-  /*
-   * passbolt.mobile.transfer.update-no-session
-   *
-   * @listens passbolt.mobile.transfer.update-no-session
-   * @param requestId {uuid} The request identifier
-   * @param transferId {uuid} The transfer identifier
-   * @param authenticationToken {uuid} The transfer authentication token
-   * @param transferDto {object} The transfer data
-   */
-  worker.port.on(
-    "passbolt.mobile.transfer.update-no-session",
-    async (requestId, transferId, authenticationToken, transferDto) => {
-      try {
-        const transferModel = new MobileTransferModel(apiClientOptions);
-        const updatedTransferEntity = await transferModel.updateNoSession(transferId, authenticationToken, transferDto);
-        worker.port.emit(requestId, "SUCCESS", updatedTransferEntity);
-      } catch (error) {
-        worker.port.emit(requestId, "ERROR", error);
-      }
-    },
-  );
 };
 
 export const MobileEvents = { listen };

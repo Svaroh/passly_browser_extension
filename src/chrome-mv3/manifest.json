@@ -2,13 +2,10 @@
   "manifest_version": 3,
   "name": "__MSG_appName__",
   "short_name": "passbolt",
-  "version": "5.12.21",
+  "version": "5.12.20",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "minimum_chrome_version": "116",
-  "externally_connectable": {
-    "ids": []
-  },
   "icons": {
     "16": "webAccessibleResources/img/icons/icon-16.png",
     "48": "webAccessibleResources/img/icons/icon-48.png",
@@ -19,11 +16,13 @@
   },
   "action": {
     "default_icon": "webAccessibleResources/img/icons/icon-32.png",
-    "theme_icons": [{
-      "light": "webAccessibleResources/img/icons/icon-32.png",
-      "dark": "webAccessibleResources/img/icons/icon-32.png",
-      "size": 32
-    }],
+    "theme_icons": [
+      {
+        "light": "webAccessibleResources/img/icons/icon-32.png",
+        "dark": "webAccessibleResources/img/icons/icon-32.png",
+        "size": 32
+      }
+    ],
     "default_title": "Passbolt Quickaccess",
     "default_popup": "webAccessibleResources/quickaccess.html?passbolt=quickaccess"
   },
@@ -52,10 +51,16 @@
   "host_permissions": [
     "*://*/*"
   ],
-  "web_accessible_resources": [{
-    "resources": ["webAccessibleResources/*"],
-    "matches": ["*://*/*"]
-  }],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "webAccessibleResources/*"
+      ],
+      "matches": [
+        "*://*/*"
+      ]
+    }
+  ],
   "content_security_policy": {
     "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http: ; font-src 'self'; connect-src 'self' https: http: ; form-action 'self' https: ; frame-src 'self' ; frame-ancestors 'self' https: http: ; worker-src 'self' ; base-uri 'none' ;"
   }

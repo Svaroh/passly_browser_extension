@@ -79,24 +79,6 @@ class MobileTransferService extends AbstractService {
     const response = await this.apiClient.update(transferId, transferDto);
     return response.body;
   }
-
-  /**
-   * Update a transfer using the transfer authentication token.
-   *
-   * @param {String} transferId uuid
-   * @param {String} authenticationToken uuid
-   * @param {Object} transferDto
-   * @returns {Promise<*>} Response body
-   * @throws {TypeError} if transfer id/auth token are not uuid or data is empty
-   * @public
-   */
-  async updateNoSession(transferId, authenticationToken, transferDto) {
-    this.assertValidId(transferId);
-    this.assertValidId(authenticationToken);
-    this.assertNonEmptyData(transferDto);
-    const response = await this.apiClient.update(`${transferId}/${authenticationToken}`, transferDto);
-    return response.body;
-  }
 }
 
 export default MobileTransferService;

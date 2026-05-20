@@ -21,6 +21,7 @@ import { LocaleEvents } from "../event/localeEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { RememberMeEvents } from "../event/rememberMeEvents";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class Auth extends Pagemod {
   /**
@@ -55,9 +56,12 @@ class Auth extends Pagemod {
       const account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
       for (const event of this.events) {
-        event.listen({ port, tab }, apiClientOptions, account);
+        event.listen({ port, tab, name: this.appName }, apiClientOptions, account);
       }
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
       /*
        * Ensure the application does not crash completely if the legacy account cannot be retrieved.
        * The following controllers won't work as expected:
