@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.4.0
  */
-import FindActionLogService from "../model/actionLog/findActionLogService";
+import FindActionLogService from "../../model/actionLog/findActionLogService";
 
 class FindAllForActionLogController {
   /**
