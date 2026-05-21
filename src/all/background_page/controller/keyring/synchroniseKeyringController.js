@@ -1,22 +1,21 @@
 /**
  * Passbolt ~ Open source password manager for teams
- * Copyright (c) 2022 Passbolt SA (https://www.passbolt.com)
+ * Copyright (c) Passbolt SA (https://www.passbolt.com)
  *
  * Licensed under GNU Affero General Public License version 3 of the or any later version.
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) 2022 Passbolt SA (https://www.passbolt.com)
+ * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since         4.12.0
+ * @since         5.13.0
  */
 import Keyring from "../../model/keyring";
 
 class SynchroniseKeyringController {
   /**
-   * SynchroniseKeyringController constructor
-   *
+   * SynchroniseKeyringController constructor.
    * @param {Worker} worker
    * @param {string} requestId uuid
    */
@@ -28,7 +27,6 @@ class SynchroniseKeyringController {
 
   /**
    * Wrapper of exec function to run it with worker.
-   *
    * @returns {Promise<void>}
    */
   async _exec() {
@@ -43,7 +41,6 @@ class SynchroniseKeyringController {
 
   /**
    * Synchronises the keyring with the API.
-   *
    * @returns {Promise<void>}
    */
   async exec() {
