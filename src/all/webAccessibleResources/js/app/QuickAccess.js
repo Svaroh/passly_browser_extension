@@ -40,6 +40,21 @@ function createBiometricAwareQuickAccessPort(port, options) {
   return biometricAwarePort;
 }
 
+export async function ensureQuickAccessConfigured(port, { detached = false, closeWindow = () => window.close() } = {}) {
+  const isConfigured = await port.request("passbolt.addon.is-configured");
+  if (isConfigured) {
+    return true;
+  }
+
+  await port.request("passbolt.tabs.open-website-getting-started-page");
+  if (detached) {
+    await port.request("passbolt.active-tab.close");
+  } else {
+    closeWindow();
+  }
+  return false;
+}
+
 function submitQuickAccessPassphrase(passphrase) {
   const passphraseInput = document.querySelector(".quickaccess-login #passphrase");
   const submitButton = document.querySelector(".quickaccess-login .submit-wrapper button[type='submit']");
@@ -139,7 +154,7 @@ function BiometricQuickAccessActions({ port, options }) {
   );
 }
 
-async function main() {
+export async function main() {
   const query = new URLSearchParams(window.location.search);
   const portname = query.get("passbolt");
   const port = new Port(portname);
@@ -159,6 +174,11 @@ async function main() {
   const openerTabId = urlSearchParams.get("tabId");
   const detached = urlSearchParams.get("uiMode") === "detached";
 
+  const isConfigured = await ensureQuickAccessConfigured(port, { detached });
+  if (!isConfigured) {
+    return;
+  }
+
   const root = createRoot(domContainer);
   root.render(
     <>
@@ -175,4 +195,6 @@ async function main() {
   );
 }
 
-main();
+if (typeof document !== "undefined" && document.querySelector("#quickaccess-container")) {
+  main();
+}
