@@ -12,9 +12,10 @@
  * @since         2.0.0
  */
 
-import User from "../model/user";
 import GetExtensionVersionController from "../controller/extension/getExtensionVersionController";
 import { Config } from "../model/config";
+import GetActiveAccountService from "../service/account/getActiveAccountService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 const listen = function (worker) {
   /*
@@ -49,9 +50,16 @@ const listen = function (worker) {
    * @listens passbolt.addon.is-configured
    * @param requestId {uuid} The request identifier
    */
-  worker.port.on("passbolt.addon.is-configured", (requestId) => {
-    const user = User.getInstance();
-    worker.port.emit(requestId, "SUCCESS", user.isValid());
+  worker.port.on("passbolt.addon.is-configured", async (requestId) => {
+    try {
+      await GetActiveAccountService.get();
+      worker.port.emit(requestId, "SUCCESS", true);
+    } catch (error) {
+      if (!isMissingAccountError(error)) {
+        console.error(error);
+      }
+      worker.port.emit(requestId, "SUCCESS", false);
+    }
   });
 
   /*
