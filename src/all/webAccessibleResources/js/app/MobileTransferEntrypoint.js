@@ -23,11 +23,74 @@ const TRANSFER_STATUS_COMPLETE = "complete";
 const TRANSFER_STATUS_ERROR = "error";
 const TRANSFER_STATUS_CANCEL = "cancel";
 
-function MobileTransferEntrypoint({ port }) {
+export async function processMobileTransferQrScan({
+  parser,
+  port,
+  decodedText,
+  redirect,
+  stopScanner,
+  setDomain,
+  setStatus,
+}) {
+  const result = parser.accept(decodedText);
+  if (result.type === "duplicate") {
+    return;
+  }
+
+  if (result.type === "first-page") {
+    setDomain(result.metadata.domain);
+    const transfer = await updateTransfer(port, parser.metadata, result.nextPage, TRANSFER_STATUS_IN_PROGRESS);
+    assertTransferMatchesMetadata(transfer, result.metadata);
+    setStatus(`Scanned page 1 of ${result.totalPages}. Scan page ${result.nextPage + 1}.`);
+  } else if (result.type === "page") {
+    await updateTransfer(port, parser.metadata, result.nextPage, TRANSFER_STATUS_IN_PROGRESS);
+    setStatus(`Scanned page ${result.page + 1} of ${result.totalPages}. Scan page ${result.nextPage + 1}.`);
+  } else if (result.type === "last-page") {
+    const assembledKey = parser.assembleKeyData();
+    const transfer = await updateTransfer(port, parser.metadata, result.page, TRANSFER_STATUS_COMPLETE);
+    await importAccount(port, parser.metadata, assembledKey, transfer);
+    setStatus("Account connected. Opening Passbolt...");
+    await stopScanner();
+    redirect(parser.metadata.domain);
+  }
+}
+
+export const updateTransfer = async (port, metadata, page, status) =>
+  port.request(
+    "passbolt.mobile-transfer-entrypoint.update-transfer",
+    metadata.domain,
+    metadata.transfer_id,
+    metadata.authentication_token,
+    {
+      current_page: page,
+      status,
+    },
+  );
+
+export const importAccount = async (port, metadata, assembledKey, transfer) => {
+  assertTransferMatchesMetadata(transfer, metadata);
+  await port.request("passbolt.mobile-transfer-entrypoint.import-account", {
+    metadata,
+    assembled_key: assembledKey,
+    transfer,
+  });
+};
+
+export const assertTransferMatchesMetadata = (transfer, metadata) => {
+  if (transfer.user_id !== metadata.user_id || transfer.user?.id !== metadata.user_id) {
+    throw new Error("The transfer user does not match the scanned QR code.");
+  }
+  if (!transfer.user?.profile) {
+    throw new Error("The Passbolt server did not return the transfer user profile.");
+  }
+};
+
+export function MobileTransferEntrypoint({ port, redirect = (url) => window.location.assign(url) }) {
   const parserRef = React.useRef(
     new MobileTransferQrParser(window.location.href, { assertCurrentUrlMatchesMetadata: false }),
   );
   const scannerRef = React.useRef(null);
+  const manualQrPayloadRef = React.useRef(null);
   const processingScanRef = React.useRef(false);
   const completedRef = React.useRef(false);
   const [status, setStatus] = React.useState("Waiting for the first QR code.");
@@ -36,7 +99,6 @@ function MobileTransferEntrypoint({ port }) {
   const [domain, setDomain] = React.useState("");
 
   React.useEffect(() => {
-    startScanner().catch((error) => setError(error.message));
     return () => {
       stopScanner().catch(() => {});
     };
@@ -78,49 +140,26 @@ function MobileTransferEntrypoint({ port }) {
     processingScanRef.current = true;
     setError("");
     try {
-      const parser = parserRef.current;
-      const result = parser.accept(decodedText);
-      if (result.type === "duplicate") {
-        return;
-      }
-
-      if (result.type === "first-page") {
-        setDomain(result.metadata.domain);
-        const transfer = await updateTransfer(result.nextPage, TRANSFER_STATUS_IN_PROGRESS);
-        assertTransferMatchesMetadata(transfer, result.metadata);
-        setStatus(`Scanned page 1 of ${result.totalPages}. Scan page ${result.nextPage + 1}.`);
-      } else if (result.type === "page") {
-        await updateTransfer(result.nextPage, TRANSFER_STATUS_IN_PROGRESS);
-        setStatus(`Scanned page ${result.page + 1} of ${result.totalPages}. Scan page ${result.nextPage + 1}.`);
-      } else if (result.type === "last-page") {
-        const assembledKey = parser.assembleKeyData();
-        const transfer = await updateTransfer(result.page, TRANSFER_STATUS_COMPLETE);
-        await importAccount(parser.metadata, assembledKey, transfer);
+      await processMobileTransferQrScan({
+        parser: parserRef.current,
+        port,
+        decodedText,
+        redirect,
+        stopScanner,
+        setDomain,
+        setStatus,
+      });
+      if (parserRef.current.lastAcceptedPage === parserRef.current.metadata?.total_pages - 1) {
         completedRef.current = true;
-        setStatus("Account connected. Opening Passbolt...");
-        await stopScanner();
-        window.location.assign(parser.metadata.domain);
       }
+      return true;
     } catch (error) {
       setError(error.message);
       await updateTransferErrorIfInitialized();
+      return false;
     } finally {
       processingScanRef.current = false;
     }
-  };
-
-  const updateTransfer = async (page, status) => {
-    const metadata = parserRef.current.metadata;
-    return port.request(
-      "passbolt.mobile-transfer-entrypoint.update-transfer",
-      metadata.domain,
-      metadata.transfer_id,
-      metadata.authentication_token,
-      {
-        current_page: page,
-        status,
-      },
-    );
   };
 
   const updateTransferErrorIfInitialized = async () => {
@@ -129,27 +168,22 @@ function MobileTransferEntrypoint({ port }) {
       return;
     }
     try {
-      await updateTransfer(parser.lastAcceptedPage, TRANSFER_STATUS_ERROR);
+      await updateTransfer(port, parser.metadata, parser.lastAcceptedPage, TRANSFER_STATUS_ERROR);
     } catch (error) {
       console.error(error);
     }
   };
 
-  const importAccount = async (metadata, assembledKey, transfer) => {
-    assertTransferMatchesMetadata(transfer, metadata);
-    await port.request("passbolt.mobile-transfer-entrypoint.import-account", {
-      metadata,
-      assembled_key: assembledKey,
-      transfer,
-    });
-  };
-
-  const assertTransferMatchesMetadata = (transfer, metadata) => {
-    if (transfer.user_id !== metadata.user_id || transfer.user?.id !== metadata.user_id) {
-      throw new Error("The transfer user does not match the scanned QR code.");
+  const handleManualQrPayloadSubmit = async (event) => {
+    event.preventDefault();
+    const payload = manualQrPayloadRef.current?.value.trim();
+    if (!payload) {
+      setError("Paste a QR code payload first.");
+      return;
     }
-    if (!transfer.user?.profile) {
-      throw new Error("The Passbolt server did not return the transfer user profile.");
+    const success = await handleScan(payload);
+    if (success && manualQrPayloadRef.current) {
+      manualQrPayloadRef.current.value = "";
     }
   };
 
@@ -157,7 +191,7 @@ function MobileTransferEntrypoint({ port }) {
     const parser = parserRef.current;
     if (parser.metadata) {
       try {
-        await updateTransfer(parser.lastAcceptedPage, TRANSFER_STATUS_CANCEL);
+        await updateTransfer(port, parser.metadata, parser.lastAcceptedPage, TRANSFER_STATUS_CANCEL);
       } catch (error) {
         console.error(error);
       }
@@ -206,6 +240,19 @@ function MobileTransferEntrypoint({ port }) {
         .mobile-transfer-entrypoint .status {
           margin: 1.6rem 0 0;
         }
+        .mobile-transfer-entrypoint .manual-transfer {
+          margin-top: 1.6rem;
+        }
+        .mobile-transfer-entrypoint textarea {
+          border: .1rem solid #d7d7d2;
+          border-radius: .4rem;
+          box-sizing: border-box;
+          font-family: inherit;
+          min-height: 7.2rem;
+          padding: .8rem;
+          resize: vertical;
+          width: 100%;
+        }
         .mobile-transfer-entrypoint .domain {
           color: #555;
           margin: .8rem 0 0;
@@ -216,6 +263,7 @@ function MobileTransferEntrypoint({ port }) {
           margin: 1.2rem 0 0;
         }
         .mobile-transfer-entrypoint .actions {
+          column-gap: .8rem;
           display: flex;
           justify-content: flex-end;
           margin-top: 2rem;
@@ -224,10 +272,35 @@ function MobileTransferEntrypoint({ port }) {
       <main className="panel">
         <h1>Connect your Passbolt account</h1>
         <div id={READER_ID} className="reader" />
-        <p className="status">{isScanning ? status : "Scanner stopped."}</p>
+        <p className="status">{status}</p>
         {domain && <p className="domain">{domain}</p>}
         {error && <p className="error-message">{error}</p>}
+        <form className="manual-transfer" onSubmit={handleManualQrPayloadSubmit}>
+          <textarea ref={manualQrPayloadRef} aria-label="QR code payload" spellCheck="false" />
+          <div className="actions">
+            <button type="submit" className="button">
+              Process QR page
+            </button>
+          </div>
+        </form>
         <div className="actions">
+          {isScanning ? (
+            <button
+              type="button"
+              className="button"
+              onClick={() => stopScanner().catch((error) => setError(error.message))}
+            >
+              Stop camera
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="button"
+              onClick={() => startScanner().catch((error) => setError(error.message))}
+            >
+              Scan with camera
+            </button>
+          )}
           <button type="button" className="button cancel" onClick={cancel}>
             Cancel transfer
           </button>
@@ -237,7 +310,7 @@ function MobileTransferEntrypoint({ port }) {
   );
 }
 
-async function main() {
+export async function main() {
   const query = new URLSearchParams(window.location.search);
   const portname = query.get("passbolt") || PORT_NAME;
   const port = new Port(portname);
@@ -248,4 +321,6 @@ async function main() {
   root.render(<MobileTransferEntrypoint port={port} />);
 }
 
-main();
+if (typeof document !== "undefined" && document.getElementById("mobile-transfer-entrypoint-root")) {
+  main();
+}
