@@ -17,6 +17,10 @@ import Keyring from "../../model/keyring";
 
 const mockSync = jest.spyOn(Keyring.prototype, "sync");
 
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 describe("SynchroniseKeyringController", () => {
   it("Should synchronise the keyring", async () => {
     expect.assertions(1);
