@@ -16,6 +16,7 @@ import GroupsUpdateController from "../controller/group/groupUpdateController";
 import GroupCreateController from "../controller/group/groupCreateController";
 import GroupDeleteTransferEntity from "../model/entity/group/transfer/groupDeleteTransferEntity";
 import FindMyGroupsController from "../controller/group/findMyGroupsController";
+import GetOrFindGroupsController from "../controller/group/getOrFindGroupsController";
 import UpdateAllGroupsLocalStorageController from "../controller/group/updateAllGroupsLocalStorageController";
 
 /**
@@ -46,6 +47,18 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.groups.find-my-groups", async (requestId) => {
     const controller = new FindMyGroupsController(worker, requestId, apiClientOptions);
     controller._exec();
+  });
+
+  /*
+   * Find groups by their ids.
+   *
+   * @listens passbolt.groups.get-by-ids
+   * @param {uuid} requestId The request identifier
+   * @param {Array<uuid>} groupIds The ids of the groups to retrieve
+   */
+  worker.port.on("passbolt.groups.get-by-ids", async (requestId, groupIds) => {
+    const controller = new GetOrFindGroupsController(worker, requestId, apiClientOptions, account);
+    controller._exec(groupIds);
   });
 
   /*
