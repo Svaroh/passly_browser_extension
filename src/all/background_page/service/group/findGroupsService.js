@@ -48,8 +48,8 @@ export default class FindGroupsService {
       assertType(orders, Object);
     }
     assertBoolean(ignoreInvalidEntity);
-    const groupsDto = await this.groupApiService.findAll(contains, filters, orders);
-    return new GroupsCollection(groupsDto, { clone: false, ignoreInvalidEntity: ignoreInvalidEntity });
+    const response = await this.groupApiService.findAll(contains, filters, orders);
+    return new GroupsCollection(response.body ?? [], { clone: false, ignoreInvalidEntity: ignoreInvalidEntity });
   }
 
   /**
