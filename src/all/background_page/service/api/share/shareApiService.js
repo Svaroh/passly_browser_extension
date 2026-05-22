@@ -13,7 +13,7 @@
 import { assertString } from "../../../utils/assertions";
 import AbstractService from "../abstract/abstractService";
 
-const SHARE_SERVICE_RESOURCE_NAME = "share";
+const SHARE_API_SERVICE_RESOURCE_NAME = "share";
 
 class ShareApiService extends AbstractService {
   /**
@@ -51,7 +51,7 @@ class ShareApiService extends AbstractService {
    * @public
    */
   static get RESOURCE_NAME() {
-    return SHARE_SERVICE_RESOURCE_NAME;
+    return SHARE_API_SERVICE_RESOURCE_NAME;
   }
 
   /**
@@ -110,7 +110,10 @@ class ShareApiService extends AbstractService {
    */
   async searchUsersAndGroups(keyword, contains) {
     assertString(keyword, "keyword is not a valid string");
-    const filter = this.formatFilterOptions({ search: keyword }, ShareApiService.getSupportedSearchArosFiltersOptions());
+    const filter = this.formatFilterOptions(
+      { search: keyword },
+      ShareApiService.getSupportedSearchArosFiltersOptions(),
+    );
     contains = this.formatContainOptions(contains, ShareApiService.getSupportedSearchArosContainOptions());
     const options = { ...filter, ...contains };
     const url = "search-aros";
