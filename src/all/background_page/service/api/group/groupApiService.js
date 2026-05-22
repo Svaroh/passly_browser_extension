@@ -14,7 +14,7 @@
 import AbstractService from "../abstract/abstractService";
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 
-const GROUP_SERVICE_RESOURCE_NAME = "groups";
+const GROUP_API_SERVICE_RESOURCE_NAME = "groups";
 
 class GroupApiService extends AbstractService {
   /**
@@ -34,7 +34,7 @@ class GroupApiService extends AbstractService {
    * @public
    */
   static get RESOURCE_NAME() {
-    return GROUP_SERVICE_RESOURCE_NAME;
+    return GROUP_API_SERVICE_RESOURCE_NAME;
   }
 
   /**
