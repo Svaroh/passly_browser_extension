@@ -17,7 +17,7 @@ import FolderEntity from "../entity/folder/folderEntity";
 import FoldersCollection from "../entity/folder/foldersCollection";
 import PermissionChangesCollection from "../entity/permission/change/permissionChangesCollection";
 import FolderService from "../../service/api/folder/folderService";
-import ShareService from "../../service/api/share/shareService";
+import ShareApiService from "../../service/api/share/shareApiService";
 import splitBySize from "../../utils/array/splitBySize";
 import FindAndUpdateFoldersLocalStorageService from "../../service/folder/findAndUpdateFoldersLocalStorageService";
 
@@ -33,7 +33,7 @@ class FolderModel {
    */
   constructor(apiClientOptions, account) {
     this.folderService = new FolderService(apiClientOptions);
-    this.shareService = new ShareService(apiClientOptions);
+    this.shareApiService = new ShareApiService(apiClientOptions);
     this.findAndUpdateFoldersLocalStorageService = new FindAndUpdateFoldersLocalStorageService(
       account,
       apiClientOptions,
@@ -157,7 +157,7 @@ class FolderModel {
    * @returns {Promise<FolderEntity>}
    */
   async share(folderEntity, changesCollection, updateStorage) {
-    await this.shareService.shareFolder(folderEntity.id, { permissions: changesCollection.toDto() });
+    await this.shareApiService.shareFolder(folderEntity.id, { permissions: changesCollection.toDto() });
     if (typeof updateStorage === "undefined" || updateStorage) {
       /*
        * update storage in case the folder becomes non visible to current user
