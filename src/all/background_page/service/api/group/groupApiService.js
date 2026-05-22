@@ -98,7 +98,7 @@ class GroupApiService extends AbstractService {
    * @param {Object} [contains] optional example: {permissions: true}
    * @param {Object} [filters] optional
    * @param {Object} [orders] optional
-   * @returns {Promise<*>} response body
+   * @returns {Promise<PassboltResponseEntity>}
    * @throws {Error} if options are invalid or API error
    * @public
    */
