@@ -87,6 +87,7 @@ import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainT
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
 import OpenResourceUriTabController from "../controller/tab/openResourceUriTabController";
 import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
+import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
 import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
 import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
@@ -920,7 +921,18 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.offline.find-settings", async (requestId) => {
-    const controller = new FindOfflineSettingsController(worker, requestId, apiClientOptions);
+    const controller = new FindOfflineSettingsController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
+  });
+
+  /*
+   * Get or find offline settings.
+   *
+   * @listens passbolt.offline.get-or-find-settings
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.offline.get-or-find-settings", async (requestId) => {
+    const controller = new GetOrFindOfflineSettingsController(worker, requestId, apiClientOptions, account);
     await controller._exec();
   });
 

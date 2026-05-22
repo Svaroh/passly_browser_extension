@@ -17,7 +17,7 @@ import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
-import { defaultCeOrganizationSettings } from "../../model/entity/organizationSettings/organizationSettingsEntity.test.data";
+import { offlinePluginEnabledOrganizationSettings } from "../../model/entity/organizationSettings/organizationSettingsEntity.test.data";
 import GetOrFindOfflineSettingsService from "./getOrFindOfflineSettingsService";
 
 beforeEach(() => {
@@ -26,12 +26,6 @@ beforeEach(() => {
 
 describe("GetOrFindOfflineSettingsService", () => {
   let getOrFindOfflineSettingsService, account, apiClientOptions;
-
-  const offlinePluginEnabledOrganizationSettings = () => {
-    const siteSettings = defaultCeOrganizationSettings();
-    siteSettings.passbolt.plugins.offline = { version: "1.0.0", enabled: true };
-    return siteSettings;
-  };
 
   beforeEach(async () => {
     account = new AccountEntity(defaultAccountDto());
