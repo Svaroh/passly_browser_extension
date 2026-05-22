@@ -12,8 +12,7 @@
  * @since         4.9.0
  */
 
-import ShareApiService from "../../service/api/share/shareApiService";
-import UserAndGroupSearchResultsCollection from "../../model/entity/userAndGroupSearchResultEntity/userAndGroupSearchResultCollection";
+import SearchUsersAndGroupsService from "../../service/share/searchUsersAndGroupsService";
 import { assertString } from "../../utils/assertions";
 
 class SearchUsersAndGroupsController {
@@ -26,7 +25,7 @@ class SearchUsersAndGroupsController {
   constructor(worker, requestId, apiClientOptions) {
     this.worker = worker;
     this.requestId = requestId;
-    this.shareApiService = new ShareApiService(apiClientOptions);
+    this.searchUsersAndGroupsService = new SearchUsersAndGroupsService(apiClientOptions);
   }
 
   /**
@@ -52,12 +51,7 @@ class SearchUsersAndGroupsController {
    */
   async exec(keyword) {
     assertString(keyword, "keyword is not a valid string");
-    const contains = {
-      profile: true,
-      user_count: true,
-    };
-    const result = await this.shareApiService.searchUsersAndGroups(keyword, contains);
-    return new UserAndGroupSearchResultsCollection(result);
+    return await this.searchUsersAndGroupsService.search(keyword);
   }
 }
 
