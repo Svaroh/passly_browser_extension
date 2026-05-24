@@ -12,137 +12,130 @@
  */
 import React from "react";
 import { renderToString } from "react-dom/server";
-import jsSHA from "jssha";
-import { Html5Qrcode } from "html5-qrcode";
-import { MobileTransferEntrypoint, processMobileTransferQrScan } from "./MobileTransferEntrypoint";
-import { MobileTransferQrParser } from "../../../contentScripts/js/service/mobileTransferImportPageService";
+import QRCode from "qrcode";
+import {
+  buildBrowserFirstLoginDeepLink,
+  BrowserFirstLoginEntrypoint,
+  createBrowserFirstLoginQrCode,
+  isBrowserFirstLoginRequestExpired,
+  MobileTransferEntrypoint,
+  translateMobileTransferError,
+  translateMobileTransferMessage,
+} from "./MobileTransferEntrypoint";
 
-jest.mock("html5-qrcode", () => ({
-  Html5Qrcode: jest.fn(),
+jest.mock("qrcode", () => ({
+  __esModule: true,
+  default: {
+    toDataURL: jest.fn(
+      async (segments) => `data:image/jpeg;base64,${Buffer.from(segments[0].data).toString("base64")}`,
+    ),
+  },
 }));
 
 describe("MobileTransferEntrypoint", () => {
-  it("Should not request camera access when the entrypoint is opened.", () => {
-    expect.assertions(3);
+  beforeEach(() => {
+    QRCode.toDataURL.mockClear();
+  });
+
+  it("Should render a QR-only first-login entrypoint without scanner/import controls by default.", () => {
+    expect.assertions(6);
 
     const html = renderToString(<MobileTransferEntrypoint port={{ request: jest.fn() }} />);
 
-    expect(Html5Qrcode).not.toHaveBeenCalled();
-    expect(html).toContain("Waiting for the first QR code.");
-    expect(html).toContain("Scan with camera");
+    expect(html).toContain("Generating QR code...");
+    expect(html).not.toContain("Start QR scanner");
+    expect(html).not.toContain("Scan with camera");
+    expect(html).not.toContain("Paste QR payload");
+    expect(html).not.toContain("Please enter your passphrase");
+    expect(html).not.toContain("mobile-transfer-entrypoint-reader");
   });
 
-  it("Should process a complete QR transfer and import the account.", async () => {
-    expect.assertions(8);
+  it("Should preserve the legacy scanner/import entrypoint in import mode.", () => {
+    expect.assertions(3);
 
-    const redirect = jest.fn();
-    const stopScanner = jest.fn().mockResolvedValue();
-    const setDomain = jest.fn();
-    const setStatus = jest.fn();
-    const transfer = buildTransfer();
+    const html = renderToString(<MobileTransferEntrypoint port={{ request: jest.fn() }} mode="import" />);
+
+    expect(html).toContain("mobile-transfer-entrypoint-reader");
+    expect(html).toContain("Scan with camera");
+    expect(html).toContain("Process QR page");
+  });
+
+  it("Should create a browser first-login deep-link QR code without private key data.", async () => {
+    expect.assertions(5);
+
+    const domain = "https://pass.66ton99.org.ua";
+    const request = {
+      id: "79dce172-8b3c-4be5-a258-3129230996dd",
+      secret: "pairing-secret",
+      status: "pending",
+    };
     const port = {
       request: jest.fn(async (message) => {
-        if (message === "passbolt.mobile-transfer-entrypoint.update-transfer") {
-          return transfer;
-        }
-        if (message === "passbolt.mobile-transfer-entrypoint.import-account") {
-          return null;
+        if (message === "passbolt.browser-first-login.create") {
+          return request;
         }
         throw new Error(`Unexpected message ${message}`);
       }),
     };
-    const parser = new MobileTransferQrParser(window.location.href, { assertCurrentUrlMatchesMetadata: false });
-    const qrPages = buildQrPages(transfer);
 
-    await processMobileTransferQrScan({
-      parser,
-      port,
-      decodedText: qrPages.first,
-      redirect,
-      stopScanner,
-      setDomain,
-      setStatus,
+    const result = await createBrowserFirstLoginQrCode(port, domain);
+    const payload = QRCode.toDataURL.mock.calls[0][0][0].data;
+    const qrData = new URL(payload);
+
+    expect(port.request).toHaveBeenCalledWith("passbolt.browser-first-login.create", domain);
+    expect(payload.startsWith("passbolt://browser-first-login?")).toBe(true);
+    expect(Object.fromEntries(qrData.searchParams.entries())).toEqual({
+      type: "browser_first_login",
+      version: "1",
+      domain,
+      request_id: request.id,
+      secret: request.secret,
     });
-
-    expect(setDomain).toHaveBeenCalledWith(qrPages.metadata.domain);
-    expect(port.request).toHaveBeenCalledWith(
-      "passbolt.mobile-transfer-entrypoint.update-transfer",
-      qrPages.metadata.domain,
-      qrPages.metadata.transfer_id,
-      qrPages.metadata.authentication_token,
-      { current_page: 1, status: "in progress" },
-    );
-    expect(setStatus).toHaveBeenCalledWith("Scanned page 1 of 2. Scan page 2.");
-
-    await processMobileTransferQrScan({
-      parser,
-      port,
-      decodedText: qrPages.last,
-      redirect,
-      stopScanner,
-      setDomain,
-      setStatus,
-    });
-
-    expect(port.request).toHaveBeenCalledWith(
-      "passbolt.mobile-transfer-entrypoint.update-transfer",
-      qrPages.metadata.domain,
-      qrPages.metadata.transfer_id,
-      qrPages.metadata.authentication_token,
-      { current_page: 1, status: "complete" },
-    );
-    expect(port.request).toHaveBeenCalledWith("passbolt.mobile-transfer-entrypoint.import-account", {
-      metadata: qrPages.metadata,
-      assembled_key: qrPages.assembledKey,
-      transfer,
-    });
-    expect(stopScanner).toHaveBeenCalledTimes(1);
-    expect(redirect).toHaveBeenCalledWith(qrPages.metadata.domain);
-    expect(setStatus).toHaveBeenCalledWith("Account connected. Opening Passbolt...");
+    expect(qrData.search).not.toContain("armored_key");
+    expect(result.request.id).toBe(request.id);
   });
 
-  function buildTransfer() {
-    const userId = "1c8e5d7a-0d27-4f39-a4a3-0db6fc9a7a30";
-    return {
-      user_id: userId,
-      user: {
-        id: userId,
-        username: "ada@passbolt.com",
-        profile: {
-          first_name: "Ada",
-          last_name: "Lovelace",
-        },
-      },
-    };
-  }
+  it("Should build the browser first-login deep link.", () => {
+    expect.assertions(1);
 
-  function buildQrPages(transfer) {
-    const assembledKey = {
-      armored_key: "-----BEGIN PGP PRIVATE KEY BLOCK-----\nkey\n-----END PGP PRIVATE KEY BLOCK-----",
-      user_id: transfer.user_id,
-      fingerprint: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    };
-    const keyPayload = JSON.stringify(assembledKey);
-    const metadata = {
-      transfer_id: "79dce172-8b3c-4be5-a258-3129230996dd",
-      user_id: transfer.user_id,
-      total_pages: 2,
-      authentication_token: "962c7349-96f7-4395-8b0e-3f026c6fe599",
-      hash: sha512(keyPayload),
-      domain: "https://pass.66ton99.org.ua/",
-    };
+    const payload = buildBrowserFirstLoginDeepLink({
+      domain: "https://pass.66ton99.org.ua",
+      requestId: "79dce172-8b3c-4be5-a258-3129230996dd",
+      secret: "pairing-secret",
+    });
 
-    return {
-      metadata,
-      assembledKey,
-      first: `100${JSON.stringify(metadata)}`,
-      last: `101${keyPayload}`,
-    };
-  }
+    expect(payload).toBe(
+      "passbolt://browser-first-login?type=browser_first_login&version=1&domain=https%3A%2F%2Fpass.66ton99.org.ua&request_id=79dce172-8b3c-4be5-a258-3129230996dd&secret=pairing-secret",
+    );
+  });
 
-  function sha512(value) {
-    const sha = new jsSHA("SHA-512", "TEXT");
-    sha.update(value);
-    return sha.getHash("HEX").toLowerCase();
-  }
+  it("Should render the browser first-login QR component without private-key wording.", () => {
+    expect.assertions(2);
+
+    const html = renderToString(
+      <BrowserFirstLoginEntrypoint port={{ request: jest.fn() }} domain="https://pass.66ton99.org.ua" />,
+    );
+
+    expect(html).toContain("Generating QR code...");
+    expect(html).not.toContain("private key");
+  });
+
+  it("Should translate first-login messages to Ukrainian.", () => {
+    expect.assertions(3);
+
+    expect(translateMobileTransferMessage("browserFirstLoginGeneratingQrCode", {}, "uk-UA")).toBe(
+      "Створення QR-коду...",
+    );
+    expect(translateMobileTransferMessage("browserFirstLoginRefreshQrCode", {}, "uk-UA")).toBe("Оновити QR-код");
+    expect(translateMobileTransferError(new Error("The browser first-login request has expired."), "uk-UA")).toBe(
+      "Запит першого входу в браузері застарів.",
+    );
+  });
+
+  it("Should identify expired first-login requests.", () => {
+    expect.assertions(2);
+
+    expect(isBrowserFirstLoginRequestExpired(new Error("The browser first-login request has expired."))).toBe(true);
+    expect(isBrowserFirstLoginRequestExpired({ status: "expired" })).toBe(true);
+  });
 });

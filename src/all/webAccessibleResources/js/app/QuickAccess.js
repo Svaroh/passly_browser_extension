@@ -17,28 +17,7 @@ import { createRoot } from "react-dom/client";
 import ExtQuickAccess from "passbolt-styleguide/src/react-quickaccess/ExtQuickAccess";
 import Port from "../lib/port";
 import BiometricAuthRuntimeService from "../service/biometricAuthRuntimeService";
-
-function createBiometricAwareQuickAccessPort(port, options) {
-  const biometricAwarePort = Object.create(port);
-  biometricAwarePort.request = async (message, ...args) => {
-    const result = await port.request(message, ...args);
-    if (message === "passbolt.auth.login" && options.enableOnLogin) {
-      try {
-        const [passphrase] = args;
-        const configuration = await BiometricAuthRuntimeService.createConfiguration(port, passphrase);
-        await port.request("passbolt.biometric-auth.save-configuration", configuration);
-      } catch (error) {
-        if (BiometricAuthRuntimeService.isUnavailableError(error)) {
-          console.debug(error);
-        } else {
-          console.error(error);
-        }
-      }
-    }
-    return result;
-  };
-  return biometricAwarePort;
-}
+import BiometricAuthFormService from "../service/biometricAuthFormService";
 
 export async function ensureQuickAccessConfigured(port, { detached = false, closeWindow = () => window.close() } = {}) {
   const isConfigured = await port.request("passbolt.addon.is-configured");
@@ -56,15 +35,21 @@ export async function ensureQuickAccessConfigured(port, { detached = false, clos
 }
 
 function submitQuickAccessPassphrase(passphrase) {
-  const passphraseInput = document.querySelector(".quickaccess-login #passphrase");
-  const submitButton = document.querySelector(".quickaccess-login .submit-wrapper button[type='submit']");
-  if (!passphraseInput || !submitButton) {
-    throw new Error("The quickaccess passphrase form is not available.");
-  }
+  BiometricAuthFormService.fillPassphraseAndSubmit(
+    ".quickaccess-login #passphrase",
+    ".quickaccess-login .submit-wrapper button[type='submit']",
+    passphrase,
+    "The quickaccess passphrase form is not available.",
+  );
+}
 
-  passphraseInput.value = passphrase;
-  passphraseInput.dispatchEvent(new Event("input", { bubbles: true }));
-  submitButton.click();
+function submitPassphraseDialog(passphrase) {
+  BiometricAuthFormService.fillPassphraseAndSubmit(
+    ".passphrase #passphrase",
+    ".passphrase .submit-wrapper button[type='submit']",
+    passphrase,
+    "The passphrase dialog form is not available.",
+  );
 }
 
 function BiometricQuickAccessActions({ port, options }) {
@@ -72,7 +57,7 @@ function BiometricQuickAccessActions({ port, options }) {
   const [enableOnLogin, setEnableOnLogin] = React.useState(false);
   const [error, setError] = React.useState("");
   const [isUnlocking, setIsUnlocking] = React.useState(false);
-  const [portalTarget, setPortalTarget] = React.useState(null);
+  const [portal, setPortal] = React.useState(null);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -90,20 +75,23 @@ function BiometricQuickAccessActions({ port, options }) {
 
   React.useEffect(() => {
     const findTarget = () => {
-      const target = document.querySelector(".quickaccess-login .form-container");
-      if (target) {
-        setPortalTarget(target);
-        return true;
+      const passphraseDialogTarget = document.querySelector(".passphrase .form-container");
+      if (passphraseDialogTarget) {
+        setPortal({ target: passphraseDialogTarget, type: "passphrase-dialog" });
+        return;
       }
-      return false;
+
+      const quickAccessLoginTarget = document.querySelector(".quickaccess-login .form-container");
+      if (quickAccessLoginTarget) {
+        setPortal({ target: quickAccessLoginTarget, type: "quickaccess-login" });
+        return;
+      }
+
+      setPortal(null);
     };
-    if (findTarget()) {
-      return undefined;
-    }
+    findTarget();
     const observer = new MutationObserver(() => {
-      if (findTarget()) {
-        observer.disconnect();
-      }
+      findTarget();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
@@ -118,15 +106,19 @@ function BiometricQuickAccessActions({ port, options }) {
     setIsUnlocking(true);
     try {
       const passphrase = await BiometricAuthRuntimeService.unlock(port, configuration);
-      submitQuickAccessPassphrase(passphrase);
+      if (portal?.type === "passphrase-dialog") {
+        submitPassphraseDialog(passphrase);
+      } else {
+        submitQuickAccessPassphrase(passphrase);
+      }
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід за відбитком.");
+      setError("Не вдалося виконати вхід через PassKey.");
       setIsUnlocking(false);
     }
   };
 
-  if (!portalTarget) {
+  if (!portal) {
     return null;
   }
 
@@ -134,7 +126,7 @@ function BiometricQuickAccessActions({ port, options }) {
     <div className="biometric-login-actions">
       {configuration ? (
         <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleLogin}>
-          {isUnlocking ? "Розблокування..." : "Вхід за відбитком"}
+          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
         </button>
       ) : (
         <div className="input checkbox biometric-login-enable">
@@ -145,12 +137,12 @@ function BiometricQuickAccessActions({ port, options }) {
             checked={enableOnLogin}
             onChange={(event) => setEnableOnLogin(event.target.checked)}
           />
-          <label htmlFor="biometric-login-enable">Увімкнути вхід за відбитком на цьому пристрої</label>
+          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
         </div>
       )}
       {error && <div className="error-message">{error}</div>}
     </div>,
-    portalTarget,
+    portal.target,
   );
 }
 
@@ -160,7 +152,16 @@ export async function main() {
   const port = new Port(portname);
   await port.connect();
   const biometricOptions = { enableOnLogin: false };
-  const biometricAwarePort = createBiometricAwareQuickAccessPort(port, biometricOptions);
+  const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(port, biometricOptions, [
+    {
+      requestMessage: "passbolt.auth.login",
+      option: "enableOnLogin",
+    },
+    {
+      requestMessage: "passbolt.keyring.private.checkpassphrase",
+      option: "enableOnLogin",
+    },
+  ]);
 
   // Emit a success if the port is still connected
   port.on("passbolt.port.check", (requestId) => port.emit(requestId, "SUCCESS"));

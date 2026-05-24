@@ -17,28 +17,7 @@ import { createRoot } from "react-dom/client";
 import ExtAuthenticationLogin from "passbolt-styleguide/src/react-extension/ExtAuthenticationLogin";
 import Port from "../lib/port";
 import BiometricAuthRuntimeService from "../service/biometricAuthRuntimeService";
-
-function createBiometricAwarePort(port, options) {
-  const biometricAwarePort = Object.create(port);
-  biometricAwarePort.request = async (message, ...args) => {
-    const result = await port.request(message, ...args);
-    if (message === "passbolt.auth.login" && options.enableOnLogin) {
-      try {
-        const [passphrase] = args;
-        const configuration = await BiometricAuthRuntimeService.createConfiguration(port, passphrase);
-        await port.request("passbolt.biometric-auth.save-configuration", configuration);
-      } catch (error) {
-        if (BiometricAuthRuntimeService.isUnavailableError(error)) {
-          console.debug(error);
-        } else {
-          console.error(error);
-        }
-      }
-    }
-    return result;
-  };
-  return biometricAwarePort;
-}
+import BiometricAuthFormService from "../service/biometricAuthFormService";
 
 function BiometricLoginActions({ port, options }) {
   const [configuration, setConfiguration] = React.useState(null);
@@ -63,20 +42,17 @@ function BiometricLoginActions({ port, options }) {
 
   React.useEffect(() => {
     const findTarget = () => {
-      const target = document.querySelector("#container .enter-passphrase .form-actions");
-      if (target) {
-        setPortalTarget(target);
-        return true;
-      }
-      return false;
+      const target = BiometricAuthFormService.createPortalAnchor({
+        id: "biometric-login-actions-anchor",
+        formSelector: "#container .login .enter-passphrase",
+        afterSelector: ".input.checkbox",
+        beforeSelector: ".form-actions",
+      });
+      setPortalTarget(target);
     };
-    if (findTarget()) {
-      return undefined;
-    }
+    findTarget();
     const observer = new MutationObserver(() => {
-      if (findTarget()) {
-        observer.disconnect();
-      }
+      findTarget();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
@@ -95,7 +71,7 @@ function BiometricLoginActions({ port, options }) {
       await port.request("passbolt.auth.post-login-redirect");
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід за відбитком.");
+      setError("Не вдалося виконати вхід через PassKey.");
     } finally {
       setIsUnlocking(false);
     }
@@ -108,14 +84,20 @@ function BiometricLoginActions({ port, options }) {
   return createPortal(
     <div className="biometric-login-actions">
       {configuration ? (
-        <button type="button" className="button primary" disabled={isUnlocking} onClick={handleLogin}>
-          {isUnlocking ? "Розблокування..." : "Вхід за відбитком"}
+        <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleLogin}>
+          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
         </button>
       ) : (
-        <label className="biometric-login-enable">
-          <input type="checkbox" checked={enableOnLogin} onChange={(event) => setEnableOnLogin(event.target.checked)} />
-          Увімкнути вхід за відбитком на цьому пристрої
-        </label>
+        <div className="input checkbox biometric-login-enable">
+          <input
+            type="checkbox"
+            name="biometric-login-enable"
+            id="biometric-login-enable"
+            checked={enableOnLogin}
+            onChange={(event) => setEnableOnLogin(event.target.checked)}
+          />
+          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
+        </div>
       )}
       {error && <p className="error-message">{error}</p>}
     </div>,
@@ -130,7 +112,10 @@ async function main() {
   await port.connect();
   const storage = browser.storage;
   const biometricOptions = { enableOnLogin: false };
-  const biometricAwarePort = createBiometricAwarePort(port, biometricOptions);
+  const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(port, biometricOptions, {
+    requestMessage: "passbolt.auth.login",
+    option: "enableOnLogin",
+  });
   const domContainer = document.createElement("div");
   document.body.appendChild(domContainer);
 
