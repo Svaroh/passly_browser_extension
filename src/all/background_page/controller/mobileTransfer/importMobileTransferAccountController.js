@@ -16,6 +16,7 @@ import AuthVerifyServerChallengeService from "../../service/auth/authVerifyServe
 import AuthVerifyServerKeyService from "../../service/api/auth/authVerifyServerKeyService";
 import BuildApiClientOptionsService from "../../service/account/buildApiClientOptionsService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
+import { Config } from "../../model/config";
 import storage from "../../sdk/storage";
 
 class ImportMobileTransferAccountController {
@@ -51,6 +52,7 @@ class ImportMobileTransferAccountController {
    */
   async exec(transferAccountDto) {
     this.assertTransferAccountDto(transferAccountDto);
+    await this.ensureLegacyStorageInitialized();
 
     const metadata = transferAccountDto.metadata;
     const assembledKey = transferAccountDto.assembled_key;
@@ -90,11 +92,21 @@ class ImportMobileTransferAccountController {
   }
 
   /**
+   * Ensure the legacy active-account storage cache is loaded before importing.
+   * @returns {Promise<void>}
+   */
+  async ensureLegacyStorageInitialized() {
+    await storage.init();
+    Config.init();
+  }
+
+  /**
    * Persist the legacy active-account storage writes before opening the Passbolt web app.
    * @returns {Promise<void>}
    */
   async persistLegacyStorage() {
-    await browser.storage.local.set({ _passbolt_data: storage._data });
+    const legacyStorageData = JSON.parse(JSON.stringify(storage._data));
+    await browser.storage.local.set({ _passbolt_data: legacyStorageData });
   }
 
   /**

@@ -19,6 +19,7 @@ import Port from "../../../webAccessibleResources/js/lib/port";
 import MessageService from "../service/messageService";
 import MessageEventHandler from "../message/messageEventHandler";
 import ConnectPortController from "../controller/connectPortController";
+import BiometricAuthPageService from "../service/biometricAuthPageService";
 
 async function main() {
   // Port connection
@@ -26,6 +27,7 @@ async function main() {
   // Emit a success if the port is still connected
   port.on("passbolt.port.check", (requestId) => port.emit(requestId, "SUCCESS"));
   await port.connect();
+  BiometricAuthPageService.listen(port);
   // Message listener
   const messageService = new MessageService();
   const messageEventHandler = new MessageEventHandler(messageService);

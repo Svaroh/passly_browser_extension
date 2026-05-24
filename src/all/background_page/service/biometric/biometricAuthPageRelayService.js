@@ -144,9 +144,12 @@ class BiometricAuthPageRelayService {
    */
   static getCandidateWorkerNames(worker) {
     if (worker?.name === "Recover") {
-      return ["RecoverBootstrap", "AuthBootstrap", "AppBootstrap"];
+      return ["RecoverBootstrap", "AuthBootstrap", "AppBootstrap", "AccountRecoveryBootstrap"];
     }
-    return ["AuthBootstrap", "AppBootstrap", "RecoverBootstrap"];
+    if (worker?.name === "AccountRecovery") {
+      return ["AccountRecoveryBootstrap", "AuthBootstrap", "AppBootstrap", "RecoverBootstrap"];
+    }
+    return ["AuthBootstrap", "AppBootstrap", "RecoverBootstrap", "AccountRecoveryBootstrap"];
   }
 }
 

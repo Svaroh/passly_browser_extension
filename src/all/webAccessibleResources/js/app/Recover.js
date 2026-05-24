@@ -17,39 +17,15 @@ import { createRoot } from "react-dom/client";
 import ExtAuthenticationRecover from "passbolt-styleguide/src/react-extension/ExtAuthenticationRecover";
 import Port from "../lib/port";
 import BiometricAuthRuntimeService from "../service/biometricAuthRuntimeService";
-
-function createBiometricAwareRecoverPort(port, options) {
-  const biometricAwarePort = Object.create(port);
-  biometricAwarePort.request = async (message, ...args) => {
-    const result = await port.request(message, ...args);
-    if (message === "passbolt.recover.verify-passphrase" && options.enableOnVerify) {
-      try {
-        const [passphrase] = args;
-        const configuration = await BiometricAuthRuntimeService.createConfiguration(port, passphrase);
-        await port.request("passbolt.biometric-auth.save-configuration", configuration);
-      } catch (error) {
-        if (BiometricAuthRuntimeService.isUnavailableError(error)) {
-          console.debug(error);
-        } else {
-          console.error(error);
-        }
-      }
-    }
-    return result;
-  };
-  return biometricAwarePort;
-}
+import BiometricAuthFormService from "../service/biometricAuthFormService";
 
 function submitRecoveredPassphrase(passphrase) {
-  const passphraseInput = document.querySelector("#passphrase");
-  const submitButton = document.querySelector(".enter-passphrase .form-actions button[type='submit']");
-  if (!passphraseInput || !submitButton) {
-    throw new Error("The recover passphrase form is not available.");
-  }
-
-  passphraseInput.value = passphrase;
-  passphraseInput.dispatchEvent(new Event("input", { bubbles: true }));
-  submitButton.click();
+  BiometricAuthFormService.fillPassphraseAndSubmit(
+    "#container .check-passphrase #passphrase",
+    "#container .check-passphrase .enter-passphrase .form-actions button[type='submit']",
+    passphrase,
+    "The recover passphrase form is not available.",
+  );
 }
 
 function BiometricRecoverActions({ port, options }) {
@@ -75,20 +51,18 @@ function BiometricRecoverActions({ port, options }) {
 
   React.useEffect(() => {
     const findTarget = () => {
-      const target = document.querySelector("#container .enter-passphrase .form-actions");
-      if (target) {
-        setPortalTarget(target);
-        return true;
-      }
-      return false;
+      const target = BiometricAuthFormService.createPortalAnchor({
+        id: "biometric-recover-actions-anchor",
+        formSelector: "#container .check-passphrase .enter-passphrase",
+        afterSelector: ".form-content > .input.checkbox",
+        fallbackContainerSelector: ".form-content",
+        beforeSelector: ".form-actions",
+      });
+      setPortalTarget(target);
     };
-    if (findTarget()) {
-      return undefined;
-    }
+    findTarget();
     const observer = new MutationObserver(() => {
-      if (findTarget()) {
-        observer.disconnect();
-      }
+      findTarget();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
@@ -106,7 +80,7 @@ function BiometricRecoverActions({ port, options }) {
       submitRecoveredPassphrase(passphrase);
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід за відбитком.");
+      setError("Не вдалося виконати вхід через PassKey.");
       setIsUnlocking(false);
     }
   };
@@ -118,18 +92,20 @@ function BiometricRecoverActions({ port, options }) {
   return createPortal(
     <div className="biometric-login-actions">
       {configuration ? (
-        <button type="button" className="button primary" disabled={isUnlocking} onClick={handleRecover}>
-          {isUnlocking ? "Розблокування..." : "Вхід за відбитком"}
+        <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleRecover}>
+          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
         </button>
       ) : (
-        <label className="biometric-login-enable">
+        <div className="input checkbox biometric-login-enable">
           <input
             type="checkbox"
+            name="biometric-login-enable"
+            id="biometric-login-enable"
             checked={enableOnVerify}
             onChange={(event) => setEnableOnVerify(event.target.checked)}
           />
-          Увімкнути вхід за відбитком на цьому пристрої
-        </label>
+          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
+        </div>
       )}
       {error && <p className="error-message">{error}</p>}
     </div>,
@@ -143,7 +119,10 @@ async function main() {
   const port = new Port(portname);
   await port.connect();
   const biometricOptions = { enableOnVerify: false };
-  const biometricAwarePort = createBiometricAwareRecoverPort(port, biometricOptions);
+  const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(port, biometricOptions, {
+    requestMessage: "passbolt.recover.verify-passphrase",
+    option: "enableOnVerify",
+  });
   const domContainer = document.createElement("div");
   document.body.appendChild(domContainer);
 
