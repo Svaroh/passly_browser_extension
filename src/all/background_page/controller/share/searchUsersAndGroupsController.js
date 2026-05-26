@@ -12,7 +12,7 @@
  * @since         4.9.0
  */
 
-import ShareService from "../../service/api/share/shareService";
+import ShareApiService from "../../service/api/share/shareApiService";
 import UserAndGroupSearchResultsCollection from "../../model/entity/userAndGroupSearchResultEntity/userAndGroupSearchResultCollection";
 import { assertString } from "../../utils/assertions";
 
@@ -26,7 +26,7 @@ class SearchUsersAndGroupsController {
   constructor(worker, requestId, apiClientOptions) {
     this.worker = worker;
     this.requestId = requestId;
-    this.shareService = new ShareService(apiClientOptions);
+    this.shareApiService = new ShareApiService(apiClientOptions);
   }
 
   /**
@@ -56,7 +56,7 @@ class SearchUsersAndGroupsController {
       profile: true,
       user_count: true,
     };
-    const result = await this.shareService.searchUsersAndGroups(keyword, contains);
+    const result = await this.shareApiService.searchUsersAndGroups(keyword, contains);
     return new UserAndGroupSearchResultsCollection(result);
   }
 }

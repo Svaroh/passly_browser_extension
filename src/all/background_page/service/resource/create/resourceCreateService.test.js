@@ -47,7 +47,7 @@ import {
 } from "passbolt-styleguide/src/shared/models/entity/plaintextSecret/plaintextSecretEntity.test.data";
 import FindFoldersService from "../../folder/findFoldersService";
 import FolderEntity from "../../../model/entity/folder/folderEntity";
-import ShareService from "../../api/share/shareService";
+import ShareApiService from "../../api/share/shareApiService";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import { defaultDecryptedSharedMetadataKeysDtos } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection.test.data";
 import ResourceSecretsCollection from "../../../model/entity/secret/resource/resourceSecretsCollection";
@@ -381,9 +381,9 @@ describe("ResourceCreateService", () => {
         .mockImplementation(
           async () => new FolderEntity(defaultFolderDto({ id: folderId }, { withPermissions: true })),
         );
-      jest.spyOn(ShareService.prototype, "simulateShareResource").mockImplementation(() => shareResourceChanges);
-      jest.spyOn(ShareService.prototype, "shareFolder").mockImplementation(() => shareResourceChanges);
-      jest.spyOn(ShareService.prototype, "shareResource").mockImplementation(() => jest.fn());
+      jest.spyOn(ShareApiService.prototype, "simulateShareResource").mockImplementation(() => shareResourceChanges);
+      jest.spyOn(ShareApiService.prototype, "shareFolder").mockImplementation(() => shareResourceChanges);
+      jest.spyOn(ShareApiService.prototype, "shareResource").mockImplementation(() => jest.fn());
 
       jest.spyOn(resourceCreateService, "share");
 
@@ -433,9 +433,9 @@ describe("ResourceCreateService", () => {
         .mockImplementation(
           async () => new FolderEntity(defaultFolderDto({ id: folderId }, { withPermissions: { count: 2 } })),
         );
-      jest.spyOn(ShareService.prototype, "simulateShareResource").mockImplementation(() => shareResourceChanges);
-      jest.spyOn(ShareService.prototype, "shareFolder").mockImplementation(() => shareResourceChanges);
-      jest.spyOn(ShareService.prototype, "shareResource").mockImplementation(() => jest.fn());
+      jest.spyOn(ShareApiService.prototype, "simulateShareResource").mockImplementation(() => shareResourceChanges);
+      jest.spyOn(ShareApiService.prototype, "shareFolder").mockImplementation(() => shareResourceChanges);
+      jest.spyOn(ShareApiService.prototype, "shareResource").mockImplementation(() => jest.fn());
       jest
         .spyOn(resourceCreateService.encryptMetadataKeysService.getOrFindMetadataKeysService, "getOrFindAll")
         .mockImplementation(() => metadataKeys);
