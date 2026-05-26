@@ -142,10 +142,13 @@ class GroupApiService extends AbstractService {
    * @throw {TypeError} if group id is not a valid uuid
    * @public
    */
-  async update(groupId, groupData) {
+  async update(groupId, groupData, contains) {
     this.assertValidId(groupId);
     this.assertNonEmptyData(groupData);
-    const response = await this.apiClient.update(groupId, groupData);
+    const urlOptions = contains
+      ? this.formatContainOptions(contains, GroupApiService.getSupportedContainOptions())
+      : {};
+    const response = await this.apiClient.update(groupId, groupData, urlOptions);
     return response.body;
   }
 
