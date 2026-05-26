@@ -12,8 +12,9 @@
  * @since         3.0.0
  */
 import AbstractService from "../abstract/abstractService";
+import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 
-const GROUP_SERVICE_RESOURCE_NAME = "groups";
+const GROUP_API_SERVICE_RESOURCE_NAME = "groups";
 
 class GroupApiService extends AbstractService {
   /**
@@ -33,7 +34,7 @@ class GroupApiService extends AbstractService {
    * @public
    */
   static get RESOURCE_NAME() {
-    return GROUP_SERVICE_RESOURCE_NAME;
+    return GROUP_API_SERVICE_RESOURCE_NAME;
   }
 
   /**
@@ -65,7 +66,7 @@ class GroupApiService extends AbstractService {
    * @returns {Array<string>} list of supported option
    */
   static getSupportedFiltersOptions() {
-    return ["has-users", "has-managers"];
+    return ["has-users", "has-managers", "has-id"];
   }
 
   /**
@@ -97,11 +98,12 @@ class GroupApiService extends AbstractService {
    * @param {Object} [contains] optional example: {permissions: true}
    * @param {Object} [filters] optional
    * @param {Object} [orders] optional
-   * @returns {Promise<*>} response body
+   * @returns {Promise<PassboltResponseEntity>}
    * @throws {Error} if options are invalid or API error
    * @public
    */
   async findAll(contains, filters, orders) {
+    const hasIdFilter = filters?.["has-id"];
     const legacyContain = GroupApiService.remapLegacyContain(contains); // crassette
     contains = legacyContain
       ? this.formatContainOptions(legacyContain, GroupApiService.getSupportedContainOptions())
@@ -109,11 +111,16 @@ class GroupApiService extends AbstractService {
     filters = filters ? this.formatFilterOptions(filters, GroupApiService.getSupportedFiltersOptions()) : null;
     orders = orders ? this.formatOrderOptions(orders, GroupApiService.getSupportedFiltersOptions()) : null;
     const options = { ...contains, ...filters, ...orders };
-    const response = await this.apiClient.findAll(options);
-    if (!response.body || !response.body.length) {
-      return [];
+    const rawResponse = await this.apiClient.findAll(options);
+    /*
+     * Ensure backward compatibility with servers that do not yet support the has-id filter:
+     * post-filter the results in memory so the caller always receives only the requested groups.
+     */
+    if (hasIdFilter && rawResponse.body) {
+      const idsMap = new Set(Array.isArray(hasIdFilter) ? hasIdFilter : [hasIdFilter]);
+      rawResponse.body = rawResponse.body.filter((group) => idsMap.has(group.id));
     }
-    return response.body;
+    return new PassboltResponseEntity(rawResponse);
   }
 
   /**
