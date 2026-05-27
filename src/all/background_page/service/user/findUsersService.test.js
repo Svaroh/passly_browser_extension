@@ -14,6 +14,7 @@
 
 import { defaultUsersDtos } from "passbolt-styleguide/src/shared/models/entity/user/usersCollection.test.data";
 import UsersCollection from "../../model/entity/user/usersCollection";
+import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
@@ -49,7 +50,7 @@ describe("FindResourcesService", () => {
       expect.assertions(2);
 
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const users = await findUsersService.findAll();
 
@@ -60,7 +61,7 @@ describe("FindResourcesService", () => {
     it("disables default API contains when not explicitly requested.", async () => {
       expect.assertions(1);
 
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue([]);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: [], header: {} }));
 
       await findUsersService.findAll();
 
@@ -71,7 +72,7 @@ describe("FindResourcesService", () => {
       expect.assertions(3);
 
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockImplementation(() => usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockImplementation(() => new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const users = await findUsersService.findAll(
         {
@@ -108,7 +109,7 @@ describe("FindResourcesService", () => {
       expect.assertions(1);
 
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockImplementation(() => usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockImplementation(() => new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const promise = findUsersService.findAll({
         invalid: true,
@@ -121,7 +122,7 @@ describe("FindResourcesService", () => {
       expect.assertions(3);
 
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockImplementation(() => usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockImplementation(() => new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const users = await findUsersService.findAll(null, {
         search: false,
@@ -146,7 +147,7 @@ describe("FindResourcesService", () => {
       expect.assertions(1);
 
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const promise = findUsersService.findAll(null, {
         "is-not-supported": true,
@@ -165,7 +166,7 @@ describe("FindResourcesService", () => {
         }),
       ]);
 
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDtoWithInvalidUser);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDtoWithInvalidUser, header: {} }));
       const users = await findUsersService.findAll(null, null, true);
 
       expect(users).toHaveLength(10);
@@ -182,7 +183,7 @@ describe("FindResourcesService", () => {
         }),
       ]);
 
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDto, header: {} }));
       const promise = findUsersService.findAll(null, null, false);
 
       await expect(promise).rejects.toThrow(CollectionValidationError);
@@ -194,7 +195,7 @@ describe("FindResourcesService", () => {
       const organizationSettings = customEmailValidationProOrganizationSettings();
       OrganizationSettingsModel.set(new OrganizationSettingsEntity(organizationSettings));
       const usersDto = [defaultUserDto({ username: "ada@passbolt.c" })];
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const users = await findUsersService.findAll();
 
@@ -218,7 +219,7 @@ describe("FindResourcesService", () => {
     it("requests the API with the is-active filter.", async () => {
       expect.assertions(2);
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const users = await findUsersService.findAllActive();
 
@@ -232,7 +233,7 @@ describe("FindResourcesService", () => {
     it("requests the API with the is-active filter.", async () => {
       expect.assertions(2);
       const usersDto = defaultUsersDtos();
-      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(usersDto);
+      jest.spyOn(findUsersService.userApiService, "findAll").mockReturnValue(new PassboltResponseEntity({ body: usersDto, header: {} }));
 
       const users = await findUsersService.findAllActiveWithMissingKeys();
 
