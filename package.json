@@ -60,7 +60,7 @@
     "filereader": "^0.10.3",
     "formdata-node": "^6.0.3",
     "globals": "^16.4.0",
-    "i18next-cli": "^1.56.7",
+    "i18next-cli": "^1.58.0",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "jest-environment-node": "^30.3.0",
