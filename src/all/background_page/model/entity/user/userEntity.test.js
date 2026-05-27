@@ -17,6 +17,8 @@ import OrganizationSettingsModel from "../../organizationSettings/organizationSe
 import OrganizationSettingsEntity from "../organizationSettings/organizationSettingsEntity";
 import { customEmailValidationProOrganizationSettings } from "../organizationSettings/organizationSettingsEntity.test.data";
 import { defaultUserDto } from "passbolt-styleguide/src/shared/models/entity/user/userEntity.test.data";
+import GroupsUsersCollection from "passbolt-styleguide/src/shared/models/entity/groupUser/groupsUsersCollection";
+import * as assertEntityProperty from "passbolt-styleguide/test/assert/assertEntityProperty";
 
 describe("BextUserEntity", () => {
   describe("BextUserEntity::getSchema", () => {
@@ -24,6 +26,12 @@ describe("BextUserEntity", () => {
       expect.assertions(1);
       const schema = BextUserEntity.getSchema();
       expect(schema.properties.username.custom).toBe(AppEmailValidatorService.validate);
+    });
+
+    it("validates username with email format when no custom regex is configured", () => {
+      assertEntityProperty.string(BextUserEntity, "username");
+      assertEntityProperty.email(BextUserEntity, "username");
+      assertEntityProperty.required(BextUserEntity, "username");
     });
 
     it("validates username with custom validation rule", () => {
@@ -43,11 +51,12 @@ describe("BextUserEntity", () => {
   });
 
   describe("BextUserEntity::constructor", () => {
-    it("constructs from a valid default DTO", () => {
-      expect.assertions(1);
-      const dto = defaultUserDto();
+    it("constructs from a valid default DTO and inherits parent associations", () => {
+      expect.assertions(2);
+      const dto = defaultUserDto({}, { withGroupsUsers: true });
       const entity = new BextUserEntity(dto);
       expect(entity.username).toEqual(dto.username);
+      expect(entity.groupsUsers).toBeInstanceOf(GroupsUsersCollection);
     });
   });
 });
