@@ -18,6 +18,7 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import FindAndUpdateGroupsLocalStorageService from "./findAndUpdateGroupsLocalStorageService";
 import GroupsCollection from "../../model/entity/group/groupsCollection";
 import { defaultGroupsDtos } from "../../model/entity/group/groupsCollection.test.data";
+import { defaultGroupDto } from "passbolt-styleguide/src/shared/models/entity/group/groupEntity.test.data";
 import FindGroupsService from "./findGroupsService";
 
 beforeEach(() => {
@@ -111,6 +112,58 @@ describe("FindAndUpdateGroupsLocalStorageService", () => {
       expect(FindGroupsService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(1);
       expect(groupsLSDto).toHaveLength(10);
       expect(groupsLSDto).toEqual(groupsDto);
+    });
+  });
+
+  describe("::findForLocalStorageByIds", () => {
+    it("should return only the requested groups from local storage when all ids are present", async () => {
+      expect.assertions(3);
+
+      const groupsDtos = defaultGroupsDtos(5);
+      const collection = new GroupsCollection(groupsDtos);
+      await findAndUpdateGroupsLocalStorageService.groupLocalStorage.set(collection);
+
+      const requestedIds = [groupsDtos[0].id, groupsDtos[2].id];
+      jest.spyOn(findAndUpdateGroupsLocalStorageService.groupApiService, "findAll");
+
+      const result = await findAndUpdateGroupsLocalStorageService.findForLocalStorageByIds(requestedIds);
+
+      expect(findAndUpdateGroupsLocalStorageService.groupApiService.findAll).not.toHaveBeenCalled();
+      expect(result).toBeInstanceOf(GroupsCollection);
+      expect(result.items.map((g) => g.id)).toStrictEqual(requestedIds);
+    });
+
+    it("should fetch missing groups from the API, add them to local storage, and return the full requested collection", async () => {
+      expect.assertions(5);
+
+      const storedGroupsDtos = defaultGroupsDtos(3);
+      const storedCollection = new GroupsCollection(storedGroupsDtos);
+      await findAndUpdateGroupsLocalStorageService.groupLocalStorage.set(storedCollection);
+
+      const missingGroupDto = defaultGroupDto();
+      jest
+        .spyOn(findAndUpdateGroupsLocalStorageService.groupApiService, "findAll")
+        .mockResolvedValue({ body: [missingGroupDto] });
+
+      const requestedIds = [storedGroupsDtos[0].id, missingGroupDto.id];
+      const result = await findAndUpdateGroupsLocalStorageService.findForLocalStorageByIds(requestedIds);
+
+      expect(findAndUpdateGroupsLocalStorageService.groupApiService.findAll).toHaveBeenCalledTimes(1);
+      expect(findAndUpdateGroupsLocalStorageService.groupApiService.findAll).toHaveBeenCalledWith(
+        { groups_users: true, my_group_user: true },
+        { "has-id": [missingGroupDto.id] },
+      );
+      expect(result).toBeInstanceOf(GroupsCollection);
+      expect(result.items.map((g) => g.id)).toStrictEqual(requestedIds);
+
+      const storageValue = await findAndUpdateGroupsLocalStorageService.groupLocalStorage.get();
+      expect(storageValue.find((dto) => dto.id === missingGroupDto.id)).toBeDefined();
+    });
+
+    it("should throw if the parameter is not a valid array of UUIDs", async () => {
+      expect.assertions(1);
+
+      await expect(findAndUpdateGroupsLocalStorageService.findForLocalStorageByIds(["not-a-uuid"])).rejects.toThrow();
     });
   });
 });

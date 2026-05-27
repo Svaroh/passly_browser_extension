@@ -13,7 +13,10 @@
  */
 import GroupLocalStorage from "../local_storage/groupLocalStorage";
 import FindGroupsService from "./findGroupsService";
+import GroupApiService from "../api/group/groupApiService";
+import GroupEntity from "../../model/entity/group/groupEntity";
 import GroupsCollection from "../../model/entity/group/groupsCollection";
+import { assertArrayUUID } from "../../utils/assertions";
 
 const GROUPS_UPDATE_ALL_LS_LOCK_PREFIX = "GROUPS_UPDATE_LS_LOCK_";
 
@@ -30,6 +33,7 @@ class FindAndUpdateGroupsLocalStorageService {
     this.account = account;
     this.groupLocalStorage = new GroupLocalStorage(account);
     this.findGroupsService = new FindGroupsService(apiClientOptions);
+    this.groupApiService = new GroupApiService(apiClientOptions);
     this.lockKey = `${GROUPS_UPDATE_ALL_LS_LOCK_PREFIX}-${this.account.id}`;
   }
 
@@ -59,6 +63,41 @@ class FindAndUpdateGroupsLocalStorageService {
       // Return the updated resources collection from the API
       return updatedResourcesCollection;
     });
+  }
+
+  /**
+   * Retrieve groups from local storage for the given ids.
+   * If any requested group is missing from the local storage, the missing ones are fetched from the API,
+   * added to the local storage, and included in the returned collection.
+   *
+   * @param {Array<string>} groupIds The ids of the groups to retrieve.
+   * @returns {Promise<GroupsCollection>}
+   * @public
+   */
+  async findForLocalStorageByIds(groupIds) {
+    assertArrayUUID(groupIds);
+
+    const groupsDtos = (await this.groupLocalStorage.get()) ?? [];
+    const requestedIdsSet = new Set(groupIds);
+    const collection = new GroupsCollection(
+      groupsDtos.filter((dto) => requestedIdsSet.has(dto.id)),
+      { validate: false },
+    );
+
+    if (collection.length === groupIds.length) {
+      return collection;
+    }
+
+    const foundIdsSet = new Set(collection.items.map((entity) => entity.id));
+    const missingIds = groupIds.filter((id) => !foundIdsSet.has(id));
+    const response = await this.groupApiService.findAll(GroupLocalStorage.DEFAULT_CONTAIN, { "has-id": missingIds });
+    for (const groupDto of response.body ?? []) {
+      const groupEntity = new GroupEntity(groupDto);
+      await this.groupLocalStorage.addGroup(groupEntity);
+      collection.push(groupEntity);
+    }
+
+    return collection;
   }
 }
 
