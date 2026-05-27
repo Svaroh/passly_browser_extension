@@ -13,7 +13,7 @@
  */
 import FindAndUpdateGroupsLocalStorageService from "./findAndUpdateGroupsLocalStorageService";
 import GroupLocalStorage from "../local_storage/groupLocalStorage";
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
 import { assertArrayUUID } from "../../utils/assertions";
 
 /**

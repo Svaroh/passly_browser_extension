@@ -19,9 +19,9 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import GetOrFindGroupsService from "./getOrFindGroupsService";
 import FindAndUpdateGroupsLocalStorageService from "./findAndUpdateGroupsLocalStorageService";
 import FindGroupsService from "./findGroupsService";
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
 import GroupLocalStorage from "../local_storage/groupLocalStorage";
-import { defaultGroupsDtos } from "../../model/entity/group/groupsCollection.test.data";
+import { defaultGroupsDtos } from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection.test.data";
 
 describe("GetOrFindGroupsService", () => {
   let service, account;
