@@ -23,6 +23,7 @@ import GetServerKeyController from "../controller/auth/getServerKeyController";
 import ReplaceServerKeyController from "../controller/auth/replaceServerKeyController";
 import ReloadTabController from "../controller/tab/reloadTabController";
 import RedirectPostLoginController from "../controller/auth/redirectPostLoginController";
+import AuthLocalLogoutController from "../controller/auth/authLocalLogoutController";
 
 /**
  * Listens to the authentication events
@@ -62,6 +63,18 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.auth.logout", async (requestId, withRedirection) => {
     const controller = new AuthLogoutController(worker, requestId, apiClientOptions);
     await controller._exec(withRedirection);
+  });
+
+  /**
+   * Local Logout when user was signed-in
+   * but the server is now unavailable
+   *
+   * @listens passbolt.auth.logout-local
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.auth.local-logout", async (requestId) => {
+    const controller = new AuthLocalLogoutController(worker, requestId, apiClientOptions);
+    await controller._exec();
   });
 
   /*

@@ -92,11 +92,6 @@ import SaveOfflineSettingsController from "../controller/offline/saveOfflineSett
 import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
 import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
 import MarkItemOfflineUnavailableController from "../controller/offline/markItemOfflineUnavailableController";
-import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
-import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
-import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
-import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
-import MarkItemOfflineUnavailableController from "../controller/offline/markItemOfflineUnavailableController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
