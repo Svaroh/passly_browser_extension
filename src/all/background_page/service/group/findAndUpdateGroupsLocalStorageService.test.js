@@ -160,6 +160,35 @@ describe("FindAndUpdateGroupsLocalStorageService", () => {
       expect(storageValue.find((dto) => dto.id === missingGroupDto.id)).toBeDefined();
     });
 
+    it("should not call the API twice when two concurrent calls have the same missing group", async () => {
+      expect.assertions(3);
+
+      const storedGroupsDtos = defaultGroupsDtos(3);
+      const storedCollection = new GroupsCollection(storedGroupsDtos);
+      await findAndUpdateGroupsLocalStorageService.groupLocalStorage.set(storedCollection);
+
+      const missingGroupDto = defaultGroupDto();
+      let resolveApiCall;
+      const apiPromise = new Promise((resolve) => (resolveApiCall = resolve));
+
+      jest
+        .spyOn(findAndUpdateGroupsLocalStorageService.groupApiService, "findAll")
+        .mockImplementationOnce(() => apiPromise);
+
+      const requestedIds = [storedGroupsDtos[0].id, missingGroupDto.id];
+
+      const promise1 = findAndUpdateGroupsLocalStorageService.findForLocalStorageByIds(requestedIds);
+      const promise2 = findAndUpdateGroupsLocalStorageService.findForLocalStorageByIds(requestedIds);
+
+      resolveApiCall({ body: [missingGroupDto] });
+
+      const [result1, result2] = await Promise.all([promise1, promise2]);
+
+      expect(findAndUpdateGroupsLocalStorageService.groupApiService.findAll).toHaveBeenCalledTimes(1);
+      expect(result1.items.map((g) => g.id)).toStrictEqual(requestedIds);
+      expect(result2.items.map((g) => g.id)).toStrictEqual(requestedIds);
+    });
+
     it("should throw if the parameter is not a valid array of UUIDs", async () => {
       expect.assertions(1);
 

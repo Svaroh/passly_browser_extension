@@ -88,16 +88,32 @@ class FindAndUpdateGroupsLocalStorageService {
       return collection;
     }
 
-    const foundIdsSet = new Set(collection.items.map((entity) => entity.id));
-    const missingIds = groupIds.filter((id) => !foundIdsSet.has(id));
-    const response = await this.groupApiService.findAll(GroupLocalStorage.DEFAULT_CONTAIN, { "has-id": missingIds });
-    for (const groupDto of response.body ?? []) {
-      const groupEntity = new GroupEntity(groupDto);
-      await this.groupLocalStorage.addGroup(groupEntity);
-      collection.push(groupEntity);
-    }
+    // Missing groups need to be fetched from the API and stored.
+    // Use a lock to prevent concurrent writes to the local storage.
+    return await navigator.locks.request(this.lockKey, async () => {
+      // Re-check local storage after acquiring the lock, as another concurrent
+      // call may have already fetched and stored the missing groups.
+      const refreshedGroupsDtos = (await this.groupLocalStorage.get()) ?? [];
+      const refreshedCollection = new GroupsCollection(
+        refreshedGroupsDtos.filter((dto) => requestedIdsSet.has(dto.id)),
+        { validate: false },
+      );
 
-    return collection;
+      if (refreshedCollection.length === groupIds.length) {
+        return refreshedCollection;
+      }
+
+      const foundIdsSet = new Set(refreshedCollection.items.map((entity) => entity.id));
+      const missingIds = groupIds.filter((id) => !foundIdsSet.has(id));
+      const response = await this.groupApiService.findAll(GroupLocalStorage.DEFAULT_CONTAIN, { "has-id": missingIds });
+      for (const groupDto of response.body ?? []) {
+        const groupEntity = new GroupEntity(groupDto);
+        await this.groupLocalStorage.addGroup(groupEntity);
+        refreshedCollection.push(groupEntity);
+      }
+
+      return refreshedCollection;
+    });
   }
 }
 
