@@ -18,9 +18,9 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import GetOrFindGroupsUsersService from "./getOrFindGroupsUsersService";
 import FindGroupsService from "./findGroupsService";
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
 import GroupsUsersCollection from "passbolt-styleguide/src/shared/models/entity/groupUser/groupsUsersCollection";
-import { defaultGroupsDtos } from "../../model/entity/group/groupsCollection.test.data";
+import { defaultGroupsDtos } from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection.test.data";
 
 describe("GetOrFindGroupsUsersService", () => {
   let service, account;

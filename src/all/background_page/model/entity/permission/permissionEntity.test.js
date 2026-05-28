@@ -19,7 +19,7 @@ import {
   minimumPermissionDto,
 } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
 import UserEntity from "../user/userEntity";
-import GroupEntity from "../group/groupEntity";
+import GroupEntity from "passbolt-styleguide/src/shared/models/entity/group/groupEntity";
 
 describe("PermissionEntity", () => {
   describe("GroupEntity::getSchema", () => {

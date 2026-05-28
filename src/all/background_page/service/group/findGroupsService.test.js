@@ -15,7 +15,7 @@
 import User from "../../model/user";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import FindGroupsService from "./findGroupsService";
 import MockExtension from "../../../../../test/mocks/mockExtension";

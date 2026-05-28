@@ -17,7 +17,7 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import GetOrFindGroupsUsersController from "./getOrFindGroupsUsersController";
 import GroupsUsersCollection from "passbolt-styleguide/src/shared/models/entity/groupUser/groupsUsersCollection";
-import { defaultGroupsDtos } from "../../model/entity/group/groupsCollection.test.data";
+import { defaultGroupsDtos } from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();

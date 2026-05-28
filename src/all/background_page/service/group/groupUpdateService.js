@@ -16,7 +16,7 @@ import Keyring from "../../model/keyring";
 import EncryptMessageService from "../../service/crypto/encryptMessageService";
 import DecryptMessageService from "../../service/crypto/decryptMessageService";
 import GroupModel from "../../model/group/groupModel";
-import GroupEntity from "../../model/entity/group/groupEntity";
+import GroupEntity from "passbolt-styleguide/src/shared/models/entity/group/groupEntity";
 import GroupUpdateEntity from "../../model/entity/group/update/groupUpdateEntity";
 import i18n from "../../sdk/i18n";
 import SecretEntity from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity";

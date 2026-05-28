@@ -19,9 +19,9 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import GetOrFindGroupsService from "./getOrFindGroupsService";
 import FindAndUpdateGroupsLocalStorageService from "./findAndUpdateGroupsLocalStorageService";
 import FindGroupsService from "./findGroupsService";
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
 import GroupLocalStorage from "../local_storage/groupLocalStorage";
-import { defaultGroupsDtos } from "../../model/entity/group/groupsCollection.test.data";
+import { defaultGroupsDtos } from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection.test.data";
 
 describe("GetOrFindGroupsService", () => {
   let service, account;
@@ -118,7 +118,7 @@ describe("GetOrFindGroupsService", () => {
       const groups = await service.getOrFindByIds(requestedIds);
 
       expect(groups).toHaveLength(3);
-      expect(groups.ids.sort()).toEqual([...requestedIds].sort());
+      expect(groups.extract("id").sort()).toEqual([...requestedIds].sort());
     });
 
     it("returns an empty collection when none of the ids match.", async () => {
@@ -140,7 +140,7 @@ describe("GetOrFindGroupsService", () => {
       const groups = await service.getOrFindByIds(allIds);
 
       expect(groups).toHaveLength(groupsDto.length);
-      expect(groups.ids.sort()).toEqual([...allIds].sort());
+      expect(groups.extract("id").sort()).toEqual([...allIds].sort());
     });
 
     it("fetches from the API when the local storage is not initialized, then filters.", async () => {
@@ -155,7 +155,7 @@ describe("GetOrFindGroupsService", () => {
 
       expect(FindGroupsService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(1);
       expect(groups).toHaveLength(2);
-      expect(groups.ids.sort()).toEqual([...requestedIds].sort());
+      expect(groups.extract("id").sort()).toEqual([...requestedIds].sort());
     });
 
     it("should assert its parameter.", async () => {

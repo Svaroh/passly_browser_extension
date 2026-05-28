@@ -12,7 +12,7 @@
  * @since         5.7.0
  */
 
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
 import { assertBoolean, assertType } from "../../utils/assertions";
 import GroupApiService from "../api/group/groupApiService";
 import User from "../../model/user";

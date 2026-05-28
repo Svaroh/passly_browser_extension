@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-import GroupEntity from "../group/groupEntity";
+import GroupEntity from "passbolt-styleguide/src/shared/models/entity/group/groupEntity";
 import UserEntity from "../user/userEntity";
 import Validator from "validator";
 import EntityV2 from "passbolt-styleguide/src/shared/models/entity/abstract/entityV2";
