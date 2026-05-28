@@ -14,7 +14,7 @@
 import CalculatePermissionsChangesForMoveService from "./calculatePermissionsChangesForMoveService";
 import FolderEntity from "../../model/entity/folder/folderEntity";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
-import PermissionEntity from "../../model/entity/permission/permissionEntity";
+import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import {

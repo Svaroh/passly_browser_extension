@@ -11,9 +11,9 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-import PermissionEntity from "./permissionEntity";
+import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
 import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
-import PermissionsCollection from "./permissionsCollection";
+import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/permission/permissionsCollection";
 import {
   defaultPermissionDto,
   minimumPermissionDto,

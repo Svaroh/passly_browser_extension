@@ -12,7 +12,7 @@
  * @since         2.13.0
  */
 import * as assertEntityProperty from "passbolt-styleguide/test/assert/assertEntityProperty";
-import PermissionEntity from "./permissionEntity";
+import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
 import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
 import {
   defaultPermissionDto,
