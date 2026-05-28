@@ -19,7 +19,7 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import GetOrFindUsersService from "./getOrFindUsersService";
 import FindAndUpdateUsersLocalStorageService from "./findAndUpdateUsersLocalStorageService";
-import UsersCollection from "../../model/entity/user/usersCollection";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 import UserLocalStorage from "../local_storage/userLocalStorage";
 
 describe("GetOrFindUsersService", () => {

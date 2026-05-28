@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.13.0
  */
-import UsersCollection from "../../model/entity/user/usersCollection";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 import UserLocalStorage from "../local_storage/userLocalStorage";
 import FindAndUpdateUsersLocalStorageService from "./findAndUpdateUsersLocalStorageService";
 import { assertArrayUUID } from "../../utils/assertions";
