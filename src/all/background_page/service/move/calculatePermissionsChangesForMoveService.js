@@ -12,8 +12,8 @@
  * @since         5.13.0
  */
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
-import PermissionEntity from "../../model/entity/permission/permissionEntity";
-import PermissionsCollection from "../../model/entity/permission/permissionsCollection";
+import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
+import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/permission/permissionsCollection";
 
 class CalculatePermissionsChangesForMoveService {
   /**
