@@ -18,7 +18,7 @@ import {
   defaultGroupSearchResultDto,
   defaultUserSearchResultDto,
 } from "../../../model/entity/userAndGroupSearchResultEntity/userAndGroupSearchResultEntity.test.data";
-import ShareService from "./shareService";
+import ShareApiService from "./shareApiService";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 
 beforeEach(() => {
@@ -26,7 +26,7 @@ beforeEach(() => {
   enableFetchMocks();
 });
 
-describe("ShareService", () => {
+describe("ShareApiService", () => {
   describe("::searchUsersAndGroups", () => {
     it("should return a collection dto from the API", async () => {
       expect.assertions(1);
@@ -38,7 +38,7 @@ describe("ShareService", () => {
       fetch.doMockOnceIf(/share\/search-aros\.json/, () => mockApiResponse(expectedDto));
 
       const keyword = "test";
-      const service = new ShareService(defaultApiClientOptions());
+      const service = new ShareApiService(defaultApiClientOptions());
       const resultDto = await service.searchUsersAndGroups(keyword, contains);
 
       expect(resultDto).toStrictEqual(expectedDto);
@@ -61,7 +61,7 @@ describe("ShareService", () => {
       });
 
       const keyword = "test";
-      const service = new ShareService(defaultApiClientOptions());
+      const service = new ShareApiService(defaultApiClientOptions());
       const resultDto = await service.searchUsersAndGroups(keyword, contains);
 
       expect(resultDto).toStrictEqual(expectedDto);
@@ -70,7 +70,7 @@ describe("ShareService", () => {
     it("should throw an excpetion if the search keyword is empty", async () => {
       expect.assertions(1);
 
-      const service = new ShareService(defaultApiClientOptions());
+      const service = new ShareApiService(defaultApiClientOptions());
       try {
         await service.searchUsersAndGroups(1, {});
       } catch (e) {

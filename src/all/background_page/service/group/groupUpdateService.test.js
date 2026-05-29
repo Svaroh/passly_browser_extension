@@ -12,7 +12,7 @@
  * @since         4.10.1
  */
 import GroupUpdateService from "./groupUpdateService";
-import GroupEntity from "../../model/entity/group/groupEntity";
+import GroupEntity from "passbolt-styleguide/src/shared/models/entity/group/groupEntity";
 import GroupUpdateEntity from "../../model/entity/group/update/groupUpdateEntity";
 import GroupUpdateDryRunResultEntity from "../../model/entity/group/update/groupUpdateDryRunResultEntity";
 import EncryptMessageService from "../crypto/encryptMessageService";
