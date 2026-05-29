@@ -48,6 +48,17 @@ class PassboltEditionApiService extends AbstractService {
     const response = await this.apiClient.create(keyDto);
     return response.body;
   }
+
+  /**
+   * Delete the subscription on the API (downgrade PRO to CE).
+   *
+   * @throws {Error} if API call fails, service unreachable, etc.
+   * @returns {Promise<void>}
+   */
+  async delete() {
+    const url = this.apiClient.buildUrl(this.apiClient.baseUrl.toString());
+    await this.apiClient.fetchAndHandleResponse("DELETE", url);
+  }
 }
 
 export default PassboltEditionApiService;

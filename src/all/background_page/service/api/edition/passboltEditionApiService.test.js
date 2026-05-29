@@ -71,4 +71,29 @@ describe("PassboltEditionApiService", () => {
       expect(fetch).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("::delete", () => {
+    it("Should DELETE the subscription key and resolve", async () => {
+      expect.assertions(3);
+
+      fetch.doMockOnceIf(new RegExp(`/${PASSBOLT_EDITION_API_SERVICE_RESOURCE_NAME}\\.json`), async () =>
+        mockApiResponse({}),
+      );
+
+      await expect(service.delete()).resolves.not.toThrow();
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch.mock.calls[0][1].method).toEqual("DELETE");
+    });
+
+    it("Should throw an error if the response is not properly formatted", async () => {
+      expect.assertions(2);
+
+      fetch.doMockOnceIf(new RegExp(`/${PASSBOLT_EDITION_API_SERVICE_RESOURCE_NAME}\\.json`), async () => "wrong");
+
+      await expect(service.delete()).rejects.toBeInstanceOf(PassboltBadResponseError);
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
 });
