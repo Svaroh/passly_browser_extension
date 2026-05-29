@@ -72,7 +72,7 @@ describe("GetOrFindUsersService", () => {
       const result = await service.getOrFindByIds(requestedIds);
 
       expect(result).toHaveLength(3);
-      expect(result.ids.sort()).toEqual([...requestedIds].sort());
+      expect(result.extract("id").sort()).toEqual([...requestedIds].sort());
     });
 
     it("returns an empty collection when none of the ids match.", async () => {
@@ -97,7 +97,7 @@ describe("GetOrFindUsersService", () => {
 
       expect(FindAndUpdateUsersLocalStorageService.prototype.findAndUpdateAll).toHaveBeenCalledTimes(1);
       expect(result).toHaveLength(2);
-      expect(result.ids.sort()).toEqual([...requestedIds].sort());
+      expect(result.extract("id").sort()).toEqual([...requestedIds].sort());
     });
 
     it("should assert its parameter.", async () => {
