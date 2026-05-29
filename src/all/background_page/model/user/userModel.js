@@ -159,7 +159,7 @@ class UserModel {
     }
     const usersDto = (await this.userApiService.findAll(null, { "has-access": userId })).body ?? [];
     const usersCollection = new UsersCollection(usersDto);
-    return usersCollection.ids;
+    return usersCollection.extract("id");
   }
 
   /*
