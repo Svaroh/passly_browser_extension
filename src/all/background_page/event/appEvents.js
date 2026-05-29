@@ -74,6 +74,7 @@ import DeleteSecretRevisionsSettingsController from "../controller/secretRevisio
 import SaveSecretRevisionsSettingsController from "../controller/secretRevision/saveSecretRevisionsSettingsController";
 import FindExportPoliciesSettingsController from "../controller/exportPolicies/findExportPoliciesSettingsController";
 import CreateSubscriptionKeyController from "../controller/subscription/createSubscriptionKeyController";
+import DeleteSubscriptionKeyController from "../controller/subscription/deleteSubscriptionKeyController";
 import FindSubscriptionKeyController from "../controller/subscription/findSubscriptionKeyController";
 import UpdateSubscriptionKeyController from "../controller/subscription/updateSubscriptionKeyController";
 import FindTagsController from "../controller/tag/findTagsController";
@@ -782,6 +783,17 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.subscription.create", async (requestId, subscriptionKeyDto) => {
     const subscriptionController = new CreateSubscriptionKeyController(worker, requestId, apiClientOptions);
     await subscriptionController._exec(subscriptionKeyDto);
+  });
+
+  /**
+   * Delete the subscription (downgrade PRO to CE).
+   *
+   * @listens passbolt.subscription.downgrade
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.subscription.downgrade", async (requestId) => {
+    const subscriptionController = new DeleteSubscriptionKeyController(worker, requestId, apiClientOptions);
+    await subscriptionController._exec();
   });
 
   /**
