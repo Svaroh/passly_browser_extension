@@ -127,7 +127,9 @@ describe("KeepSessionAliveService", () => {
       const spyOnPassphraseStorage = jest
         .spyOn(PassphraseStorageService, "get")
         .mockImplementation(async () => "what a passphrase!");
-      const spyOnUserApiService = jest.spyOn(UserApiService.prototype, "keepSessionAlive").mockImplementation(() => true);
+      const spyOnUserApiService = jest
+        .spyOn(UserApiService.prototype, "keepSessionAlive")
+        .mockImplementation(() => true);
 
       await KeepSessionAliveService.handleKeepSessionAlive({
         name: "SessionKeepAlive",

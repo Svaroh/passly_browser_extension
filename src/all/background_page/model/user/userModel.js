@@ -208,7 +208,11 @@ class UserModel {
    * @public
    */
   async updateAvatar(userId, avatarUpdateEntity, ignoreInvalidEntity) {
-    const userDto = await this.userApiService.updateAvatar(userId, avatarUpdateEntity.file, avatarUpdateEntity.filename);
+    const userDto = await this.userApiService.updateAvatar(
+      userId,
+      avatarUpdateEntity.file,
+      avatarUpdateEntity.filename,
+    );
     return new UserEntity(userDto, { ignoreInvalidEntity });
   }
 
