@@ -11,8 +11,8 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.11.0
  */
-import UsersCollection from "../../model/entity/user/usersCollection";
 import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 
 /**
  * The service aims to find resources from the API.

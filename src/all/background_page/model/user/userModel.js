@@ -14,7 +14,7 @@
 import UserLocalStorage from "../../service/local_storage/userLocalStorage";
 import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
 import UserEntity from "../entity/user/userEntity";
-import UsersCollection from "../entity/user/usersCollection";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 import Validator from "validator";
 import RoleEntity from "passbolt-styleguide/src/shared/models/entity/role/roleEntity";
 import UserMeSessionStorageService from "../../service/sessionStorage/userMeSessionStorageService";
@@ -159,7 +159,7 @@ class UserModel {
     }
     const usersDto = (await this.userApiService.findAll(null, { "has-access": userId })).body ?? [];
     const usersCollection = new UsersCollection(usersDto);
-    return usersCollection.ids;
+    return usersCollection.extract("id");
   }
 
   /*

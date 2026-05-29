@@ -12,7 +12,7 @@
  * @since         5.13.0
  */
 import RoleEntity from "passbolt-styleguide/src/shared/models/entity/role/roleEntity";
-import UsersCollection from "../../model/entity/user/usersCollection";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 import OrganizationSettingsModel from "../../model/organizationSettings/organizationSettingsModel";
 import UserLocalStorage from "../local_storage/userLocalStorage";
 import FindUsersService from "./findUsersService";

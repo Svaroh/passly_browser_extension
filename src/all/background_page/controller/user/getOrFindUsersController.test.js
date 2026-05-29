@@ -16,7 +16,7 @@ import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import GetOrFindUsersController from "./getOrFindUsersController";
-import UsersCollection from "../../model/entity/user/usersCollection";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 import { defaultUsersDtos } from "passbolt-styleguide/src/shared/models/entity/user/usersCollection.test.data";
 
 beforeEach(() => {
