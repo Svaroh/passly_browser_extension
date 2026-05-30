@@ -68,6 +68,11 @@ describe("ParseAppUrlService", () => {
         domain: `${domain}/app/administration/account-recovery/`,
       },
       {
+        scenario: "Domain with trailing slash",
+        url: "https://passbolt.dev/app/passwords",
+        domain: `${domain}/`,
+      },
+      {
         scenario: "Hash on domain",
         url: "https://demo.passbolt.com/#hash",
         domain: `https://demo.passbolt.com`,
@@ -131,12 +136,12 @@ describe("ParseAppUrlService", () => {
   describe("ParseAppUrlService:getContext", () => {
     it(`should return regex based on trusted domain`, () => {
       expect.assertions(1);
-      expect(ParseAppUrlService.getRegex()).toBe("^https\\:\\/\\/passbolt\\.dev/?(/app.*)?(#.*)?$");
+      expect(ParseAppUrlService.getRegex()).toBe("^https\\:\\/\\/passbolt\\.dev/*(/app.*)?(#.*)?$");
     });
     it(`should escaped characters from domain`, () => {
       Config.write("user.settings.trustedDomain", "https://passbolt.dev/#/");
       expect.assertions(1);
-      expect(ParseAppUrlService.getRegex()).toBe("^https\\:\\/\\/passbolt\\.dev\\/\\#\\//?(/app.*)?(#.*)?$");
+      expect(ParseAppUrlService.getRegex()).toBe("^https\\:\\/\\/passbolt\\.dev\\/\\#/*(/app.*)?(#.*)?$");
     });
   });
 });

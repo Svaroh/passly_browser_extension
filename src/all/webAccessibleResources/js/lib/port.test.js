@@ -132,6 +132,22 @@ describe("Port", () => {
       }
     });
 
+    it("Should reject with a readable error when an error response has no details", async () => {
+      expect.assertions(1);
+
+      const portname = uuidv4();
+      const port = new Port(portname);
+      port.connect();
+      port._onMessage(JSON.stringify(["passbolt.port.ready"]));
+
+      const promise = port.request("request_message");
+      const requestId = Object.keys(port._listeners)[0];
+
+      port._onMessage(JSON.stringify([requestId, "ERROR"]));
+
+      await expect(promise).rejects.toThrow("The request failed without error details.");
+    });
+
     it("Should post a message on a disconnected port and wait to connect again before sending a message", async () => {
       expect.assertions(7);
 

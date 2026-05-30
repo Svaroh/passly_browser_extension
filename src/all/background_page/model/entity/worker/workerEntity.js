@@ -55,6 +55,10 @@ class WorkerEntity extends Entity {
           type: "string",
           enum: [this.STATUS_WAITING_CONNECTION, this.STATUS_CONNECTED, this.STATUS_RECONNECTING],
         },
+        url: {
+          type: "string",
+          nullable: true,
+        },
       },
     };
   }
@@ -107,6 +111,14 @@ class WorkerEntity extends Entity {
     return this._props.status;
   }
 
+  /**
+   * Get worker document URL.
+   * @returns {string|null}
+   */
+  get url() {
+    return this._props.url || null;
+  }
+
   /*
    * ==================================================
    * Setters
@@ -127,6 +139,14 @@ class WorkerEntity extends Entity {
   set status(status) {
     const propSchema = WorkerEntity.getSchema().properties.status;
     this._props.status = EntitySchema.validateProp("status", status, propSchema);
+  }
+
+  /**
+   * Set the document URL.
+   * @param {string|null} url
+   */
+  set url(url) {
+    this._props.url = url;
   }
 
   /*

@@ -60,7 +60,7 @@ describe("AuthBootstrap", () => {
     it("Should be able to attach auth bootstrap pagemod to browser frame", async () => {
       expect.assertions(1);
       // mock functions
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       const result = await AuthBootstrap.canBeAttachedTo({
         frameId: Pagemod.TOP_FRAME_ID,
@@ -71,12 +71,13 @@ describe("AuthBootstrap", () => {
 
     describe.each([
       { scenario: "No domain", url: "auth/login", frameId: Pagemod.TOP_FRAME_ID },
+      { scenario: "Intermediate locale redirect", url: "https://passbolt.dev/auth/login?redirect=%2F", frameId: Pagemod.TOP_FRAME_ID },
       { scenario: "Not top frame", url: "https://passbolt.dev/auth/login", frameId: 1 },
     ])("Should not be able to attach a pagemod to browser frame", (_props) => {
       it(`Should be able to attach a pagemod to browser frame: ${_props.scenario}`, async () => {
         expect.assertions(1);
         // mock functions
-        jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+        jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
         jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
         const result = await AuthBootstrap.canBeAttachedTo({ frameId: _props.frameId, url: _props.url });
         expect(result).toBeFalsy();

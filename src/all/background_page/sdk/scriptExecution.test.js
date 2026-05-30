@@ -41,6 +41,7 @@ describe("ScriptExecution", () => {
     it("Should insert JS files", async () => {
       expect.assertions(1);
       const mockedScriptingJS = jest.spyOn(browser.scripting, "executeScript");
+      mockedScriptingJS.mockResolvedValueOnce([]);
       const scriptExecution = new ScriptExecution(2);
       const files = ["filename.js", "filename2.js"];
 
@@ -63,6 +64,7 @@ describe("ScriptExecution", () => {
     it("Should insert CSS file", async () => {
       expect.assertions(1);
       const mockedScriptingCSS = jest.spyOn(browser.scripting, "insertCSS");
+      mockedScriptingCSS.mockResolvedValueOnce();
       const scriptExecution = new ScriptExecution(3);
       const files = ["filename.css", "filename2.css"];
 

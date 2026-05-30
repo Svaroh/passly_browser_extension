@@ -14,6 +14,7 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import QRCode from "qrcode";
 import {
+  buildBrowserFirstLoginAuthUrl,
   buildBrowserFirstLoginDeepLink,
   BrowserFirstLoginEntrypoint,
   createBrowserFirstLoginQrCode,
@@ -109,6 +110,14 @@ describe("MobileTransferEntrypoint", () => {
     );
   });
 
+  it("Should build the browser first-login HTTPS auth URL.", () => {
+    expect.assertions(1);
+
+    const url = buildBrowserFirstLoginAuthUrl("https://pass.66ton99.org.ua");
+
+    expect(url).toBe("https://pass.66ton99.org.ua/auth/login?redirect=%2F");
+  });
+
   it("Should render the browser first-login QR component without private-key wording.", () => {
     expect.assertions(2);
 
@@ -121,7 +130,7 @@ describe("MobileTransferEntrypoint", () => {
   });
 
   it("Should translate first-login messages to Ukrainian.", () => {
-    expect.assertions(3);
+    expect.assertions(4);
 
     expect(translateMobileTransferMessage("browserFirstLoginGeneratingQrCode", {}, "uk-UA")).toBe(
       "Створення QR-коду...",
@@ -130,6 +139,9 @@ describe("MobileTransferEntrypoint", () => {
     expect(translateMobileTransferError(new Error("The browser first-login request has expired."), "uk-UA")).toBe(
       "Запит першого входу в браузері застарів.",
     );
+    expect(
+      translateMobileTransferError(new Error("The browser first-login private key payload is invalid."), "uk-UA"),
+    ).toBe("Не вдалося прочитати приватний ключ із телефону. Оновіть QR-код і спробуйте ще раз.");
   });
 
   it("Should identify expired first-login requests.", () => {

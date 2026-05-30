@@ -22,6 +22,7 @@ import BuildApiClientOptionsService from "../service/account/buildApiClientOptio
 import { RememberMeEvents } from "../event/rememberMeEvents";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import isMissingAccountError from "../service/account/isMissingAccountError";
+import { AccountEvents } from "../event/accountEvents";
 
 class Auth extends Pagemod {
   /**
@@ -44,6 +45,7 @@ class Auth extends Pagemod {
       OrganizationSettingsEvents,
       LocaleEvents,
       RememberMeEvents,
+      AccountEvents,
     ];
   }
 

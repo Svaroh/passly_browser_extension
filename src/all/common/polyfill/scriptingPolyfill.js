@@ -27,24 +27,18 @@ class Scripting {
    * @return {Promise<*|void>}
    */
   async executeScript(options) {
-    return options.func ? await this._insertJsFunc(options) : this._insertJsFiles(options);
+    return options.func ? await this._insertJsFunc(options) : await this._insertJsFiles(options);
   }
 
   /**
    * Insert the given CSS file
    * @param {CSSInjection} options
    */
-  insertCSS(options) {
-    let callback = null;
+  async insertCSS(options) {
     const fileArray = options.files;
-
-    for (let i = fileArray.length - 1; i >= 0; --i) {
+    for (let i = 0; i < fileArray.length; i++) {
       const info = { file: fileArray[i], runAt: "document_end", frameId: options.target?.frameIds[0] };
-      callback = this._createCssCallback(options.target.tabId, info, callback);
-    }
-
-    if (callback) {
-      callback();
+      await this._insertCssFile(options.target.tabId, info);
     }
   }
 
@@ -56,8 +50,17 @@ class Scripting {
    * @returns {function}
    * @private
    */
-  _createJsCallback(tabId, info, callback) {
-    return () => chrome.tabs.executeScript(tabId, info, callback);
+  _insertJsFile(tabId, info) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.executeScript(tabId, info, (result) => {
+        const error = chrome.runtime.lastError;
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(result);
+      });
+    });
   }
 
   /**
@@ -68,8 +71,17 @@ class Scripting {
    * @returns {function}
    * @private
    */
-  _createCssCallback(tabId, info, callback) {
-    return () => chrome.tabs.insertCSS(tabId, info, callback);
+  _insertCssFile(tabId, info) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.insertCSS(tabId, info, () => {
+        const error = chrome.runtime.lastError;
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
   }
 
   /**
@@ -77,18 +89,14 @@ class Scripting {
    * @param {ScriptInjection} options
    * @private
    */
-  _insertJsFiles(options) {
-    let callback = null;
+  async _insertJsFiles(options) {
     const fileArray = options.files;
-
-    for (let i = fileArray.length - 1; i >= 0; --i) {
+    const results = [];
+    for (let i = 0; i < fileArray.length; i++) {
       const info = { file: fileArray[i], runAt: "document_end", frameId: options.target?.frameIds[0] };
-      callback = this._createJsCallback(options.target.tabId, info, callback);
+      results.push(await this._insertJsFile(options.target.tabId, info));
     }
-
-    if (callback) {
-      callback();
-    }
+    return results.flat();
   }
 
   /**

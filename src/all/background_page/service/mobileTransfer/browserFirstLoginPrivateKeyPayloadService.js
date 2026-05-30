@@ -64,11 +64,17 @@ class BrowserFirstLoginPrivateKeyPayloadService {
     }
 
     const payload = JSON.parse(encryptedPayload);
-    if (payload.v !== PAYLOAD_VERSION || payload.alg !== PAYLOAD_ALGORITHM || !payload.iv || !payload.ciphertext) {
+    const version = payload.v ?? PAYLOAD_VERSION;
+    const algorithm = payload.alg ?? PAYLOAD_ALGORITHM;
+    if (version !== PAYLOAD_VERSION || algorithm !== PAYLOAD_ALGORITHM || !payload.iv || !payload.ciphertext) {
       throw new Error("The browser first-login private key payload is invalid.");
     }
 
-    return payload;
+    return {
+      ...payload,
+      v: version,
+      alg: algorithm,
+    };
   }
 
   /**

@@ -93,12 +93,34 @@ describe("Scripting", () => {
         },
         world: "ISOLATED",
       };
+      jest.spyOn(chrome.tabs, "executeScript").mockImplementation((tabId, info, callback) => callback([]));
 
-      browser.scripting.executeScript(option);
+      await browser.scripting.executeScript(option);
 
       expect(mockedScriptingJS).toHaveBeenCalledWith(option);
       const info = { file: option.files[0], runAt: "document_end", frameId: 0 };
       expect(browser.tabs.executeScript).toHaveBeenCalledWith(1, info, expect.anything());
+    });
+
+    it("Should reject when JS file insertion fails", async () => {
+      expect.assertions(1);
+
+      const option = {
+        files: ["filename.js"],
+        target: {
+          tabId: 1,
+          frameIds: [0],
+        },
+        world: "ISOLATED",
+      };
+      const error = new Error("Cannot access contents of the page");
+      jest.spyOn(chrome.tabs, "executeScript").mockImplementationOnce((tabId, info, callback) => {
+        chrome.runtime.lastError = error;
+        callback();
+        chrome.runtime.lastError = null;
+      });
+
+      await expect(browser.scripting.executeScript(option)).rejects.toStrictEqual(error);
     });
   });
 
@@ -114,12 +136,13 @@ describe("Scripting", () => {
           frameIds: [0],
         },
       };
+      jest.spyOn(chrome.tabs, "insertCSS").mockImplementation((tabId, info, callback) => callback());
 
-      browser.scripting.insertCSS(option);
+      await browser.scripting.insertCSS(option);
 
       expect(mockedScriptingCSS).toHaveBeenCalledWith(option);
       const info = { file: option.files[0], runAt: "document_end", frameId: 0 };
-      expect(browser.tabs.insertCSS).toHaveBeenCalledWith(1, info, null);
+      expect(browser.tabs.insertCSS).toHaveBeenCalledWith(1, info, expect.anything());
     });
   });
 });

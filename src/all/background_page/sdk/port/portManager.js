@@ -106,6 +106,16 @@ class PortManager {
     if (worker.frameId === null) {
       worker.frameId = sender.frameId;
     }
+
+    if (
+      worker.frameId === 0 &&
+      worker.url &&
+      worker.tabId === sender.tab.id &&
+      worker.url === sender.url
+    ) {
+      worker.frameId = sender.frameId;
+    }
+
     return worker.tabId === sender.tab.id && worker.frameId === sender.frameId;
   }
 
@@ -120,6 +130,9 @@ class PortManager {
     this.registerPort(portWrapper);
     await PagemodManager.attachEventToPort(portWrapper, name);
     portWrapper.emit("passbolt.port.ready");
+    console.debug(
+      `PortManager::registerAndAttachEvent: connected "${name}" with port=${port.name}, tabUrl=${port.sender?.tab?.url || port.sender?.url}, tabId=${port.sender?.tab?.id}, frameId=${port.sender?.frameId}`,
+    );
   }
 
   /**
@@ -161,7 +174,7 @@ class PortManager {
    * @returns {boolean}
    */
   isPortExist(id) {
-    return Boolean(this._ports[id]);
+    return Boolean(this._ports[id]?.isConnected());
   }
 
   /**

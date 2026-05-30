@@ -23,10 +23,15 @@ jest.mock("./biometricAuthRuntimeService", () => ({
 }));
 
 describe("BiometricAuthFormService", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await browser.storage.local.clear();
     BiometricAuthRuntimeService.createConfiguration.mockResolvedValue({ credentialId: "credential-id" });
     BiometricAuthRuntimeService.isUnavailableError.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe("BiometricAuthFormService::createBiometricAwarePort", () => {
@@ -113,6 +118,162 @@ describe("BiometricAuthFormService", () => {
 
       await expect(biometricAwarePort.request("passbolt.auth.login", "passphrase", false)).rejects.toBe(expectedError);
       expect(BiometricAuthRuntimeService.createConfiguration).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("BiometricAuthFormService::preparePasskeyAutoLoginUrl", () => {
+    it("Should store a one-time token and add it to the login URL.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(1000);
+      jest.spyOn(BiometricAuthFormService, "generatePasskeyAutoLoginToken").mockReturnValue("token");
+      const url = new URL("https://passbolt.test/auth/login?redirect=%2F&locale=uk-UA");
+
+      await BiometricAuthFormService.preparePasskeyAutoLoginUrl(browser.storage, url);
+
+      expect(url.toString()).toBe(
+        "https://passbolt.test/auth/login?redirect=%2F&locale=uk-UA&passbolt_auto_passkey=token",
+      );
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+    });
+  });
+
+  describe("BiometricAuthFormService::consumePasskeyAutoLoginRequest", () => {
+    it("Should consume a valid one-time token.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(2000);
+      await browser.storage.local.set({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+      const location = new URL("https://passbolt.test/auth/login?passbolt_auto_passkey=token");
+
+      await expect(BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, location)).resolves.toBe(
+        true,
+      );
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({});
+    });
+
+    it("Should reject a token that does not match the stored request.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(2000);
+      await browser.storage.local.set({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+      const location = new URL("https://passbolt.test/auth/login?passbolt_auto_passkey=wrong-token");
+
+      await expect(BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, location)).resolves.toBe(
+        false,
+      );
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+    });
+
+    it("Should reject pending requests without a URL token by default.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(2000);
+      await browser.storage.local.set({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+      const location = new URL("moz-extension://extension-id/webAccessibleResources/passbolt-iframe-login.html");
+
+      await expect(BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, location)).resolves.toBe(
+        false,
+      );
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+    });
+
+    it("Should consume a pending request without a URL token when the expected Passbolt origin matches.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(2000);
+      await browser.storage.local.set({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+      const location = new URL("moz-extension://extension-id/webAccessibleResources/passbolt-iframe-login.html");
+
+      await expect(
+        BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, location, {
+          allowPendingRequestWithoutUrlToken: true,
+          expectedOrigin: "https://passbolt.test/auth/login",
+        }),
+      ).resolves.toBe(true);
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({});
+    });
+
+    it("Should reject a pending request without a URL token when the expected Passbolt origin differs.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(2000);
+      await browser.storage.local.set({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+      const location = new URL("moz-extension://extension-id/webAccessibleResources/passbolt-iframe-login.html");
+
+      await expect(
+        BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, location, {
+          allowPendingRequestWithoutUrlToken: true,
+          expectedOrigin: "https://attacker.test",
+        }),
+      ).resolves.toBe(false);
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+    });
+
+    it("Should reject and clear an expired token.", async () => {
+      expect.assertions(2);
+      jest.spyOn(Date, "now").mockReturnValue(121001);
+      await browser.storage.local.set({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "token",
+          origin: "https://passbolt.test",
+          created: 1000,
+        },
+      });
+      const location = new URL("https://passbolt.test/auth/login?passbolt_auto_passkey=token");
+
+      await expect(BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, location)).resolves.toBe(
+        false,
+      );
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({});
     });
   });
 });

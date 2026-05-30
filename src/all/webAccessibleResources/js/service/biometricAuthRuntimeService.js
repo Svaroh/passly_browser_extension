@@ -29,6 +29,9 @@ class BiometricAuthRuntimeService {
    */
   static async getRpId(port) {
     if (!this.usePassboltPageOrigin()) {
+      if (["http:", "https:"].includes(globalThis.location?.protocol)) {
+        return BiometricAuthClientService.normalizeRpId(globalThis.location?.hostname, null);
+      }
       return null;
     }
 
@@ -78,6 +81,30 @@ class BiometricAuthRuntimeService {
       return port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
     }
     return BiometricAuthClientService.unlock(configuration, rpId);
+  }
+
+  /**
+   * Return only PassKey configurations that were created for the current Passbolt HTTPS origin.
+   * Older Chrome extension-origin configurations cannot be used from the Passbolt page origin.
+   * @param {Port} port The extension port.
+   * @param {object|null} configuration The stored encrypted biometric auth configuration.
+   * @returns {Promise<object|null>}
+   */
+  static async getCompatibleConfiguration(port, configuration) {
+    if (!configuration) {
+      return null;
+    }
+
+    const rpId = await this.getRpId(port);
+    if (rpId === null) {
+      return configuration.rp_id ? null : configuration;
+    }
+
+    if (configuration.rp_id !== rpId) {
+      return null;
+    }
+
+    return configuration;
   }
 
   /**

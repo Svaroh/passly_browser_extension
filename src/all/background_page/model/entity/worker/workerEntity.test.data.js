@@ -20,6 +20,7 @@ export const readWorker = (data = {}) => {
     name: "worker",
     tabId: 1,
     frameId: 0,
+    url: "https://passbolt.dev",
     status: WorkerEntity.STATUS_CONNECTED,
   };
   return Object.assign(defaultObject, data);

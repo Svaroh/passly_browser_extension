@@ -14,6 +14,7 @@
 import storage from "../../sdk/storage";
 import { Config } from "../../model/config";
 import GetLegacyAccountService from "./getLegacyAccountService";
+import isMissingAccountError from "./isMissingAccountError";
 
 const ACTIVE_ACCOUNT_KEY = "active-account";
 
@@ -29,12 +30,29 @@ class GetActiveAccountService {
       // Check if the storage have some data
       if (Object.keys(storage._data).length === 0) {
         // Fix the initialization of the storage after an update
-        await storage.init();
-        // Initialization of the config to get the user information
-        Config.init();
+        await this.initializeLegacyStorage();
       }
-      return await GetLegacyAccountService.get(options);
+      try {
+        return await GetLegacyAccountService.get(options);
+      } catch (error) {
+        if (!isMissingAccountError(error)) {
+          throw error;
+        }
+
+        await this.initializeLegacyStorage();
+        return await GetLegacyAccountService.get(options);
+      }
     });
+  }
+
+  /**
+   * Initialize the legacy storage cache and the config model.
+   * @returns {Promise<void>}
+   */
+  async initializeLegacyStorage() {
+    await storage.init();
+    // Initialization of the config to get the user information
+    Config.init();
   }
 }
 

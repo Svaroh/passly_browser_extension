@@ -46,4 +46,21 @@ describe("GetActiveAccountService", () => {
     expect(account).toStrictEqual(account2);
     expect(account3.roleName).toBeNull();
   });
+
+  it("GetActiveAccountService:get should reload legacy storage and retry when the active account is not initialized", async () => {
+    expect.assertions(3);
+    const expectedAccount = { user_id: "test-user-id" };
+
+    jest
+      .spyOn(GetLegacyAccountService, "get")
+      .mockRejectedValueOnce(new Error("The user is not set"))
+      .mockResolvedValueOnce(expectedAccount);
+    jest.spyOn(getActiveAccountService, "initializeLegacyStorage").mockResolvedValue();
+
+    const account = await getActiveAccountService.get();
+
+    expect(account).toStrictEqual(expectedAccount);
+    expect(getActiveAccountService.initializeLegacyStorage).toHaveBeenCalledTimes(1);
+    expect(GetLegacyAccountService.get).toHaveBeenCalledTimes(2);
+  });
 });

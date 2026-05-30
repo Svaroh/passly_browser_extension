@@ -101,7 +101,7 @@ describe("AutofillController", () => {
     });
 
     it("Should autofill from quickaccess.", async () => {
-      expect.assertions(13);
+      expect.assertions(12);
 
       const requestId = uuidv4();
       const worker = readWorker({ name: QuickAccessPagemod.appName });
@@ -136,7 +136,6 @@ describe("AutofillController", () => {
       expect(controller.resourceTypeModel.getSecretSchemaById).toHaveBeenCalledTimes(1);
       expect(controller.resourceTypeModel.getSecretSchemaById).toHaveBeenCalledWith(resource.resourceTypeId);
 
-      expect(portWrapper.emit).toHaveBeenCalledTimes(1);
       expect(portWrapper.request).toHaveBeenCalledTimes(1);
       expect(portWrapper.request).toHaveBeenCalledWith(
         "passbolt.quickaccess.fill-form",

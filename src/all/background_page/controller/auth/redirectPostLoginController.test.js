@@ -60,6 +60,25 @@ describe("RedirectPostLoginController", () => {
       expect(chrome.tabs.update).toHaveBeenCalledWith(worker.tab.id, { url: `${account.domain}/app/administration` });
     });
 
+    it("should redirect without a double slash if the account domain has a trailing slash", async () => {
+      expect.assertions(2);
+
+      const worker = {
+        tab: {
+          id: 42,
+          url: "https://www.passbolt.com/test?redirect=/",
+        },
+      };
+      const account = new AccountEntity({ ...defaultAccountDto(), domain: "https://passbolt.dev/" });
+      const controller = new RedirectPostLoginController(worker, null, account);
+      jest.spyOn(chrome.tabs, "update").mockImplementation(() => {});
+
+      await controller.exec();
+
+      expect(chrome.tabs.update).toHaveBeenCalledTimes(1);
+      expect(chrome.tabs.update).toHaveBeenCalledWith(worker.tab.id, { url: "https://passbolt.dev/" });
+    });
+
     it("should not redirect to the given URL if it is not valid", async () => {
       expect.assertions(2);
 
@@ -77,6 +96,29 @@ describe("RedirectPostLoginController", () => {
 
       expect(chrome.tabs.update).toHaveBeenCalledTimes(1);
       expect(chrome.tabs.update).toHaveBeenCalledWith(worker.tab.id, { url: account.domain });
+    });
+
+    it("should emit success before redirecting the tab", async () => {
+      expect.assertions(3);
+
+      const worker = {
+        tab: {
+          id: 42,
+          url: "https://www.passbolt.com/test?redirect=/",
+        },
+        port: {
+          emit: jest.fn(),
+        },
+      };
+      const account = new AccountEntity(defaultAccountDto());
+      const controller = new RedirectPostLoginController(worker, "request-id", account);
+      jest.spyOn(chrome.tabs, "update").mockImplementation(() => {});
+
+      await controller._exec();
+
+      expect(worker.port.emit).toHaveBeenCalledWith("request-id", "SUCCESS");
+      expect(chrome.tabs.update).toHaveBeenCalledWith(worker.tab.id, { url: `${account.domain}/` });
+      expect(worker.port.emit.mock.invocationCallOrder[0]).toBeLessThan(chrome.tabs.update.mock.invocationCallOrder[0]);
     });
   });
 });

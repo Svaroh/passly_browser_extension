@@ -28,6 +28,7 @@ import PostLoginService from "../../service/auth/postLoginService";
 import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
 import AccountTemporarySessionStorageService from "../../service/sessionStorage/accountTemporarySessionStorageService";
 import KeepSessionAliveService from "../../service/session_storage/keepSessionAliveService";
+import UserAlreadyLoggedInError from "../../error/userAlreadyLoggedInError";
 
 beforeEach(async () => {
   enableFetchMocks();
@@ -124,6 +125,29 @@ describe("AuthLoginController", () => {
       const promiseInvalidTypeParameter = controller.exec("passphrase", 42);
       await expect(promiseInvalidTypeParameter).rejects.toThrow("The rememberMe should be a boolean.");
     }, 10000);
+
+    it("Should remember the passphrase if the user is already logged in.", async () => {
+      expect.assertions(3);
+      mockOrganisationSettings(false);
+
+      const account = new AccountEntity(defaultAccountDto());
+      const controller = new AuthLoginController({ tab: { id: 1 } }, null, defaultApiClientOptions(), account);
+
+      jest
+        .spyOn(controller.authVerifyLoginChallengeService, "verifyAndValidateLoginChallenge")
+        .mockImplementationOnce(() => {
+          throw new UserAlreadyLoggedInError();
+        });
+      jest.spyOn(PassphraseStorageService, "set").mockImplementation(async () => {});
+      jest.spyOn(PostLoginService, "exec").mockImplementation(async () => {});
+      jest.spyOn(KeepSessionAliveService, "start").mockImplementation(async () => {});
+
+      await controller.exec(passphrase, false);
+
+      expect(PassphraseStorageService.set).toHaveBeenCalledWith(passphrase, 60);
+      expect(KeepSessionAliveService.start).not.toHaveBeenCalled();
+      expect(PostLoginService.exec).not.toHaveBeenCalled();
+    });
 
     it("Should sign-in the user and not generate an SSO kit if SSO organization settings is disabled.", async () => {
       expect.assertions(1);

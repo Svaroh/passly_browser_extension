@@ -32,6 +32,7 @@ describe("AppBootstrap", () => {
   beforeEach(async () => {
     jest.resetModules();
     jest.clearAllMocks();
+    jest.spyOn(AppBootstrap, "sleep").mockImplementation(() => Promise.resolve());
   });
 
   describe("AppBootstrap::injectFile", () => {
@@ -109,6 +110,27 @@ describe("AppBootstrap", () => {
       const constraint = await AppBootstrap.canBeAttachedTo({ frameId: 0 });
       // expectations
       expect(constraint).toBeFalsy();
+    });
+
+    it("Should retry auth status before rejecting the app bootstrap pagemod", async () => {
+      expect.assertions(4);
+      // mock functions
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest
+        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+        .mockResolvedValueOnce(userLoggedOutAuthStatus())
+        .mockResolvedValueOnce(userLoggedInAuthStatus());
+      jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
+      // process
+      const constraint = await AppBootstrap.canBeAttachedTo({
+        frameId: Pagemod.TOP_FRAME_ID,
+        url: "https://passbolt.dev/app/passwords",
+      });
+      // expectations
+      expect(constraint).toBeTruthy();
+      expect(CheckAuthStatusService.prototype.checkAuthStatus).toHaveBeenCalledTimes(2);
+      expect(CheckAuthStatusService.prototype.checkAuthStatus).toHaveBeenCalledWith(true);
+      expect(AppBootstrap.sleep).toHaveBeenCalledWith(100);
     });
   });
 

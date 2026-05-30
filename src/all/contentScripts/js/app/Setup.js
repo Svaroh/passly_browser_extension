@@ -22,7 +22,7 @@ import MobileTransferImportPageService from "../service/mobileTransferImportPage
 
 async function main() {
   // Port connection
-  const port = new Port(self.portname);
+  const port = new Port(self.portname || document.documentElement.getAttribute("data-passbolt-portname"));
   // Emit a success if the port is still connected
   port.on("passbolt.port.check", (requestId) => port.emit(requestId, "SUCCESS"));
   await port.connect();

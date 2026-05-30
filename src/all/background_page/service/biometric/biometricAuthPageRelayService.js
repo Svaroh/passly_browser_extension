@@ -18,6 +18,7 @@ import User from "../../model/user";
 
 const PAGE_WORKER_RETRY_DELAY = 100;
 const PAGE_WORKER_RETRY_COUNT = 100;
+const PAGE_WORKER_OPENED_TAB_RETRY_COUNT = 50;
 
 class BiometricAuthPageRelayService {
   /**
@@ -45,8 +46,20 @@ class BiometricAuthPageRelayService {
       return pageWorker;
     }
 
+    if (!this.canOpenTrustedDomainTab(worker)) {
+      const bootstrappedPageWorker = await this.waitForPageWorker(tabIds, workerNames);
+      if (bootstrappedPageWorker) {
+        return bootstrappedPageWorker;
+      }
+      throw new Error("Could not find a Passbolt page worker for biometric authentication.");
+    }
+
     const tab = await this.openTrustedDomainTab();
-    return this.waitForPageWorker(tab.id, workerNames);
+    const openedTabPageWorker = await this.waitForPageWorker([tab.id], workerNames, PAGE_WORKER_OPENED_TAB_RETRY_COUNT);
+    if (openedTabPageWorker) {
+      return openedTabPageWorker;
+    }
+    throw new Error("Could not find a Passbolt page worker for biometric authentication.");
   }
 
   /**
@@ -60,8 +73,8 @@ class BiometricAuthPageRelayService {
       for (const workerName of workerNames) {
         try {
           return await WorkerService.get(workerName, tabId);
-        } catch (error) {
-          console.debug(error);
+        } catch {
+          // The relay probes several candidate workers while a page is still bootstrapping.
         }
       }
     }
@@ -83,15 +96,15 @@ class BiometricAuthPageRelayService {
    * @param {string[]} workerNames The candidate worker names.
    * @returns {Promise<object>}
    */
-  static async waitForPageWorker(tabId, workerNames) {
-    for (let retry = 0; retry < PAGE_WORKER_RETRY_COUNT; retry++) {
-      const pageWorker = await this.findPageWorker([tabId], workerNames);
+  static async waitForPageWorker(tabIds, workerNames, retryCount = PAGE_WORKER_RETRY_COUNT) {
+    for (let retry = 0; retry < retryCount; retry++) {
+      const pageWorker = await this.findPageWorker(tabIds, workerNames);
       if (pageWorker) {
         return pageWorker;
       }
       await this.sleep(PAGE_WORKER_RETRY_DELAY);
     }
-    throw new Error("Could not find a Passbolt page worker for biometric authentication.");
+    return null;
   }
 
   /**
@@ -150,6 +163,16 @@ class BiometricAuthPageRelayService {
       return ["AccountRecoveryBootstrap", "AuthBootstrap", "AppBootstrap", "RecoverBootstrap"];
     }
     return ["AuthBootstrap", "AppBootstrap", "RecoverBootstrap", "AccountRecoveryBootstrap"];
+  }
+
+  /**
+   * Whether the relay may open a trusted-domain tab to get a HTTPS page origin.
+   * Login-family apps are already embedded in a Passbolt page and must wait for their own bootstrap worker.
+   * @param {object} worker The requester worker.
+   * @returns {boolean}
+   */
+  static canOpenTrustedDomainTab(worker) {
+    return !["Auth", "Recover", "AccountRecovery"].includes(worker?.name);
   }
 }
 
