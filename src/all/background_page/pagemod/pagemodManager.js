@@ -64,7 +64,12 @@ class PagemodManager {
    */
   async exec(frameDetails) {
     const pagemod = await this.getPagemodThatCanBeAttachedTo(frameDetails);
-    await pagemod?.injectFiles(frameDetails.tabId, frameDetails.frameId);
+    if (pagemod) {
+      console.debug(`PagemodManager::exec: selected "${pagemod.appName}" for ${frameDetails.url}.`);
+    } else {
+      console.debug(`PagemodManager::exec: no pagemod selected for ${frameDetails.url}.`);
+    }
+    await pagemod?.injectFiles(frameDetails.tabId, frameDetails.frameId, frameDetails.url);
   }
 
   /**

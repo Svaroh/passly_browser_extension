@@ -77,10 +77,17 @@ class AuthBootstrap extends Pagemod {
    */
   async assertUrlAttachConstraint(frameDetails) {
     try {
-      await GetActiveAccountService.get();
-      return ParseAuthUrlService.test(frameDetails.url);
+      const account = await GetActiveAccountService.get();
+      const canAttach =
+        ParseAuthUrlService.testForDomain(frameDetails.url, account.domain) &&
+        !ParseAuthUrlService.isAwaitingLocaleRedirect(frameDetails.url, account.domain);
+      if (!canAttach) {
+        console.debug(`AuthBootstrap cannot be attached to URL: ${frameDetails.url}`);
+      }
+      return canAttach;
     } catch (error) {
       if (isMissingAccountError(error)) {
+        console.debug("AuthBootstrap cannot be attached because no active account is configured.");
         return false;
       }
       console.log(error);

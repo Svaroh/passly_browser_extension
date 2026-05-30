@@ -16,7 +16,7 @@ import Port from "../../../webAccessibleResources/js/lib/port";
 
 async function main() {
   // Make the port object as a global variable to use it directly (TODO the port could be use in props)
-  self.port = new Port(self.portname);
+  self.port = new Port(self.portname || document.documentElement.getAttribute("data-passbolt-portname"));
   // Emit a success if the port is still connected
   port.on("passbolt.port.check", (requestId) => self.port.emit(requestId, "SUCCESS"));
   await self.port.connect();

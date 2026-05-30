@@ -59,6 +59,17 @@ const checkAndProcessIfUserAuthenticated = async () => {
 
 main();
 
+browser.runtime.onMessage.addListener((message, sender) => {
+  if (message?.name === "passbolt.content-script.bootstrap-diagnostic") {
+    console.debug("Content script bootstrap diagnostic:", {
+      ...message,
+      tabId: sender?.tab?.id,
+      frameId: sender?.frameId,
+      senderUrl: sender?.url,
+    });
+  }
+});
+
 /**
  * On installed the extension, add first install in the url tab of setup or recover
  */

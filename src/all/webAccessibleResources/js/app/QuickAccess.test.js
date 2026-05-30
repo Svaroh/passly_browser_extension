@@ -10,7 +10,12 @@
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
  */
-import { ensureQuickAccessConfigured } from "./QuickAccess";
+import {
+  ensureQuickAccessConfigured,
+  openPassboltLoginPageForPasskey,
+  shouldOpenPassboltPageForQuickAccessPasskey,
+} from "./QuickAccess";
+import BiometricAuthFormService from "../service/biometricAuthFormService";
 
 describe("QuickAccess", () => {
   describe("ensureQuickAccessConfigured", () => {
@@ -53,6 +58,60 @@ describe("QuickAccess", () => {
       expect(port.request).toHaveBeenCalledWith("passbolt.addon.is-configured");
       expect(port.request).toHaveBeenCalledWith("passbolt.tabs.open-website-getting-started-page");
       expect(port.request).toHaveBeenCalledWith("passbolt.active-tab.close");
+    });
+  });
+
+  describe("shouldOpenPassboltPageForQuickAccessPasskey", () => {
+    it("Should require the HTTPS Passbolt page for Firefox extension pages.", () => {
+      expect.assertions(1);
+      delete global.location;
+      global.location = new URL("moz-extension://extension-id/webAccessibleResources/quickaccess.html");
+
+      expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(true);
+    });
+
+    it("Should keep the current flow outside Firefox extension pages.", () => {
+      expect.assertions(1);
+      delete global.location;
+      global.location = new URL("chrome-extension://extension-id/webAccessibleResources/quickaccess.html");
+
+      expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(false);
+    });
+  });
+
+  describe("openPassboltLoginPageForPasskey", () => {
+    it("Should open the Passbolt HTTPS login page with locale and PassKey auto-login token.", async () => {
+      expect.assertions(5);
+      const closeWindow = jest.fn();
+      const port = {
+        request: jest.fn((message) => {
+          if (message === "passbolt.addon.get-domain") {
+            return "https://passbolt.test";
+          }
+          if (message === "passbolt.locale.get") {
+            return { locale: "uk-UA" };
+          }
+        }),
+      };
+      jest.spyOn(BiometricAuthFormService, "generatePasskeyAutoLoginToken").mockReturnValue("auto-login-token");
+      jest.spyOn(browser.tabs, "create").mockImplementation(jest.fn());
+
+      await openPassboltLoginPageForPasskey(port, { closeWindow });
+
+      expect(port.request).toHaveBeenCalledWith("passbolt.addon.get-domain");
+      expect(port.request).toHaveBeenCalledWith("passbolt.locale.get");
+      expect(browser.tabs.create).toHaveBeenCalledWith({
+        url: "https://passbolt.test/auth/login?redirect=%2F&locale=uk-UA&passbolt_auto_passkey=auto-login-token",
+        active: true,
+      });
+      await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({
+        "passbolt.quickaccess.passkeyAutoLogin": {
+          token: "auto-login-token",
+          origin: "https://passbolt.test",
+          created: expect.any(Number),
+        },
+      });
+      expect(closeWindow).toHaveBeenCalledTimes(1);
     });
   });
 });

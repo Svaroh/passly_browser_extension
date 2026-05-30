@@ -71,6 +71,7 @@ class GeneratePortIdController {
       name: applicationName,
       tabId: tab.id,
       frameId: null,
+      url: tab.url || null,
       status: WorkerEntity.STATUS_WAITING_CONNECTION,
     };
     await WorkersSessionStorage.addWorker(new WorkerEntity(worker));

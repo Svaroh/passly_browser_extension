@@ -45,7 +45,7 @@ describe("PagemodManager", () => {
       // process
       await PagemodManager.exec(details);
       // expectations
-      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId);
+      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId, details.url);
       expect(RecoverBootstrapPagemod.injectFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -60,7 +60,7 @@ describe("PagemodManager", () => {
       // process
       await PagemodManager.exec(details);
       // expectations
-      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId);
+      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId, details.url);
       expect(SetupBootstrapPagemod.injectFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -73,12 +73,12 @@ describe("PagemodManager", () => {
         url: "https://passbolt.dev/auth/login",
       };
       // mock functions
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       // process
       await PagemodManager.exec(details);
       // expectations
-      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId);
+      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId, details.url);
       expect(AuthBootstrapPagemod.injectFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -91,7 +91,7 @@ describe("PagemodManager", () => {
         url: "https://passbolt.dev/app",
       };
       // mock functions
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
         .mockImplementation(async () => userLoggedInAuthStatus());
@@ -99,7 +99,7 @@ describe("PagemodManager", () => {
       // process
       await PagemodManager.exec(details);
       // expectations
-      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId);
+      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId, details.url);
       expect(AppBootstrapPagemod.injectFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -112,12 +112,12 @@ describe("PagemodManager", () => {
         url: "https://test.dev/auth/login",
       };
       // mock functions
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       // process
       await PagemodManager.exec(details);
       // expectations
-      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId);
+      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId, details.url);
       expect(WebIntegrationPagemod.injectFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -130,12 +130,12 @@ describe("PagemodManager", () => {
         url: "https://www.passbolt.com",
       };
       // mock functions
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       // process
       await PagemodManager.exec(details);
       // expectations
-      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId);
+      expect(pagemod.prototype.injectFiles).toHaveBeenCalledWith(details.tabId, details.frameId, details.url);
       expect(PublicWebsiteSignInPagemod.injectFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -185,7 +185,7 @@ describe("PagemodManager", () => {
     it("Should refresh tab if pagemod must refresh tab url", async () => {
       expect.assertions(7);
       // mock functions
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       // expectations
       expect(await PagemodManager.hasPagemodMatchUrlToReload("https://passbolt.dev")).toBeTruthy();

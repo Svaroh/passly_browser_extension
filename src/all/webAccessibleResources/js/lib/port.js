@@ -41,6 +41,7 @@ class Port {
     const promise = new Promise((resolve) => {
       resolver = resolve;
     });
+    this.once("passbolt.port.ready", resolver);
     try {
       this._port = browser.runtime.connect({ name: this._name });
     } catch (error) {
@@ -55,7 +56,6 @@ class Port {
     }
     this._connected = true;
     this.initListener();
-    this.once("passbolt.port.ready", resolver);
     return promise;
   }
 
@@ -190,7 +190,7 @@ class Port {
         if (status === "SUCCESS") {
           resolve.apply(null, callbackArgs);
         } else if (status === "ERROR") {
-          reject.apply(null, callbackArgs);
+          reject(this.normalizeErrorResponse(callbackArgs));
         }
       });
       // Emit the message to the addon-code.
@@ -219,6 +219,18 @@ class Port {
    */
   onConnectError(callback) {
     this.onConnectErrorHandler.callback = callback;
+  }
+
+  /**
+   * Normalize request error response payloads.
+   * @param {Array} callbackArgs The response callback arguments.
+   * @returns {*} The error value.
+   */
+  normalizeErrorResponse(callbackArgs) {
+    if (callbackArgs.length > 0 && typeof callbackArgs[0] !== "undefined" && callbackArgs[0] !== null) {
+      return callbackArgs[0];
+    }
+    return new Error("The request failed without error details.");
   }
 }
 

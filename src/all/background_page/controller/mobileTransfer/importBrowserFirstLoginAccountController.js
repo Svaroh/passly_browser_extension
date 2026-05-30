@@ -130,7 +130,7 @@ class ImportBrowserFirstLoginAccountController {
     if (!["https:", "http:"].includes(url.protocol)) {
       throw new Error("The browser first-login domain should be an HTTP or HTTPS URL.");
     }
-    return url.toString();
+    return url.toString().replace(/\/+$/g, "");
   }
 
   /**

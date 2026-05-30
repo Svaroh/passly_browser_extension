@@ -35,6 +35,33 @@ describe("ParseAuthUrlService", () => {
       });
     });
 
+    it("Should parse the login page when the stored domain has a trailing slash.", () => {
+      expect.assertions(1);
+      Config.write("user.settings.trustedDomain", `${domain}/`);
+
+      const parseResult = ParseAuthUrlService.regex.test(`${domain}/auth/login?redirect=%2F&locale=uk-UA`);
+
+      expect(parseResult).toBeTruthy();
+    });
+
+    it("Should parse the login page against an explicit trusted domain.", () => {
+      expect.assertions(2);
+
+      expect(ParseAuthUrlService.testForDomain(`${domain}/auth/login?redirect=%2F&locale=uk-UA`, domain)).toBeTruthy();
+      expect(
+        ParseAuthUrlService.testForDomain("https://attacker.passbolt.dev/auth/login?redirect=%2F&locale=uk-UA", domain),
+      ).toBeFalsy();
+    });
+
+    it("Should detect the intermediate login URL waiting for the server locale redirect.", () => {
+      expect.assertions(2);
+
+      expect(ParseAuthUrlService.isAwaitingLocaleRedirect(`${domain}/auth/login?redirect=%2F`, domain)).toBeTruthy();
+      expect(
+        ParseAuthUrlService.isAwaitingLocaleRedirect(`${domain}/auth/login?redirect=%2F&locale=uk-UA`, domain),
+      ).toBeFalsy();
+    });
+
     describe.each([
       { scenario: "No domain given", url: "https://auth/login" },
       { scenario: "No protocol given", url: "passbolt.dev/auth/login" },

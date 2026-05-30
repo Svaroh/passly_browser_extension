@@ -20,8 +20,9 @@ class ParseAppUrlService {
    */
   static getRegex() {
     const user = User.getInstance();
-    const escapedDomain = user.settings.getDomain().replace(/\W/g, "\\$&");
-    return `^${escapedDomain}/?(/app.*)?(#.*)?$`;
+    const trustedDomain = user.settings.getDomain().replace(/\/*$/g, "");
+    const escapedDomain = trustedDomain.replace(/\W/g, "\\$&");
+    return `^${escapedDomain}/*(/app.*)?(#.*)?$`;
   }
 
   /**

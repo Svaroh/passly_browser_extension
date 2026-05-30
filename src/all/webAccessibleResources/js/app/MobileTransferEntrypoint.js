@@ -42,6 +42,7 @@ export const MOBILE_TRANSFER_TRANSLATIONS = {
   en: {
     browserFirstLoginGeneratingQrCode: "Generating QR code...",
     browserFirstLoginQrAlt: "Passbolt browser first-login QR code",
+    browserFirstLoginPrivateKeyPayloadInvalid: "Could not read the private key from the phone. Refresh the QR code and try again.",
     browserFirstLoginRefreshQrCode: "Refresh QR code",
     browserFirstLoginRequestExpired: "The browser first-login request has expired.",
     mobileTransferImportCancelTransfer: "Cancel transfer",
@@ -77,6 +78,7 @@ export const MOBILE_TRANSFER_TRANSLATIONS = {
   uk: {
     browserFirstLoginGeneratingQrCode: "Створення QR-коду...",
     browserFirstLoginQrAlt: "QR-код першого входу Passbolt у браузері",
+    browserFirstLoginPrivateKeyPayloadInvalid: "Не вдалося прочитати приватний ключ із телефону. Оновіть QR-код і спробуйте ще раз.",
     browserFirstLoginRefreshQrCode: "Оновити QR-код",
     browserFirstLoginRequestExpired: "Запит першого входу в браузері застарів.",
     mobileTransferImportCancelTransfer: "Скасувати перенесення",
@@ -112,6 +114,7 @@ export const MOBILE_TRANSFER_TRANSLATIONS = {
 };
 
 const MOBILE_TRANSFER_ERROR_MESSAGE_KEYS = {
+  "The browser first-login private key payload is invalid.": "browserFirstLoginPrivateKeyPayloadInvalid",
   [BROWSER_FIRST_LOGIN_REQUEST_EXPIRED_ERROR]: "browserFirstLoginRequestExpired",
   "The transfer user does not match the scanned QR code.": "errorTransferUserMismatch",
   "The Passbolt server did not return the transfer user profile.": "errorTransferUserProfileMissing",
@@ -329,6 +332,12 @@ export async function pollBrowserFirstLogin(port, { domain, requestId, secret })
   }
 }
 
+export function buildBrowserFirstLoginAuthUrl(domain, redirect = "/") {
+  const url = new URL("/auth/login", domain);
+  url.searchParams.set("redirect", redirect);
+  return url.toString();
+}
+
 export function BrowserFirstLoginEntrypoint({ port, domain = DEFAULT_BROWSER_FIRST_LOGIN_DOMAIN, locale }) {
   const activeLocale = locale || getBrowserUiLocale();
   const localize = React.useCallback(
@@ -371,7 +380,7 @@ export function BrowserFirstLoginEntrypoint({ port, domain = DEFAULT_BROWSER_FIR
         browserFirstLoginRequest = { ...browserFirstLoginRequest, ...updatedRequest };
         if (updatedRequest.status === BROWSER_FIRST_LOGIN_STATUS_COMPLETE) {
           clearPolling();
-          window.location.href = domain;
+          window.location.href = buildBrowserFirstLoginAuthUrl(domain);
         } else if (isBrowserFirstLoginRequestExpired(updatedRequest)) {
           clearPolling();
           setIsExpired(true);

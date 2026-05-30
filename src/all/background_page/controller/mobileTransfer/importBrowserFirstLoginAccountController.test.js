@@ -65,7 +65,7 @@ describe("ImportBrowserFirstLoginAccountController", () => {
       const account = await controller.exec(domain, browserFirstLoginRequest, secret);
 
       expect(account).toBeInstanceOf(AccountEntity);
-      expect(account.domain).toStrictEqual("https://pass.66ton99.org.ua/");
+      expect(account.domain).toStrictEqual("https://pass.66ton99.org.ua");
       expect(account.userId).toStrictEqual(pgpKeys.ada.userId);
       expect(account.username).toStrictEqual("ada@passbolt.com");
       expect(account.userKeyFingerprint).toStrictEqual(fingerprint);
@@ -73,6 +73,14 @@ describe("ImportBrowserFirstLoginAccountController", () => {
       expect(account.userPrivateArmoredKey).toContain("-----BEGIN PGP PRIVATE KEY BLOCK-----");
       expect(AccountModel.prototype.add).toHaveBeenCalledWith(account);
       expect(browser.storage.local.set).toHaveBeenCalledWith({ _passbolt_data: expect.any(Object) });
+    });
+
+    it("Should normalize a browser-first-login domain without a trailing slash", async () => {
+      expect.assertions(1);
+
+      const controller = new ImportBrowserFirstLoginAccountController();
+
+      expect(controller.normalizeDomain("https://pass.66ton99.org.ua/")).toStrictEqual("https://pass.66ton99.org.ua");
     });
 
     it("Should persist the transferred private key in the legacy keyring storage", async () => {
@@ -94,6 +102,36 @@ describe("ImportBrowserFirstLoginAccountController", () => {
       expect(privateKeyInfo.fingerprint).toStrictEqual(fingerprint);
       expect(persistedPrivateKeys[Keyring.MY_KEY_ID].armored_key).toContain("-----BEGIN PGP PRIVATE KEY BLOCK-----");
       expect(persistedPrivateKeys[Keyring.MY_KEY_ID].fingerprint).toStrictEqual(fingerprint);
+    });
+
+    it("Should import an Android encrypted private-key payload without explicit metadata", async () => {
+      expect.assertions(4);
+
+      const encryptedPayload = JSON.parse(browserFirstLoginRequest.encrypted_private_key);
+      delete encryptedPayload.v;
+      delete encryptedPayload.alg;
+      browserFirstLoginRequest.encrypted_private_key = JSON.stringify(encryptedPayload);
+
+      const controller = new ImportBrowserFirstLoginAccountController();
+      const account = await controller.exec(domain, browserFirstLoginRequest, secret);
+
+      expect(account.userId).toStrictEqual(pgpKeys.ada.userId);
+      expect(account.username).toStrictEqual("ada@passbolt.com");
+      expect(account.userKeyFingerprint).toStrictEqual(fingerprint);
+      expect(account.userPrivateArmoredKey).toContain("-----BEGIN PGP PRIVATE KEY BLOCK-----");
+    });
+
+    it("Should reject unsupported encrypted private-key payload metadata", async () => {
+      expect.assertions(1);
+
+      const encryptedPayload = JSON.parse(browserFirstLoginRequest.encrypted_private_key);
+      encryptedPayload.alg = "A128GCM";
+      browserFirstLoginRequest.encrypted_private_key = JSON.stringify(encryptedPayload);
+      const controller = new ImportBrowserFirstLoginAccountController();
+
+      await expect(controller.exec(domain, browserFirstLoginRequest, secret)).rejects.toThrow(
+        "The browser first-login private key payload is invalid.",
+      );
     });
 
     it("Should reject incomplete request account data", async () => {

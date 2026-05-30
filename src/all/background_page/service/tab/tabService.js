@@ -19,6 +19,7 @@ import PromiseTimeoutService from "../../utils/promise/promiseTimeoutService";
 import WorkerEntity from "../../model/entity/worker/workerEntity";
 import WorkerService from "../worker/workerService";
 import BrowserTabService from "../ui/browserTab.service";
+import ParseAppUrlService from "../app/parseAppUrlService";
 
 class TabService {
   /**
@@ -87,6 +88,12 @@ class TabService {
        * 300ms, treat the last navigation event and trigger a pagemod identification process on it.
        */
       if (workerEntity.isWaitingConnection || workerEntity.isReconnecting) {
+        if (workerEntity.url && TabService.hasSameDocumentUrl(workerEntity.url, url)) {
+          console.debug(
+            `TabService::handleNavigation(id: ${tabId}): Waiting content script port initial connection or reconnection for the same document URL.`,
+          );
+          return;
+        }
         console.debug(
           `TabService::handleNavigation(id: ${tabId}): Waiting content script port initial connection or reconnection.`,
         );
@@ -106,7 +113,10 @@ class TabService {
          * origin of the application url referenced by the associated port. If the origin change, the tab DOM has
          * been flushed and within any application on it.
          */
-        if (hasUrlSameOrigin(port._port.sender.url, url)) {
+        const workerUrl = workerEntity.url || port._port.sender.url;
+        const canUseExistingPort =
+          TabService.hasSameDocumentUrl(workerUrl, url) || TabService.isAppBootstrapRouteNavigation(workerEntity, url);
+        if (hasUrlSameOrigin(workerUrl, url) && canUseExistingPort) {
           try {
             await PromiseTimeoutService.exec(port.request("passbolt.port.check"), 1000);
             console.debug(
@@ -183,6 +193,42 @@ class TabService {
     };
     await WebNavigationService.exec(frameDetails);
     console.debug(`TabService::handleNavigation(id: ${tabId}): Trigger pagemods identification process.`);
+  }
+
+  /**
+   * Whether two URLs point to the same loaded document for a content script.
+   * The hash is ignored because it does not reload the document, while query/path changes do.
+   * @param {string} portUrl The URL recorded on the runtime port sender.
+   * @param {string} navigationUrl The URL from the browser navigation event.
+   * @returns {boolean}
+   */
+  static hasSameDocumentUrl(portUrl, navigationUrl) {
+    try {
+      const portUrlObject = new URL(portUrl);
+      const navigationUrlObject = new URL(navigationUrl);
+      return (
+        portUrlObject.origin === navigationUrlObject.origin &&
+        portUrlObject.pathname === navigationUrlObject.pathname &&
+        portUrlObject.search === navigationUrlObject.search
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Whether an AppBootstrap worker can keep handling an application route navigation.
+   * Passbolt app route changes can update the top-frame URL while the injected app shell remains alive.
+   * @param {WorkerEntity} workerEntity The worker entity.
+   * @param {string} navigationUrl The URL from the browser navigation event.
+   * @returns {boolean}
+   */
+  static isAppBootstrapRouteNavigation(workerEntity, navigationUrl) {
+    if (workerEntity.name !== "AppBootstrap") {
+      return false;
+    }
+
+    return ParseAppUrlService.test(navigationUrl);
   }
 }
 

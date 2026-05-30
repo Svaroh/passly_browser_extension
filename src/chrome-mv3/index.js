@@ -26,6 +26,17 @@ import HandleOffscreenResponseService from "./serviceWorker/service/offscreen/ha
  */
 SystemRequirementService.get();
 
+browser.runtime.onMessage.addListener((message, sender) => {
+  if (message?.name === "passbolt.content-script.bootstrap-diagnostic") {
+    console.debug("Content script bootstrap diagnostic:", {
+      ...message,
+      tabId: sender?.tab?.id,
+      frameId: sender?.frameId,
+      senderUrl: sender?.url,
+    });
+  }
+});
+
 /**
  * Add listener on startup
  */

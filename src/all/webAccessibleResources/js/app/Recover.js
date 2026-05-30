@@ -39,8 +39,12 @@ function BiometricRecoverActions({ port, options }) {
     let isMounted = true;
     const init = async () => {
       const storedConfiguration = await port.request("passbolt.biometric-auth.get-configuration");
+      const compatibleConfiguration = await BiometricAuthRuntimeService.getCompatibleConfiguration(
+        port,
+        storedConfiguration,
+      );
       if (isMounted) {
-        setConfiguration(storedConfiguration);
+        setConfiguration(compatibleConfiguration);
       }
     };
     init().catch(() => {});

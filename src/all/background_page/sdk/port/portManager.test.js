@@ -139,6 +139,44 @@ describe("PortManager", () => {
     });
   });
 
+  describe("PortManager::isPortExist", () => {
+    it("Should return false for a disconnected runtime memory port.", async () => {
+      expect.assertions(2);
+      const workerDto = readWorker();
+      await WorkersSessionStorage.addWorker(new WorkerEntity(workerDto));
+      const port = mockPort({ name: workerDto.id, tabId: workerDto.tabId, frameId: workerDto.frameId });
+
+      await PortManager.onPortConnect(port);
+      expect(PortManager.isPortExist(workerDto.id)).toBe(true);
+
+      PortManager._ports[workerDto.id]._onDisconnect();
+
+      expect(PortManager.isPortExist(workerDto.id)).toBe(false);
+    });
+  });
+
+  describe("PortManager::isKnownPortSender", () => {
+    it("Should accept a Firefox top-frame sender frame id when the document URL matches.", async () => {
+      expect.assertions(2);
+      const workerDto = readWorker({
+        tabId: 39,
+        frameId: 0,
+        url: "https://passbolt.dev/auth/login?redirect=%2F&locale=uk-UA",
+      });
+      const workerEntity = new WorkerEntity(workerDto);
+      const sender = {
+        tab: { id: 39 },
+        frameId: 88046829569,
+        url: workerDto.url,
+      };
+
+      const result = await PortManager.isKnownPortSender(workerEntity, sender);
+
+      expect(result).toBe(true);
+      expect(workerEntity.frameId).toBe(sender.frameId);
+    });
+  });
+
   describe("PortManager::onTabRemoved", () => {
     it("Should remove the workers and runtime memory ports for a specific tab id", async () => {
       expect.assertions(6);

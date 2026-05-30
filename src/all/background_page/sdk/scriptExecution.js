@@ -14,6 +14,9 @@
  */
 function globalSetPortname(portname) {
   window.portname = portname;
+  self.portname = portname;
+  globalThis.portname = portname;
+  document.documentElement.setAttribute("data-passbolt-portname", portname);
 }
 
 /**

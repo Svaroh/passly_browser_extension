@@ -18,6 +18,9 @@ import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import isMissingAccountError from "../service/account/isMissingAccountError";
 
+const AUTH_STATUS_RETRY_DELAY = 100;
+const AUTH_STATUS_RETRY_COUNT = 20;
+
 class AppBootstrap extends Pagemod {
   /**
    * @inheritDoc
@@ -98,9 +101,24 @@ class AppBootstrap extends Pagemod {
    * @returns {Promise<boolean>}
    */
   async assertUserAuthenticated() {
-    const checkAuthStatusService = new CheckAuthStatusService();
-    const authStatus = await checkAuthStatusService.checkAuthStatus(true);
-    return authStatus.isAuthenticated;
+    for (let retry = 0; retry < AUTH_STATUS_RETRY_COUNT; retry++) {
+      const checkAuthStatusService = new CheckAuthStatusService();
+      const authStatus = await checkAuthStatusService.checkAuthStatus(true);
+      if (authStatus.isAuthenticated) {
+        return true;
+      }
+      await this.sleep(AUTH_STATUS_RETRY_DELAY);
+    }
+    return false;
+  }
+
+  /**
+   * Wait for a given delay.
+   * @param {number} delay The delay in milliseconds.
+   * @returns {Promise<void>}
+   */
+  sleep(delay) {
+    return new Promise((resolve) => setTimeout(resolve, delay));
   }
 }
 

@@ -34,6 +34,26 @@ export async function ensureQuickAccessConfigured(port, { detached = false, clos
   return false;
 }
 
+export function shouldOpenPassboltPageForQuickAccessPasskey() {
+  return globalThis.location?.protocol === "moz-extension:";
+}
+
+export async function openPassboltLoginPageForPasskey(port, { closeWindow = () => window.close() } = {}) {
+  const trustedDomain = await port.request("passbolt.addon.get-domain");
+  let locale = "uk-UA";
+  try {
+    locale = (await port.request("passbolt.locale.get"))?.locale || locale;
+  } catch {
+    // Keep the default locale if the background page cannot provide one.
+  }
+  const url = new URL("/auth/login", trustedDomain);
+  url.searchParams.set("redirect", "/");
+  url.searchParams.set("locale", locale || "uk-UA");
+  await BiometricAuthFormService.preparePasskeyAutoLoginUrl(browser.storage, url);
+  await browser.tabs.create({ url: url.toString(), active: true });
+  closeWindow();
+}
+
 function submitQuickAccessPassphrase(passphrase) {
   BiometricAuthFormService.fillPassphraseAndSubmit(
     ".quickaccess-login #passphrase",
@@ -52,7 +72,7 @@ function submitPassphraseDialog(passphrase) {
   );
 }
 
-function BiometricQuickAccessActions({ port, options }) {
+function BiometricQuickAccessActions({ port, options, detached }) {
   const [configuration, setConfiguration] = React.useState(null);
   const [enableOnLogin, setEnableOnLogin] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -63,8 +83,12 @@ function BiometricQuickAccessActions({ port, options }) {
     let isMounted = true;
     const init = async () => {
       const storedConfiguration = await port.request("passbolt.biometric-auth.get-configuration");
+      const compatibleConfiguration = await BiometricAuthRuntimeService.getCompatibleConfiguration(
+        port,
+        storedConfiguration,
+      );
       if (isMounted) {
-        setConfiguration(storedConfiguration);
+        setConfiguration(compatibleConfiguration);
       }
     };
     init().catch(() => {});
@@ -105,6 +129,12 @@ function BiometricQuickAccessActions({ port, options }) {
     setError("");
     setIsUnlocking(true);
     try {
+      if (shouldOpenPassboltPageForQuickAccessPasskey()) {
+        await openPassboltLoginPageForPasskey(port, {
+          closeWindow: detached ? () => {} : () => window.close(),
+        });
+        return;
+      }
       const passphrase = await BiometricAuthRuntimeService.unlock(port, configuration);
       if (portal?.type === "passphrase-dialog") {
         submitPassphraseDialog(passphrase);
@@ -191,7 +221,7 @@ export async function main() {
         openerTabId={openerTabId}
         detached={detached}
       />
-      <BiometricQuickAccessActions port={port} options={biometricOptions} />
+      <BiometricQuickAccessActions port={port} options={biometricOptions} detached={detached} />
     </>,
   );
 }

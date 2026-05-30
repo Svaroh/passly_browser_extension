@@ -90,14 +90,16 @@ class Pagemod {
    * Inject files into the tab id and frame id
    * @param {number} tabId The tab id
    * @param {number} frameId The frame id
+   * @param {string|null} url The frame document URL
    * @returns {Promise<void>}
    */
-  async injectFiles(tabId, frameId) {
+  async injectFiles(tabId, frameId, url = null) {
     const worker = {
       id: uuidv4(),
       name: this.appName,
       tabId: tabId,
       frameId: frameId,
+      url: url,
       status: WorkerEntity.STATUS_WAITING_CONNECTION,
     };
     await WorkersSessionStorage.addWorker(new WorkerEntity(worker));
@@ -110,6 +112,7 @@ class Pagemod {
       await scriptExecution.injectCss(this.contentStyleFiles);
       // Insert script files
       await scriptExecution.injectJs(this.contentScriptFiles);
+      console.debug(`Pagemod "${this.appName}" injected into tab ${tabId}, frame ${frameId}, url ${url}.`);
     } catch (error) {
       await WorkersSessionStorage.deleteById(worker.id);
       if (ScriptExecution.isAccessDeniedError(error)) {

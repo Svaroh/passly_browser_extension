@@ -13,7 +13,79 @@
 
 import BiometricAuthRuntimeService from "./biometricAuthRuntimeService";
 
+const PASSKEY_AUTO_LOGIN_PARAMETER = "passbolt_auto_passkey";
+const PASSKEY_AUTO_LOGIN_STORAGE_KEY = "passbolt.quickaccess.passkeyAutoLogin";
+const PASSKEY_AUTO_LOGIN_TTL = 2 * 60 * 1000;
+
 class BiometricAuthFormService {
+  /**
+   * Generate a random token for a one-time PassKey auto-login request.
+   * @returns {string}
+   */
+  static generatePasskeyAutoLoginToken() {
+    const bytes = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  /**
+   * Store a one-time PassKey auto-login request and append its token to a URL.
+   * @param {object} storage The browser storage API.
+   * @param {URL} url The trusted login URL to mutate.
+   * @returns {Promise<URL>}
+   */
+  static async preparePasskeyAutoLoginUrl(storage, url) {
+    const token = this.generatePasskeyAutoLoginToken();
+    url.searchParams.set(PASSKEY_AUTO_LOGIN_PARAMETER, token);
+    await storage.local.set({
+      [PASSKEY_AUTO_LOGIN_STORAGE_KEY]: {
+        token,
+        origin: url.origin,
+        created: Date.now(),
+      },
+    });
+    return url;
+  }
+
+  /**
+   * Consume a one-time PassKey auto-login request from storage.
+   * @param {object} storage The browser storage API.
+   * @param {Location|URL} [location=globalThis.location] The current location.
+   * @param {object} [options={}] The consumption options.
+   * @param {boolean} [options.allowPendingRequestWithoutUrlToken=false] Whether an extension iframe may consume a pending request without the URL token.
+   * @param {string|null} [options.expectedOrigin=null] The expected Passbolt HTTPS origin.
+   * @returns {Promise<boolean>}
+   */
+  static async consumePasskeyAutoLoginRequest(storage, location = globalThis.location, options = {}) {
+    const url = new URL(location.href);
+    const token = url.searchParams.get(PASSKEY_AUTO_LOGIN_PARAMETER);
+    if (!token && !options.allowPendingRequestWithoutUrlToken) {
+      return false;
+    }
+
+    const data = await storage.local.get(PASSKEY_AUTO_LOGIN_STORAGE_KEY);
+    const request = data[PASSKEY_AUTO_LOGIN_STORAGE_KEY];
+    if (!request) {
+      return false;
+    }
+
+    const isExpired = Date.now() - request.created > PASSKEY_AUTO_LOGIN_TTL;
+    if (isExpired) {
+      await storage.local.remove(PASSKEY_AUTO_LOGIN_STORAGE_KEY);
+      return false;
+    }
+
+    const expectedOrigin = options.expectedOrigin ? new URL(options.expectedOrigin).origin : url.origin;
+    const isValidOrigin = request.origin === expectedOrigin;
+    const isValidToken = token ? request.token === token : options.allowPendingRequestWithoutUrlToken;
+    const isValid = isValidToken && isValidOrigin;
+    if (isValid) {
+      await storage.local.remove(PASSKEY_AUTO_LOGIN_STORAGE_KEY);
+    }
+
+    return isValid;
+  }
+
   /**
    * Create a port wrapper that saves a PassKey configuration after a successful passphrase request.
    * @param {Port} port The extension port.

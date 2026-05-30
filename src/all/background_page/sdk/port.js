@@ -19,6 +19,7 @@ class Port {
     this._listeners = {};
     this._disconnectListeners = {};
     this._port = port;
+    this._connected = true;
     this._port.onMessage.addListener((msg) => {
       this._onMessage(msg);
     });
@@ -30,8 +31,9 @@ class Port {
    * @private
    */
   _onDisconnect() {
+    this._connected = false;
     const applyAndDeleteDisconnectListener = (requestId) => {
-      this._disconnectListeners[requestId]?.apply();
+      this._disconnectListeners[requestId]?.();
       delete this._disconnectListeners[requestId];
     };
     Object.keys(this._disconnectListeners).forEach(applyAndDeleteDisconnectListener);
@@ -112,7 +114,7 @@ class Port {
   emit(...requestArgs) {
     const message = JSON.stringify(requestArgs);
     Log.write({ level: "debug", message: `Port emit @ message: ${message}` });
-    this._port.postMessage(message);
+    this.tryPostMessage(message);
   }
 
   /**
@@ -121,7 +123,49 @@ class Port {
    */
   async emitQuiet(...requestArgs) {
     const message = JSON.stringify(requestArgs);
-    this._port.postMessage(message);
+    this.tryPostMessage(message);
+  }
+
+  /**
+   * Try to post a message to the content code without failing the caller when
+   * the tab has already navigated and disconnected the runtime port.
+   * @param {string} message The serialized message.
+   * @returns {boolean}
+   */
+  tryPostMessage(message) {
+    try {
+      this.postMessage(message);
+      return true;
+    } catch {
+      this._connected = false;
+      return false;
+    }
+  }
+
+  /**
+   * Post a message to the content code.
+   * @param {string} message The serialized message.
+   * @returns {void}
+   */
+  postMessage(message) {
+    if (!this.isConnected()) {
+      throw new Error("Attempt to postMessage on disconnected port");
+    }
+
+    try {
+      this._port.postMessage(message);
+    } catch (error) {
+      this._connected = false;
+      throw error;
+    }
+  }
+
+  /**
+   * Whether the wrapped browser runtime port is still connected.
+   * @returns {boolean}
+   */
+  isConnected() {
+    return this._connected;
   }
 
   /**
@@ -146,14 +190,22 @@ class Port {
         if (status === "SUCCESS") {
           resolve.apply(null, callbackArgs);
         } else if (status === "ERROR") {
-          reject.apply(null, callbackArgs);
+          reject(this.normalizeErrorResponse(callbackArgs));
         }
         delete this._disconnectListeners[requestId];
       });
       // Add reject to the disconnect listener
-      this._disconnectListeners[requestId] = reject;
-      // Emit the message to the addon-code.
-      this.emit.apply(this, requestArgs);
+      this._disconnectListeners[requestId] = () =>
+        reject(new Error("The port disconnected before the request completed."));
+      try {
+        const message = JSON.stringify(requestArgs);
+        Log.write({ level: "debug", message: `Port request @ message: ${message}` });
+        this.postMessage(message);
+      } catch (error) {
+        delete this._listeners[requestId];
+        delete this._disconnectListeners[requestId];
+        reject(error);
+      }
     });
   }
 
@@ -163,7 +215,20 @@ class Port {
    * @return {void}
    */
   disconnect() {
+    this._connected = false;
     this._port.disconnect();
+  }
+
+  /**
+   * Normalize request error response payloads.
+   * @param {Array} callbackArgs The response callback arguments.
+   * @returns {*} The error value.
+   */
+  normalizeErrorResponse(callbackArgs) {
+    if (callbackArgs.length > 0 && typeof callbackArgs[0] !== "undefined" && callbackArgs[0] !== null) {
+      return callbackArgs[0];
+    }
+    return new Error("The request failed without error details.");
   }
 }
 

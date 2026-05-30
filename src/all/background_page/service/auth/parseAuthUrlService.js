@@ -20,7 +20,16 @@ class ParseAuthUrlService {
    */
   static get regex() {
     const user = User.getInstance();
-    const escapedDomain = user.settings.getDomain().replace(/\W/g, "\\$&");
+    return this.buildRegexForDomain(user.settings.getDomain());
+  }
+
+  /**
+   * Build regex to check URI validity for a trusted domain.
+   * @param {string} domain The trusted domain.
+   * @returns {RegExp}
+   */
+  static buildRegexForDomain(domain) {
+    const escapedDomain = domain.replace(/\/+$/g, "").replace(/\W/g, "\\$&");
     return new RegExp(`^${escapedDomain}/auth/login/?(#.*)?(\\?.*)?$`);
   }
 
@@ -31,6 +40,35 @@ class ParseAuthUrlService {
    */
   static test(url) {
     return this.regex.test(url);
+  }
+
+  /**
+   * Test regex with the url for a given trusted domain.
+   * @param {string} url The url to test.
+   * @param {string} domain The trusted domain.
+   * @returns {boolean}
+   */
+  static testForDomain(url, domain) {
+    return this.buildRegexForDomain(domain).test(url);
+  }
+
+  /**
+   * Whether the URL is the intermediate server login URL that is expected to be redirected to a localized URL.
+   * @param {string} url The url to test.
+   * @returns {boolean}
+   */
+  static isAwaitingLocaleRedirect(url, domain = null) {
+    const isAuthUrl = domain ? this.testForDomain(url, domain) : this.test(url);
+    if (!isAuthUrl) {
+      return false;
+    }
+
+    try {
+      const urlObject = new URL(url);
+      return urlObject.searchParams.has("redirect") && !urlObject.searchParams.has("locale");
+    } catch {
+      return false;
+    }
   }
 }
 

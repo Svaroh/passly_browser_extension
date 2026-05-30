@@ -103,17 +103,15 @@ class AuthLoginController {
        * Post login operations
        * MFA may not be complete yet, so no need to preload things here
        */
-      if (rememberMe) {
-        await Promise.all([PassphraseStorageService.set(passphrase, -1), KeepSessionAliveService.start()]);
-      } else {
-        await PassphraseStorageService.set(passphrase, 60);
-      }
+      await this.rememberPassphrase(passphrase, rememberMe);
       await PostLoginService.exec();
       await this.registerRememberMeOption(rememberMe);
     } catch (error) {
       if (!(error instanceof UserAlreadyLoggedInError)) {
         throw error;
       }
+      await this.rememberPassphrase(passphrase, rememberMe);
+      await this.registerRememberMeOption(rememberMe);
     }
 
     if (shouldRefreshCurrentTab) {
@@ -128,6 +126,20 @@ class AuthLoginController {
   async redirectToApp() {
     const url = this.account.domain;
     browser.tabs.update(this.worker.tab.id, { url });
+  }
+
+  /**
+   * Remember the user passphrase for the current session.
+   * @param {string} passphrase The passphrase.
+   * @param {boolean} rememberMe Whether to remember until logout.
+   * @returns {Promise<void>}
+   */
+  async rememberPassphrase(passphrase, rememberMe) {
+    if (rememberMe) {
+      await Promise.all([PassphraseStorageService.set(passphrase, -1), KeepSessionAliveService.start()]);
+    } else {
+      await PassphraseStorageService.set(passphrase, 60);
+    }
   }
 
   /**
