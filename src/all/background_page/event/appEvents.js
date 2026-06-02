@@ -87,11 +87,11 @@ import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainT
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
 import OpenResourceUriTabController from "../controller/tab/openResourceUriTabController";
 import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
-import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
 import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
 import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
 import MarkItemOfflineUnavailableController from "../controller/offline/markItemOfflineUnavailableController";
+import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
@@ -967,7 +967,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    * @param id {uuid} resourceId
    */
-  worker.port.on("passbolt.offline.mark-offline", async (requestId, id) => {
+  worker.port.on("passbolt.offline.mark-resource-offline", async (requestId, id) => {
     const controller = new MarkResourceOfflineAvailableController(worker, requestId, apiClientOptions);
     await controller._exec(id);
   });
@@ -978,7 +978,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    * @param id {uuid} resourceId
    */
-  worker.port.on("passbolt.offline.unmark-offline", async (requestId, id) => {
+  worker.port.on("passbolt.offline.unmark-item-offline", async (requestId, id) => {
     const controller = new MarkItemOfflineUnavailableController(worker, requestId, apiClientOptions);
     await controller._exec(id);
   });
