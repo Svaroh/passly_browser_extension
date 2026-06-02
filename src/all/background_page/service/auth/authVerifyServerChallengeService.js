@@ -31,15 +31,20 @@ class AuthVerifyServerChallengeService {
    * Verify and validate the server challenge
    * @param {string} userFingerprint The user fingerprint
    * @param {string} serverPublicArmoredKey The server public armored key
+   * @param {object} [fetchOptionsOverride] Additional fetch options for the verify request.
    * @return {Promise<void>}
    */
-  async verifyAndValidateServerChallenge(userFingerprint, serverPublicArmoredKey) {
+  async verifyAndValidateServerChallenge(userFingerprint, serverPublicArmoredKey, fetchOptionsOverride = {}) {
     // Read the server public key
     const serverKey = await OpenpgpAssertion.readKeyOrFail(serverPublicArmoredKey);
     // Step 1: Encrypt the token
     const encryptedToken = await EncryptMessageService.encrypt(this.gpgAuthToken.token, serverKey);
     // Step 2: Send the token encrypted to the server
-    const response = await this.authVerifyServerKeyService.verify(userFingerprint, encryptedToken);
+    const response = await this.authVerifyServerKeyService.verify(
+      userFingerprint,
+      encryptedToken,
+      fetchOptionsOverride,
+    );
     // Step 3: Verify and validate the response headers
     const auth = new GpgAuthHeader(response.headers, "verify");
     // Step 4: Verify and validate that the token received is the same

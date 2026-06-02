@@ -169,6 +169,7 @@ class ImportBrowserFirstLoginAccountController {
       await new AuthVerifyServerChallengeService(apiClientOptions).verifyAndValidateServerChallenge(
         fingerprint,
         serverPublicArmoredKey,
+        { credentials: "omit" },
       );
     } catch (error) {
       throw new Error("The browser first-login private key does not match an account on this Passbolt server.", {
