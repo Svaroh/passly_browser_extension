@@ -48,7 +48,7 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-copy');
 
   grunt.registerTask('default', ['bundle']);
-  grunt.registerTask('pre-dist', ['copy:styleguide']);
+  grunt.registerTask('pre-dist', ['copy:styleguide', 'shell:passly_rebrand_styleguide']);
 
   grunt.registerTask('bundle', ['externalize-locale-strings', 'copy:background_page', 'copy:web_accessible_resources', 'copy:locales']);
   grunt.registerTask('bundle-mv3', ['externalize-locale-strings', 'copy:service_worker', 'copy:web_accessible_resources', 'copy:locales']);
@@ -60,20 +60,20 @@ module.exports = function (grunt) {
   grunt.registerTask('build', ['build-firefox-prod', 'build-chromium-mv2-prod', 'build-chromium-mv3-prod']);
 
   grunt.registerTask('build-firefox', ['build-firefox-debug', 'build-firefox-prod']);
-  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-firefox', 'shell:build_background_page_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:build_firefox_debug']);
-  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-firefox', 'shell:build_background_page_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:build_firefox_prod']);
+  grunt.registerTask('build-firefox-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-firefox', 'shell:build_background_page_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:passly_rebrand_styleguide', 'shell:build_firefox_debug']);
+  grunt.registerTask('build-firefox-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-firefox', 'shell:build_background_page_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:passly_rebrand_styleguide', 'shell:build_firefox_prod']);
 
   grunt.registerTask('build-chromium-mv2', ['build-chromium-mv2-debug', 'build-chromium-mv2-prod']);
-  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-chromium-mv2', 'shell:build_background_page_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:build_chromium_mv2_debug']);
-  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-chromium-mv2', 'shell:build_background_page_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:build_chromium_mv2_prod']);
+  grunt.registerTask('build-chromium-mv2-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-chromium-mv2', 'shell:build_background_page_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:passly_rebrand_styleguide', 'shell:build_chromium_mv2_debug']);
+  grunt.registerTask('build-chromium-mv2-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-chromium-mv2', 'shell:build_background_page_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:passly_rebrand_styleguide', 'shell:build_chromium_mv2_prod']);
 
   grunt.registerTask('build-chromium-mv3', ['build-chromium-mv3-debug', 'build-chromium-mv3-prod']);
-  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-chromium-mv3', 'shell:build_service_worker_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:build_chromium_mv3_debug']);
-  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-chromium-mv3', 'shell:build_service_worker_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:build_chromium_mv3_prod']);
+  grunt.registerTask('build-chromium-mv3-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-chromium-mv3', 'shell:build_service_worker_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:passly_rebrand_styleguide', 'shell:build_chromium_mv3_debug']);
+  grunt.registerTask('build-chromium-mv3-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-chromium-mv3', 'shell:build_service_worker_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:passly_rebrand_styleguide', 'shell:build_chromium_mv3_prod']);
 
   grunt.registerTask('build-safari', ['build-safari-debug', 'build-safari-prod']);
-  grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug']);
-  grunt.registerTask('build-safari-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod']);
+  grunt.registerTask('build-safari-debug', ['clean:build', 'pre-dist', 'copy:config_debug', 'bundle-safari', 'shell:build_background_page_safari_debug', 'shell:build_content_script_debug', 'shell:build_web_accessible_resources_debug', 'shell:passly_rebrand_styleguide']);
+  grunt.registerTask('build-safari-prod', ['clean:build', 'pre-dist', 'copy:config_default', 'bundle-safari', 'shell:build_background_page_safari_prod', 'shell:build_content_script_prod', 'shell:build_web_accessible_resources_prod', 'shell:passly_rebrand_styleguide']);
 
   grunt.registerTask('externalize-locale-strings', ['shell:externalize']);
 
@@ -282,6 +282,11 @@ module.exports = function (grunt) {
       /**
        * Build background page.
        */
+      passly_rebrand_styleguide: {
+        command: [
+          'node scripts/rebrand-passly-styleguide.js'
+        ].join(' && ')
+      },
       build_background_page_prod: {
         command: [
           'npm run build:background-page'
