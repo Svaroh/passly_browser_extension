@@ -124,7 +124,7 @@ module.exports = function (grunt) {
       },
       web_accessible_resources: {
         files: [
-          { expand: true, cwd: path.src_web_accessible_resources, src: ['js/themes/**', '*.html'], dest: path.build_web_accessible_resources }
+          { expand: true, cwd: path.src_web_accessible_resources, src: ['js/themes/**', 'img/**', '*.html'], dest: path.build_web_accessible_resources }
         ]
       },
       locales: {
