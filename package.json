@@ -1,11 +1,11 @@
 {
-  "name": "passbolt-browser-extension",
-  "version": "5.12.82",
+  "name": "passly-browser-extension",
+  "version": "5.12.83",
   "license": "AGPL-3.0",
   "copyright": "Copyright 2025 Passbolt SA",
-  "description": "Passbolt web extension for the open source password manager for teams",
-  "homepage": "https://www.passbolt.com",
-  "repository": "https://github.com/passbolt/passbolt_browser_extension",
+  "description": "Passly web extension for the open source password manager for teams",
+  "homepage": "https://github.com/Svaroh/passly_browser_extension",
+  "repository": "https://github.com/Svaroh/passly_browser_extension",
   "engines": {
     "node": ">=22.14.0",
     "npm": ">=10.9.2"
@@ -104,7 +104,7 @@
     "dev:build:web-accessible-resources:app": "webpack --env debug=true --config webpack-data.config.js; webpack --env debug=true --config webpack-data.download.config.js",
     "dev:build:web-accessible-resources:browser-integration": "webpack --env debug=true --config webpack-data.in-form-call-to-action.config.js; webpack --env debug=true --config webpack-data.in-form-menu.config.js",
     "dev:safari:build": "grunt build-safari-debug;",
-    "dev:safari:convert": "xcrun safari-web-extension-converter --app-name Passbolt-Safari-Extension --swift --macos-only --project-location ./build-safari-extension --bundle-identifier com.passbolt.safari-extension --force --no-open build/all/",
+    "dev:safari:convert": "xcrun safari-web-extension-converter --app-name Passly-Safari-Extension --swift --macos-only --project-location ./build-safari-extension --bundle-identifier com.svaroh.passly.safari-extension --force --no-open build/all/",
     "dev:watch:build:background-page": "npm run dev:build:background-page -- -w",
     "dev:watch:build:service-worker": "npm run dev:build:service-worker -- -w",
     "dev:watch:build:content-scripts:app": "npm run dev:build:content-scripts:app -- -w",
