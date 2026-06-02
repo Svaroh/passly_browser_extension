@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "Passbolt - Odprtokodni upravitelj gesel",
+    "message": "Passly - Odprtokodni upravitelj gesel",
     "description": "The application name of the extension, displayed in the web store. 45 characters max."
   },
   "appDescription": {
-    "message": "Razširitev Passbolt za odprtokodnega upravitelja gesel za ekipe.",
+    "message": "Razširitev Passly za odprtokodnega upravitelja gesel za ekipe.",
     "description": "The description of the extension, displayed in the web store. 85 characters max."
   }
 }

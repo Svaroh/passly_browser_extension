@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "Passbolt - opensource'owy menedżer haseł",
+    "message": "Passly - opensource'owy menedżer haseł",
     "description": "The application name of the extension, displayed in the web store. 45 characters max."
   },
   "appDescription": {
-    "message": "Rozszerzenie Passbolt dla opensource'owego menedżera haseł dla zespołów.",
+    "message": "Rozszerzenie Passly dla opensource'owego menedżera haseł dla zespołów.",
     "description": "The description of the extension, displayed in the web store. 85 characters max."
   }
 }

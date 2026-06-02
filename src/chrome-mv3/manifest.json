@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "short_name": "passbolt",
-  "version": "5.12.82",
+  "short_name": "passly",
+  "version": "5.12.83",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "minimum_chrome_version": "116",
@@ -23,7 +23,7 @@
         "size": 32
       }
     ],
-    "default_title": "Passbolt Quickaccess",
+    "default_title": "Passly Quickaccess",
     "default_popup": "webAccessibleResources/quickaccess.html?passbolt=quickaccess"
   },
   "commands": {
@@ -32,7 +32,7 @@
         "default": "Alt+Shift+P",
         "mac": "Alt+Shift+P"
       },
-      "description": "Open passbolt in a new tab!"
+      "description": "Open passly in a new tab!"
     }
   },
   "permissions": [

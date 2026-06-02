@@ -32,7 +32,7 @@ module.exports = function (grunt) {
     src_content_scripts: 'src/all/contentScripts/',
     src_web_accessible_resources: 'src/all/webAccessibleResources/',
   };
-  const firefoxWebExtBuildName = 'passbolt_-_open_source_password_manager';
+  const firefoxWebExtBuildName = 'passly_-_open_source_password_manager';
 
   /**
    * Import package.json file content
@@ -398,10 +398,10 @@ module.exports = function (grunt) {
         command: [
           'mkdir -p ' + path.dist_firefox,
           './node_modules/.bin/web-ext build -s=' + path.build + ' -a=' + path.dist_firefox + '  -o=true',
-          'mv ' + path.dist_firefox + firefoxWebExtBuildName + '-' + manifestVersion + '.zip ' + path.dist_firefox + 'passbolt-' + pkg.version + '-debug.zip',
-          'rm -f ' + path.dist_firefox + 'passbolt-latest@passbolt.com.zip',
-          'ln -fs passbolt-' + pkg.version + '-debug.zip ' + path.dist_firefox + 'passbolt-latest@passbolt.com.zip',
-          "echo '\nMoved to " + path.dist_firefox + "passbolt-" + pkg.version + "-debug.zip'"
+          'mv ' + path.dist_firefox + firefoxWebExtBuildName + '-' + manifestVersion + '.zip ' + path.dist_firefox + 'passly-' + pkg.version + '-debug.zip',
+          'rm -f ' + path.dist_firefox + 'passly-latest@svaroh.github.zip',
+          'ln -fs passly-' + pkg.version + '-debug.zip ' + path.dist_firefox + 'passly-latest@svaroh.github.zip',
+          "echo '\nMoved to " + path.dist_firefox + "passly-" + pkg.version + "-debug.zip'"
         ].join(' && ')
       },
       build_firefox_prod: {
@@ -411,8 +411,8 @@ module.exports = function (grunt) {
         command: [
           'mkdir -p ' + path.dist_firefox,
           './node_modules/.bin/web-ext build -s=' + path.build + ' -a=' + path.dist_firefox + '  -o=true',
-          'mv ' + path.dist_firefox + firefoxWebExtBuildName + '-' + manifestVersion + '.zip ' + path.dist_firefox + '/passbolt-' + pkg.version + '.zip',
-          "echo '\nMoved to " + path.dist_firefox + "passbolt-" + pkg.version + ".zip'"
+          'mv ' + path.dist_firefox + firefoxWebExtBuildName + '-' + manifestVersion + '.zip ' + path.dist_firefox + '/passly-' + pkg.version + '.zip',
+          "echo '\nMoved to " + path.dist_firefox + "passly-" + pkg.version + ".zip'"
         ].join(' && ')
       },
 
@@ -425,9 +425,9 @@ module.exports = function (grunt) {
         },
         command: [
           'mkdir -p ' + path.dist_chromium_mv2,
-          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv2 + 'passbolt-' + pkg.version + '-debug.crx',
-          'rm -f ' + path.dist_chromium_mv2 + 'passbolt-latest@passbolt.com.crx',
-          'ln -fs passbolt-' + pkg.version + '-debug.crx ' + path.dist_chromium_mv2 + 'passbolt-latest@passbolt.com.crx'
+          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv2 + 'passly-' + pkg.version + '-debug.crx',
+          'rm -f ' + path.dist_chromium_mv2 + 'passly-latest@svaroh.github.crx',
+          'ln -fs passly-' + pkg.version + '-debug.crx ' + path.dist_chromium_mv2 + 'passly-latest@svaroh.github.crx'
         ].join(' && ')
       },
       build_chromium_mv2_prod: {
@@ -436,8 +436,8 @@ module.exports = function (grunt) {
         },
         command: [
           'mkdir -p ' + path.dist_chromium_mv2,
-          'zip -q -1 -r ' + path.dist_chromium_mv2 + 'passbolt-' + pkg.version + '.zip ' + path.build,
-          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv2 + 'passbolt-' + pkg.version + '.crx ',
+          'zip -q -1 -r ' + path.dist_chromium_mv2 + 'passly-' + pkg.version + '.zip ' + path.build,
+          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv2 + 'passly-' + pkg.version + '.crx ',
           "echo '\nZip and Crx files generated in " + path.dist_chromium_mv2 + "'"
         ].join(' && ')
       },
@@ -450,9 +450,9 @@ module.exports = function (grunt) {
         },
         command: [
           'mkdir -p ' + path.dist_chromium_mv3,
-          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv3 + 'passbolt-' + pkg.version + '-debug.crx',
-          'rm -f ' + path.dist_chromium_mv3 + 'passbolt-latest@passbolt.com.crx',
-          'ln -fs passbolt-' + pkg.version + '-debug.crx ' + path.dist_chromium_mv3 + 'passbolt-latest@passbolt.com.crx'
+          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv3 + 'passly-' + pkg.version + '-debug.crx',
+          'rm -f ' + path.dist_chromium_mv3 + 'passly-latest@svaroh.github.crx',
+          'ln -fs passly-' + pkg.version + '-debug.crx ' + path.dist_chromium_mv3 + 'passly-latest@svaroh.github.crx'
         ].join(' && ')
       },
       build_chromium_mv3_prod: {
@@ -461,8 +461,8 @@ module.exports = function (grunt) {
         },
         command: [
           'mkdir -p ' + path.dist_chromium_mv3,
-          'zip -q -1 -r ' + path.dist_chromium_mv3 + 'passbolt-' + pkg.version + '.zip ' + path.build,
-          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv3 + 'passbolt-' + pkg.version + '.crx ',
+          'zip -q -1 -r ' + path.dist_chromium_mv3 + 'passly-' + pkg.version + '.zip ' + path.build,
+          './node_modules/.bin/crx pack ' + path.build + ' -p key.pem -o ' + path.dist_chromium_mv3 + 'passly-' + pkg.version + '.crx ',
           "echo '\nZip and Crx files generated in " + path.dist_chromium_mv3 + "'"
         ].join(' && ')
       }

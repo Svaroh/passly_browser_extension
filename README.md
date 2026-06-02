@@ -1,16 +1,14 @@
-	      ____                  __          ____
-	     / __ \____  _____ ____/ /_  ____  / / /_
-	    / /_/ / __ `/ ___/ ___/ __ \/ __ \/ / __/
-	   / ____/ /_/ (__  |__  ) /_/ / /_/ / / /_
-	  /_/    \__,_/____/____/_.___/\____/_/\__/
+# Passly Browser Extension
 
-	Open source password manager for teams
-	(c) 2025 Passbolt SA
-	https://www.passbolt.com
+Passly browser extension for the open source password manager for teams.
+
+This repository is a Svaroh-maintained fork of `passbolt/passbolt_browser_extension`.
+The fork keeps the upstream AGPL license, copyright notices, and Passbolt trademark
+notice intact while using Passly as the product name for Svaroh builds.
 
 ## License
 
-Passbolt - Open source password manager for teams
+Passly browser extension, based on Passbolt.
 
 (c) 2025 Passbolt SA
 
@@ -27,20 +25,20 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See GNU Affero 
 You should have received a copy of the GNU Affero General Public License along with this program. If not,
 see [GNU Affero General Public License v3](http://www.gnu.org/licenses/agpl-3.0.html).
 
-## About passbolt
+## About Passly
 
-Passbolt is an open source password manager for teams. It allows to securely share and store credentials.
+Passly is an open source password manager for teams. It allows to securely share and store credentials.
 For instance, the wifi password of your office, or the administrator password of a router, or your organisation social
-media account password, all of them can be secured using Passbolt.
+media account password, all of them can be secured using Passly.
 
-You can try a demo of passbolt at [https://demo.passbolt.com](https://demo.passbolt.com).
+The upstream Passbolt project provides a public demo at [https://demo.passbolt.com](https://demo.passbolt.com).
 
-You will need to install a plugin, you can find a step by step guide in the website
-[help section](https://www.passbolt.com/help/start/firefox)
+You will need to install the browser extension. The upstream setup guide remains
+available in the [help section](https://www.passbolt.com/help/start/firefox).
 
 Or, of course, you can use the code in this repository to build it yourself and run it!
 
-## About passbolt browser extension
+## About Passly Browser Extension
 
 A browser extension is needed to maintain a higher level of security, e.g. to ensure the integrity of the
 cryptographic code and provide a secure random number generator. In the future it will also be used to provide feature
@@ -58,11 +56,11 @@ Please check ```CONTRIBUTING.md``` for more information about how to get involve
 
 ### Reporting a security Issue
 
-If you've found a security related issue in Passbolt, please don't open an issue in GitHub.
+If you've found a security related issue in Passly, please don't open an issue in GitHub.
 Instead contact us at security@passbolt.com. In the spirit of responsible disclosure we ask that the reporter keep the
 issue confidential until we announce it.
 
-The passbolt team will take the following actions:
+The maintainers will take the following actions:
 - Try to first reproduce the issue and confirm the vulnerability.
 - Acknowledge to the reporter that we’ve received the issue and are working on a fix.
 - Get a fix/patch prepared and create associated automated tests.
@@ -79,8 +77,8 @@ This is just a quick getting started guide, for more information and productivit
 
 You will need ```node```, ```grunt``` and the dependencies listed in ```packages.json```.
 ```
-git clone git@github.com:passbolt/passbolt_browser_extension.git
-cd passbolt_browser_extension
+git clone git@github.com:Svaroh/passly_browser_extension.git
+cd passly_browser_extension
 npm ci
 ```
 
