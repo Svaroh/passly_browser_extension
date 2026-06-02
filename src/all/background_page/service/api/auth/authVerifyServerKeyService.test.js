@@ -48,6 +48,25 @@ describe("AuthVerifyServerKeyService", () => {
       await service.verify(account.userKeyFingerprint, encryptedToken);
     });
 
+    it("Should call the API verify endpoint with fetch option overrides", async () => {
+      expect.assertions(1);
+
+      const apiClientOptions = defaultApiClientOptions();
+      const account = new AccountEntity(defaultAccountDto());
+      const originalToken = new GpgAuthToken();
+      const serverKey = await OpenpgpAssertion.readKeyOrFail(account.serverPublicArmoredKey);
+      const encryptedToken = await EncryptMessageService.encrypt(originalToken.token, serverKey);
+      const service = new AuthVerifyServerKeyService(apiClientOptions);
+
+      jest.spyOn(service.apiClient, "sendRequest").mockImplementationOnce(async (method, url, body, fetchOptions) => {
+        expect(fetchOptions.credentials).toStrictEqual("omit");
+        return {};
+      });
+      jest.spyOn(service.apiClient, "parseResponseJson").mockResolvedValue({});
+
+      await service.verify(account.userKeyFingerprint, encryptedToken, { credentials: "omit" });
+    });
+
     it("Should throw an exception if the POST verify endpoint send an error", async () => {
       expect.assertions(2);
 

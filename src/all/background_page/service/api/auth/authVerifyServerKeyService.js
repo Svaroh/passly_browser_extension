@@ -60,13 +60,15 @@ class AuthVerifyServerKeyService extends AbstractService {
 
   /**
    * Verify the server identify
+   * @param {object} [fetchOptionsOverride] Additional fetch options.
    * @returns {Promise<any>}
    */
-  async verify(fingerprint, serverVerifyToken) {
+  async verify(fingerprint, serverVerifyToken, fetchOptionsOverride = {}) {
     const body = new FormData();
     body.append("data[gpg_auth][keyid]", fingerprint);
     body.append("data[gpg_auth][server_verify_token]", serverVerifyToken);
     const fetchOptions = await this.apiClient.buildFetchOptions();
+    Object.assign(fetchOptions, fetchOptionsOverride);
     // It is required to let this property unset in order to let the browser determine it by itself and set the additional variable boundary required by the API to parse the payload.
     delete fetchOptions.headers["content-type"];
     const url = this.apiClient.buildUrl(this.apiClient.baseUrl.toString());

@@ -59,7 +59,7 @@ describe("ImportBrowserFirstLoginAccountController", () => {
 
   describe("::exec", () => {
     it("Should import a browser-first-login account locally with the Android private key", async () => {
-      expect.assertions(9);
+      expect.assertions(10);
 
       const controller = new ImportBrowserFirstLoginAccountController();
       const account = await controller.exec(domain, browserFirstLoginRequest, secret);
@@ -73,6 +73,11 @@ describe("ImportBrowserFirstLoginAccountController", () => {
       expect(account.userPrivateArmoredKey).toContain("-----BEGIN PGP PRIVATE KEY BLOCK-----");
       expect(AccountModel.prototype.add).toHaveBeenCalledWith(account);
       expect(browser.storage.local.set).toHaveBeenCalledWith({ _passbolt_data: expect.any(Object) });
+      expect(AuthVerifyServerChallengeService.prototype.verifyAndValidateServerChallenge).toHaveBeenCalledWith(
+        fingerprint,
+        expect.stringContaining("-----BEGIN PGP PUBLIC KEY BLOCK-----"),
+        { credentials: "omit" },
+      );
     });
 
     it("Should normalize a browser-first-login domain without a trailing slash", async () => {
