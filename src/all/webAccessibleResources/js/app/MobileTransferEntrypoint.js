@@ -41,8 +41,18 @@ const DEFAULT_MOBILE_TRANSFER_LOCALE = "en";
 export const MOBILE_TRANSFER_TRANSLATIONS = {
   en: {
     browserFirstLoginGeneratingQrCode: "Generating QR code...",
+    browserFirstLoginAccountDataIncomplete: "The browser first-login account data is incomplete.",
+    browserFirstLoginDomainInvalid: "The browser first-login domain should be an HTTP or HTTPS URL.",
+    browserFirstLoginPrivateKeyAccountMismatch:
+      "The browser first-login private key does not belong to the selected account.",
+    browserFirstLoginPrivateKeyPayloadIncomplete: "The browser first-login private key payload is incomplete.",
     browserFirstLoginQrAlt: "Passbolt browser first-login QR code",
-    browserFirstLoginPrivateKeyPayloadInvalid: "Could not read the private key from the phone. Refresh the QR code and try again.",
+    browserFirstLoginPrivateKeyFingerprintMismatch:
+      "The browser first-login private key fingerprint does not match the selected account.",
+    browserFirstLoginPrivateKeyServerMismatch:
+      "The browser first-login private key does not match an account on this Passbolt server.",
+    browserFirstLoginPrivateKeyPayloadInvalid:
+      "Could not read the private key from the phone. Refresh the QR code and try again.",
     browserFirstLoginRefreshQrCode: "Refresh QR code",
     browserFirstLoginRequestExpired: "The browser first-login request has expired.",
     mobileTransferImportCancelTransfer: "Cancel transfer",
@@ -77,8 +87,18 @@ export const MOBILE_TRANSFER_TRANSLATIONS = {
   },
   uk: {
     browserFirstLoginGeneratingQrCode: "Створення QR-коду...",
+    browserFirstLoginAccountDataIncomplete: "Дані облікового запису для першого входу в браузері неповні.",
+    browserFirstLoginDomainInvalid: "Домен першого входу в браузері має бути HTTP або HTTPS адресою.",
+    browserFirstLoginPrivateKeyAccountMismatch:
+      "Приватний ключ першого входу в браузері не належить вибраному обліковому запису.",
+    browserFirstLoginPrivateKeyPayloadIncomplete: "Дані приватного ключа для першого входу в браузері неповні.",
     browserFirstLoginQrAlt: "QR-код першого входу Passbolt у браузері",
-    browserFirstLoginPrivateKeyPayloadInvalid: "Не вдалося прочитати приватний ключ із телефону. Оновіть QR-код і спробуйте ще раз.",
+    browserFirstLoginPrivateKeyFingerprintMismatch:
+      "Відбиток приватного ключа першого входу в браузері не збігається з вибраним обліковим записом.",
+    browserFirstLoginPrivateKeyServerMismatch:
+      "Приватний ключ першого входу в браузері не відповідає жодному обліковому запису на цьому сервері Passly.",
+    browserFirstLoginPrivateKeyPayloadInvalid:
+      "Не вдалося прочитати приватний ключ із телефону. Оновіть QR-код і спробуйте ще раз.",
     browserFirstLoginRefreshQrCode: "Оновити QR-код",
     browserFirstLoginRequestExpired: "Запит першого входу в браузері застарів.",
     mobileTransferImportCancelTransfer: "Скасувати перенесення",
@@ -114,6 +134,15 @@ export const MOBILE_TRANSFER_TRANSLATIONS = {
 };
 
 const MOBILE_TRANSFER_ERROR_MESSAGE_KEYS = {
+  "The browser first-login account data is incomplete.": "browserFirstLoginAccountDataIncomplete",
+  "The browser first-login domain should be an HTTP or HTTPS URL.": "browserFirstLoginDomainInvalid",
+  "The browser first-login private key does not belong to the selected account.":
+    "browserFirstLoginPrivateKeyAccountMismatch",
+  "The browser first-login private key fingerprint does not match the selected account.":
+    "browserFirstLoginPrivateKeyFingerprintMismatch",
+  "The browser first-login private key does not match an account on this Passbolt server.":
+    "browserFirstLoginPrivateKeyServerMismatch",
+  "The browser first-login private key payload is incomplete.": "browserFirstLoginPrivateKeyPayloadIncomplete",
   "The browser first-login private key payload is invalid.": "browserFirstLoginPrivateKeyPayloadInvalid",
   [BROWSER_FIRST_LOGIN_REQUEST_EXPIRED_ERROR]: "browserFirstLoginRequestExpired",
   "The transfer user does not match the scanned QR code.": "errorTransferUserMismatch",

@@ -130,18 +130,48 @@ describe("MobileTransferEntrypoint", () => {
   });
 
   it("Should translate first-login messages to Ukrainian.", () => {
-    expect.assertions(4);
+    expect.assertions(10);
 
     expect(translateMobileTransferMessage("browserFirstLoginGeneratingQrCode", {}, "uk-UA")).toBe(
       "Створення QR-коду...",
     );
     expect(translateMobileTransferMessage("browserFirstLoginRefreshQrCode", {}, "uk-UA")).toBe("Оновити QR-код");
+    expect(
+      translateMobileTransferError(new Error("The browser first-login account data is incomplete."), "uk-UA"),
+    ).toBe("Дані облікового запису для першого входу в браузері неповні.");
+    expect(
+      translateMobileTransferError(new Error("The browser first-login private key payload is incomplete."), "uk-UA"),
+    ).toBe("Дані приватного ключа для першого входу в браузері неповні.");
+    expect(
+      translateMobileTransferError(
+        new Error("The browser first-login private key does not belong to the selected account."),
+        "uk-UA",
+      ),
+    ).toBe("Приватний ключ першого входу в браузері не належить вибраному обліковому запису.");
+    expect(
+      translateMobileTransferError(
+        new Error("The browser first-login private key fingerprint does not match the selected account."),
+        "uk-UA",
+      ),
+    ).toBe("Відбиток приватного ключа першого входу в браузері не збігається з вибраним обліковим записом.");
+    expect(
+      translateMobileTransferError(
+        new Error("The browser first-login private key does not match an account on this Passbolt server."),
+        "uk-UA",
+      ),
+    ).toBe("Приватний ключ першого входу в браузері не відповідає жодному обліковому запису на цьому сервері Passly.");
     expect(translateMobileTransferError(new Error("The browser first-login request has expired."), "uk-UA")).toBe(
       "Запит першого входу в браузері застарів.",
     );
     expect(
       translateMobileTransferError(new Error("The browser first-login private key payload is invalid."), "uk-UA"),
     ).toBe("Не вдалося прочитати приватний ключ із телефону. Оновіть QR-код і спробуйте ще раз.");
+    expect(
+      translateMobileTransferError(
+        new Error("The browser first-login domain should be an HTTP or HTTPS URL."),
+        "uk-UA",
+      ),
+    ).toBe("Домен першого входу в браузері має бути HTTP або HTTPS адресою.");
   });
 
   it("Should identify expired first-login requests.", () => {
