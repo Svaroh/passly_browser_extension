@@ -75,6 +75,7 @@ describe("GeneratePortIdController", () => {
         tabId: worker.tab.id,
         name: "Setup",
         frameId: null,
+        url: null,
         status: WorkerEntity.STATUS_WAITING_CONNECTION,
       });
       // expectations
