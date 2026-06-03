@@ -88,20 +88,18 @@ class GroupApiService extends AbstractService {
    *
    * @param {Object} [contains] optional example: {permissions: true}
    * @param {Object} [filters] optional
-   * @param {Object} [orders] optional
    * @returns {Promise<PassboltResponseEntity>}
    * @throws {Error} if options are invalid or API error
    * @public
    */
-  async findAll(contains, filters, orders) {
+  async findAll(contains, filters) {
     const hasIdFilter = filters?.["has-id"];
     const legacyContain = GroupApiService.remapLegacyContain(contains); // crassette
     contains = legacyContain
       ? this.formatContainOptions(legacyContain, GroupApiService.getSupportedContainOptions())
       : null;
     filters = filters ? this.formatFilterOptions(filters, GroupApiService.getSupportedFiltersOptions()) : null;
-    orders = orders ? this.formatOrderOptions(orders, GroupApiService.getSupportedFiltersOptions()) : null;
-    const options = { ...contains, ...filters, ...orders };
+    const options = { ...contains, ...filters };
     const rawResponse = await this.apiClient.findAll(options);
     /*
      * Ensure backward compatibility with servers that do not yet support the has-id filter:
