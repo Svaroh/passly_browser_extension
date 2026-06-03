@@ -107,12 +107,7 @@ class PortManager {
       worker.frameId = sender.frameId;
     }
 
-    if (
-      worker.frameId === 0 &&
-      worker.url &&
-      worker.tabId === sender.tab.id &&
-      worker.url === sender.url
-    ) {
+    if (worker.frameId === 0 && worker.url && worker.tabId === sender.tab.id && worker.url === sender.url) {
       worker.frameId = sender.frameId;
     }
 

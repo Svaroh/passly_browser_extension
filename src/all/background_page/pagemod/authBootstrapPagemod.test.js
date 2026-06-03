@@ -71,7 +71,11 @@ describe("AuthBootstrap", () => {
 
     describe.each([
       { scenario: "No domain", url: "auth/login", frameId: Pagemod.TOP_FRAME_ID },
-      { scenario: "Intermediate locale redirect", url: "https://passbolt.dev/auth/login?redirect=%2F", frameId: Pagemod.TOP_FRAME_ID },
+      {
+        scenario: "Intermediate locale redirect",
+        url: "https://passbolt.dev/auth/login?redirect=%2F",
+        frameId: Pagemod.TOP_FRAME_ID,
+      },
       { scenario: "Not top frame", url: "https://passbolt.dev/auth/login", frameId: 1 },
     ])("Should not be able to attach a pagemod to browser frame", (_props) => {
       it(`Should be able to attach a pagemod to browser frame: ${_props.scenario}`, async () => {

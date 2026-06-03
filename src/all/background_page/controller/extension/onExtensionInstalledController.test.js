@@ -94,7 +94,7 @@ describe("OnExtensionInstalledController", () => {
       jest.spyOn(OnExtensionInstalledController, "onUpdate");
       jest.spyOn(WebNavigationService, "exec");
       jest.spyOn(browser.tabs, "query").mockImplementationOnce(() => Promise.resolve(tabs));
-      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => ({ domain: "https://passbolt.dev" }));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       // process
       await OnExtensionInstalledController.exec(details);
