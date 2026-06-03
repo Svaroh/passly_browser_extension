@@ -64,7 +64,7 @@
     "filereader": "^0.10.3",
     "formdata-node": "^6.0.3",
     "globals": "^16.4.0",
-    "grunt": "^1.0.3",
+    "grunt": "^1.6.2",
     "grunt-contrib-clean": "^2.0.0",
     "grunt-contrib-copy": "^1.0.0",
     "grunt-shell": "^4.0.0",
