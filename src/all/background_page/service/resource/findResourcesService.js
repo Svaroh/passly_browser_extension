@@ -320,14 +320,14 @@ export default class FindResourcesService {
     if (limit) {
       assertNumber(limit);
       if (limit < 1) {
-        throw new Error("The 'limit' parameter must be an integer greater than 1");
+        throw new Error("The 'limit' parameter must be an integer greater or equal to 1");
       }
     }
 
     if (page) {
       assertNumber(page);
       if (page < 1) {
-        throw new Error("The 'page' parameter must be an integer greater than 1");
+        throw new Error("The 'page' parameter must be an integer greater or equal to 1");
       }
       if (!limit) {
         throw new Error("The 'page' parameter must be set along with the 'limit' parameter");

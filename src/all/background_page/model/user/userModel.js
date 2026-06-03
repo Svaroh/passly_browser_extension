@@ -140,8 +140,8 @@ class UserModel {
    * @param {boolean?} [ignoreInvalidEntity] Should invalid entities be ignored.
    * @returns {Promise<UsersCollection>}
    */
-  async findAll(contains, filters, orders, ignoreInvalidEntity) {
-    const usersDto = (await this.userApiService.findAll(contains, filters, orders)).body ?? [];
+  async findAll(contains, filters, ignoreInvalidEntity) {
+    const usersDto = (await this.userApiService.findAll(contains, filters)).body ?? [];
     return new UsersCollection(usersDto, { clone: false, ignoreInvalidEntity: ignoreInvalidEntity });
   }
 
