@@ -226,7 +226,7 @@ describe("FindResourcesService", () => {
       expect(findResourcesService.resourceService.findAll).toHaveBeenCalledWith(
         { favorite: true, permission: true, tag: true },
         null,
-        { limit: 100_000, page: 1, sorts: { "Resources.modified": "desc" } },
+        { limit: 10_000, page: 1, sorts: { "Resources.modified": "desc" } },
       );
       expect(resources).toBeInstanceOf(ResourcesCollection);
     });

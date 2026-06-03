@@ -22,7 +22,7 @@ import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
 import { assertNumber } from "passbolt-styleguide/src/shared/utils/assertions";
 
-const DEFAULT_PAGE_SIZE = 100_000;
+const DEFAULT_PAGE_SIZE = 10_000;
 
 /**
  * The service aims to find resources from the API.
