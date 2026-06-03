@@ -17,31 +17,40 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import { mockSubscriptionUpdated } from "passbolt-styleguide/src/react-extension/components/Administration/DisplaySubscriptionKey/DisplaySubscriptionKey.test.data";
 
 import CreateSubscriptionKeyController from "./createSubscriptionKeyController";
+import PostLogoutService from "../../service/auth/postLogoutService";
 
 describe("CreateSubscriptionKeyController", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("::exec", () => {
-    it("should create the subscription key", async () => {
-      expect.assertions(2);
+    it("should create the subscription key and log the user out", async () => {
+      expect.assertions(3);
 
       const controller = new CreateSubscriptionKeyController(null, null, defaultApiClientOptions());
       jest
         .spyOn(controller.createSubscriptionService, "create")
         .mockResolvedValue(new SubscriptionEntity(mockSubscriptionUpdated));
+      jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       const result = await controller.exec({ data: mockSubscriptionUpdated.data });
 
       expect(result).toEqual(new SubscriptionEntity(mockSubscriptionUpdated));
       expect(controller.createSubscriptionService.create).toHaveBeenCalledTimes(1);
+      expect(PostLogoutService.exec).toHaveBeenCalledTimes(1);
     });
 
     it("should not catch errors", async () => {
-      expect.assertions(1);
+      expect.assertions(2);
 
       const expectedError = new Error("Something went wrong!");
       const controller = new CreateSubscriptionKeyController(null, null, defaultApiClientOptions());
       jest.spyOn(controller.createSubscriptionService, "create").mockRejectedValue(expectedError);
+      jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       await expect(controller.exec({ data: mockSubscriptionUpdated.data })).rejects.toStrictEqual(expectedError);
+      expect(PostLogoutService.exec).not.toHaveBeenCalled();
     });
   });
 });

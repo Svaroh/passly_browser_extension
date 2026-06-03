@@ -12,6 +12,7 @@
  * @since         5.13.0
  */
 
+import PostLogoutService from "../../service/auth/postLogoutService";
 import DeleteSubscriptionKeyService from "../../service/subscription/deleteSubscriptionKeyService";
 
 export default class DeleteSubscriptionKeyController {
@@ -24,6 +25,7 @@ export default class DeleteSubscriptionKeyController {
   constructor(worker, requestId, apiClientOptions) {
     this.worker = worker;
     this.requestId = requestId;
+
     this.deleteSubscriptionService = new DeleteSubscriptionKeyService(apiClientOptions);
   }
 
@@ -46,7 +48,8 @@ export default class DeleteSubscriptionKeyController {
    * @returns {Promise<void>}
    * @throws {Error} Throws an error when encountering any network or server error
    */
-  exec() {
-    return this.deleteSubscriptionService.delete();
+  async exec() {
+    await this.deleteSubscriptionService.delete();
+    await PostLogoutService.exec();
   }
 }

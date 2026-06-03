@@ -15,27 +15,36 @@
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 
 import DeleteSubscriptionKeyController from "./deleteSubscriptionKeyController";
+import PostLogoutService from "../../service/auth/postLogoutService";
 
 describe("DeleteSubscriptionKeyController", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("::exec", () => {
-    it("should delete the subscription key", async () => {
-      expect.assertions(2);
+    it("should delete the subscription key and log the user out", async () => {
+      expect.assertions(3);
 
       const controller = new DeleteSubscriptionKeyController(null, null, defaultApiClientOptions());
       jest.spyOn(controller.deleteSubscriptionService, "delete").mockResolvedValue(undefined);
+      jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       await expect(controller.exec()).resolves.toBeUndefined();
       expect(controller.deleteSubscriptionService.delete).toHaveBeenCalledTimes(1);
+      expect(PostLogoutService.exec).toHaveBeenCalledTimes(1);
     });
 
     it("should not catch errors", async () => {
-      expect.assertions(1);
+      expect.assertions(2);
 
       const expectedError = new Error("Something went wrong!");
       const controller = new DeleteSubscriptionKeyController(null, null, defaultApiClientOptions());
       jest.spyOn(controller.deleteSubscriptionService, "delete").mockRejectedValue(expectedError);
+      jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       await expect(controller.exec()).rejects.toStrictEqual(expectedError);
+      expect(PostLogoutService.exec).not.toHaveBeenCalled();
     });
   });
 });

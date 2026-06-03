@@ -13,6 +13,7 @@
  */
 
 import UpdateSubscriptionEntity from "../../model/entity/subscription/update/updateSubscriptionEntity";
+import PostLogoutService from "../../service/auth/postLogoutService";
 import CreateSubscriptionKeyService from "../../service/subscription/createSubscriptionKeyService";
 
 export default class CreateSubscriptionKeyController {
@@ -25,6 +26,7 @@ export default class CreateSubscriptionKeyController {
   constructor(worker, requestId, apiClientOptions) {
     this.worker = worker;
     this.requestId = requestId;
+
     this.createSubscriptionService = new CreateSubscriptionKeyService(apiClientOptions);
   }
 
@@ -52,6 +54,10 @@ export default class CreateSubscriptionKeyController {
    */
   async exec(subscriptionKeyDto) {
     const subscriptionKeyEntity = new UpdateSubscriptionEntity(subscriptionKeyDto);
-    return await this.createSubscriptionService.create(subscriptionKeyEntity);
+    const subscriptionEntity = await this.createSubscriptionService.create(subscriptionKeyEntity);
+
+    await PostLogoutService.exec();
+
+    return subscriptionEntity;
   }
 }
