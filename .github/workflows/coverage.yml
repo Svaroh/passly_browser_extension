@@ -1,0 +1,61 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "53 4 * * 1"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jest:
+    name: Jest coverage
+    if: ${{ vars.TEST_DISABLED != 'true' && vars.TEST_DISABLED != '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest with coverage
+        run: npm run test:ci:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          use_oidc: true
+          files: coverage/cobertura-coverage.xml
+          disable_search: true
+          flags: browser-extension-unit
+          name: passly-browser-extension-jest
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-browser-extension
+          path: coverage/
+          if-no-files-found: ignore
