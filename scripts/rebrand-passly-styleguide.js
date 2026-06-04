@@ -8,6 +8,76 @@ const legacyBrand = "Pass" + "bolt";
 const legacyBrandLower = legacyBrand.toLowerCase();
 const legacyLogoTitle = `${legacyBrand} logo`;
 const legacyLogoDescription = `This is the logo of ${legacyBrandLower}.`;
+const quickAccessVaultTranslations = {
+  "cs-CZ": {
+    edit: "Upravit v trezoru",
+    view: "Zobrazit v trezoru",
+  },
+  "de-DE": {
+    edit: "Im Tresor bearbeiten",
+    view: "Im Tresor anzeigen",
+  },
+  "en-UK": {
+    edit: "Edit in the vault",
+    view: "View in the vault",
+  },
+  "es-ES": {
+    edit: "Editar en la bóveda",
+    view: "Ver en la bóveda",
+  },
+  "fr-FR": {
+    edit: "Modifier dans le coffre",
+    view: "Afficher dans le coffre",
+  },
+  "it-IT": {
+    edit: "Modifica nella cassaforte",
+    view: "Visualizza nella cassaforte",
+  },
+  "ja-JP": {
+    edit: "保管庫で編集",
+    view: "保管庫で表示",
+  },
+  "ko-KR": {
+    edit: "보관소에서 수정",
+    view: "보관소에서 보기",
+  },
+  "lt-LT": {
+    edit: "Redaguoti saugykloje",
+    view: "Peržiūrėti saugykloje",
+  },
+  "nl-NL": {
+    edit: "Bewerken in de kluis",
+    view: "Bekijken in de kluis",
+  },
+  "pl-PL": {
+    edit: "Edytuj w skarbcu",
+    view: "Zobacz w skarbcu",
+  },
+  "pt-BR": {
+    edit: "Editar no cofre",
+    view: "Ver no cofre",
+  },
+  "ro-RO": {
+    edit: "Editați în seif",
+    view: "Vizualizați în seif",
+  },
+  "ru-RU": {
+    edit: "Редактировать в хранилище",
+    view: "Посмотреть в хранилище",
+  },
+  "sl-SI": {
+    edit: "Uredi v sefu",
+    view: "Prikaži v sefu",
+  },
+  "sv-SE": {
+    edit: "Redigera i valvet",
+    view: "Visa i valvet",
+  },
+  "uk-UA": {
+    edit: "Редагувати в сховищі",
+    view: "Переглянути в сховищі",
+  },
+};
 
 const passlyInlineLogo = `<svg xmlns="http://www.w3.org/2000/svg" aria-labelledby="logo-title logo-description" width="151" height="27" viewBox="0 0 151 27" fill="none">
   <title id="logo-title">Passly logo</title>
@@ -70,6 +140,50 @@ function replaceIfMissing(file, marker, replacements) {
   return replaceIfExists(file, replacements);
 }
 
+function updateQuickAccessVaultLocale(file, locale) {
+  if (!fs.existsSync(file)) {
+    return false;
+  }
+
+  const translations = quickAccessVaultTranslations[locale] || quickAccessVaultTranslations["en-UK"];
+  const content = fs.readFileSync(file, "utf8");
+  const common = JSON.parse(content);
+  delete common["Edit in passbolt"];
+  delete common["View it in passbolt"];
+  common["Edit in the vault"] = translations.edit;
+  common["View in the vault"] = translations.view;
+
+  const nextContent = `${JSON.stringify(common, null, 2)}\n`;
+  if (content === nextContent) {
+    return false;
+  }
+
+  fs.writeFileSync(file, nextContent);
+  return true;
+}
+
+function patchQuickAccessVaultLocales() {
+  const localeBases = [
+    "node_modules/passbolt-styleguide/src/locales",
+    "build/all/webAccessibleResources/locales",
+    "build/chromium-mv3-unpacked/webAccessibleResources/locales",
+    "build/firefox-unpacked/webAccessibleResources/locales",
+  ];
+  let changed = 0;
+
+  for (const base of localeBases.map(localeBase => path.join(root, localeBase))) {
+    if (!fs.existsSync(base)) {
+      continue;
+    }
+
+    for (const locale of Object.keys(quickAccessVaultTranslations)) {
+      changed += updateQuickAccessVaultLocale(path.join(base, locale, "common.json"), locale) ? 1 : 0;
+    }
+  }
+
+  return changed;
+}
+
 function rebrandStyleguideSource() {
   const logoSvg = path.join(root, "node_modules/passbolt-styleguide/src/img/svg/logo.svg");
   const logoComponent = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Common/Navigation/Header/Logo.js");
@@ -79,6 +193,340 @@ function rebrandStyleguideSource() {
   changed += replaceIfExists(logoComponent, [
     [`title="${legacyLogoTitle}"`, 'title="Passly logo"'],
     [`<span>${legacyBrand}</span>`, "<span>Passly</span>"],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchQuickAccessResourceViewPage() {
+  const resourceViewPage = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess/components/ResourceViewPage/ResourceViewPage.js");
+  let changed = 0;
+
+  changed += replaceIfExists(resourceViewPage, [
+    ["?passlyAction=edit", "?action=edit"],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(resourceViewPage, 'import EditSVG from "../../../img/svg/edit.svg";', [
+    [
+      `import GoSVG from "../../../img/svg/go.svg";
+import CopySVG from "../../../img/svg/copy.svg";`,
+      `import GoSVG from "../../../img/svg/go.svg";
+import EditSVG from "../../../img/svg/edit.svg";
+import CopySVG from "../../../img/svg/copy.svg";`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(resourceViewPage, "canUpdateResource", [
+    [
+      `  get isStandaloneTotpResource() {
+    return (
+      Boolean(this.state.resource.resource_type_id) &&
+      this.props.resourceTypes?.getFirstById(this.state.resource.resource_type_id)?.isStandaloneTotp()
+    );
+  }
+
+  render() {`,
+      `  get isStandaloneTotpResource() {
+    return (
+      Boolean(this.state.resource.resource_type_id) &&
+      this.props.resourceTypes?.getFirstById(this.state.resource.resource_type_id)?.isStandaloneTotp()
+    );
+  }
+
+  /**
+   * Can update the resource.
+   * @returns {boolean}
+   */
+  get canUpdateResource() {
+    return this.state.resource.permission?.type >= 7;
+  }
+
+  render() {`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(resourceViewPage, "action=edit", [
+    [
+      `          <a
+            href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}\`}
+            className="secondary-action button-transparent button"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={this.translate("View it in passbolt")}
+          >
+            <GoSVG />
+            <span className="visually-hidden">
+              <Trans>Edit in passbolt</Trans>
+            </span>
+          </a>`,
+      `          <a
+            href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}\`}
+            className="secondary-action button-transparent button"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={this.translate("View in the vault")}
+          >
+            <GoSVG />
+            <span className="visually-hidden">
+              <Trans>View in the vault</Trans>
+            </span>
+          </a>
+          {this.canUpdateResource && (
+            <a
+              href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}?action=edit\`}
+              className="secondary-action button-transparent button"
+              target="_blank"
+              rel="noopener noreferrer"
+              title={this.translate("Edit in the vault")}
+            >
+              <EditSVG />
+              <span className="visually-hidden">
+                <Trans>Edit in the vault</Trans>
+              </span>
+            </a>
+          )}`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchWorkspaceEditFromQueryAction() {
+  const workspaceMenu = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceMenu.js");
+  let changed = 0;
+
+  changed += replaceIfExists(workspaceMenu, [
+    ["openPasslyEditResourceFromQuery", "openEditResourceFromQuery"],
+    ["removePasslyEditResourceQuery", "removeEditResourceQuery"],
+    ['queryParameters.get("passlyAction")', 'queryParameters.get("action")'],
+    ['queryParameters.delete("passlyAction")', 'queryParameters.delete("action")'],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(workspaceMenu, 'import { withRouter } from "react-router-dom";', [
+    [
+      `import React from "react";
+import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
+      `import React from "react";
+import { withRouter } from "react-router-dom";
+import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(workspaceMenu, "openEditResourceFromQuery()", [
+    [
+      `  /**
+   * handle delete one or more resources
+   */
+  handleDeleteClickEvent() {`,
+      `  /**
+   * ComponentDidMount
+   */
+  componentDidMount() {
+    this.openEditResourceFromQuery();
+  }
+
+  /**
+   * ComponentDidUpdate
+   */
+  componentDidUpdate() {
+    this.openEditResourceFromQuery();
+  }
+
+  /**
+   * Open the edit resource dialog when requested from the URL action parameter.
+   */
+  openEditResourceFromQuery() {
+    const queryParameters = new URLSearchParams(this.props.location.search);
+    if (queryParameters.get("action") !== "edit" || !this.hasOneResourceSelected()) {
+      return;
+    }
+
+    const resource = this.selectedResources[0];
+    const selectedResourceId = this.props.match.params.selectedResourceId;
+    if (selectedResourceId && selectedResourceId !== resource.id) {
+      return;
+    }
+
+    if (!this.canUpdate()) {
+      this.removeEditResourceQuery(queryParameters);
+      return;
+    }
+
+    if (!this.props.resourceTypes) {
+      return;
+    }
+
+    this.removeEditResourceQuery(queryParameters);
+    if (this.canEditResource()) {
+      this.props.dialogContext.open(EditResource, { resource });
+    } else {
+      this.displayActionAborted();
+    }
+  }
+
+  /**
+   * Remove consumed QuickAccess edit query parameters.
+   * @param {URLSearchParams} queryParameters The current query parameters.
+   */
+  removeEditResourceQuery(queryParameters) {
+    queryParameters.delete("action");
+    const search = queryParameters.toString();
+    this.props.history.replace({
+      pathname: this.props.location.pathname,
+      search: search ? \`?\${search}\` : "",
+      state: this.props.location.state,
+    });
+  }
+
+  /**
+   * handle delete one or more resources
+   */
+  handleDeleteClickEvent() {`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(workspaceMenu, "location: PropTypes.object", [
+    [
+      `  resourceWorkspaceContext: PropTypes.any, // the resource workspace context
+  resourceTypes: PropTypes.instanceOf(ResourceTypesCollection), // The resource types collection`,
+      `  resourceWorkspaceContext: PropTypes.any, // the resource workspace context
+  resourceTypes: PropTypes.instanceOf(ResourceTypesCollection), // The resource types collection
+  location: PropTypes.object, // The router location
+  match: PropTypes.object, // The router match
+  history: PropTypes.object, // The router history`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(workspaceMenu, "withRouter(withTranslation", [
+    [
+      `                  withResourceTypesLocalStorage(
+                    withActionFeedback(withTranslation("common")(DisplayResourcesWorkspaceMenu)),
+                  ),`,
+      `                  withResourceTypesLocalStorage(
+                    withActionFeedback(withRouter(withTranslation("common")(DisplayResourcesWorkspaceMenu))),
+                  ),`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchAppIframeActionParameter() {
+  const appIframe = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/InsertAppIframe.js");
+  const firstLoadRoute = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Common/Route/HandleApplicationFirstLoadRoute.js");
+  let changed = 0;
+
+  changed += replaceIfMissing(appIframe, "getPageAction()", [
+    [
+      `    if (pathname && pathname !== "/") {
+      url.searchParams.append("pathname", pathname);
+    }
+
+    this.iframeRef.current.contentWindow.location = url.toString();`,
+      `    if (pathname && pathname !== "/") {
+      url.searchParams.append("pathname", pathname);
+    }
+
+    const action = this.getPageAction();
+    if (action) {
+      url.searchParams.append("action", action);
+    }
+
+    this.iframeRef.current.contentWindow.location = url.toString();`,
+    ],
+    [
+      `  /**
+   * Render the component
+   * @return {JSX}
+   */`,
+      `  /**
+   * Get the action from url.
+   *
+   * @returns {string|null} Return null if the action doesn't validate
+   */
+  getPageAction() {
+    const action = new URLSearchParams(this.props.location.search).get("action");
+    if (!this.validatePageAction(action)) {
+      return null;
+    }
+
+    return action;
+  }
+
+  /**
+   * Validate an action.
+   * @param {string|null} action The action to test
+   * @returns {boolean}
+   */
+  validatePageAction(action) {
+    return action === "edit";
+  }
+
+  /**
+   * Render the component
+   * @return {JSX}
+   */`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(firstLoadRoute, "getActionFromUrlParameter()", [
+    [
+      `  /**
+   * Validate a pathname.
+   * A valid pathname contains only alphabetical, numerical, / and - characters
+   * @param {string} pathname The pathname to test
+   * @returns {boolean}
+   */`,
+      `  /**
+   * Get the action from the url parameter.
+   * @returns {string} If the action does not validate return an empty string.
+   */
+  getActionFromUrlParameter() {
+    const action = new URLSearchParams(this.props.location.search).get("action");
+
+    if (!this.validateAction(action)) {
+      return "";
+    }
+
+    return action;
+  }
+
+  /**
+   * Validate an action.
+   * @param {string|null} action The action to test
+   * @returns {boolean}
+   */
+  validateAction(action) {
+    return action === "edit";
+  }
+
+  /**
+   * Validate a pathname.
+   * A valid pathname contains only alphabetical, numerical, / and - characters
+   * @param {string} pathname The pathname to test
+   * @returns {boolean}
+   */`,
+    ],
+    [
+      `  /**
+   * Render the component
+   * @return {JSX}
+   */`,
+      `  /**
+   * The first search query to redirect to.
+   * @returns {string}
+   */
+  get searchToRedirectTo() {
+    const action = this.getActionFromUrlParameter();
+    if (!action) {
+      return "";
+    }
+
+    return \`?action=\${action}\`;
+  }
+
+  /**
+   * Render the component
+   * @return {JSX}
+   */`,
+    ],
+    [
+      `    return <Redirect to={this.pathnameToRedirectTo} />;`,
+      `    return <Redirect to={{ pathname: this.pathnameToRedirectTo, search: this.searchToRedirectTo }} />;`,
+    ],
   ]) ? 1 : 0;
 
   return changed;
@@ -472,7 +920,12 @@ function patchQuickAccessGeneratePasswordPage() {
 }
 
 function patchQuickAccessPasswordGeneratorSource() {
-  return patchQuickAccessHomePage() + patchQuickAccessPrepareResourceContext() + patchQuickAccessGeneratePasswordPage();
+  return patchQuickAccessHomePage()
+    + patchQuickAccessPrepareResourceContext()
+    + patchQuickAccessGeneratePasswordPage()
+    + patchQuickAccessResourceViewPage()
+    + patchWorkspaceEditFromQueryAction()
+    + patchAppIframeActionParameter();
 }
 
 function rebrandGeneratedBundles() {
@@ -499,6 +952,12 @@ function rebrandGeneratedBundles() {
       [`"${legacyLogoDescription}"`, '"This is the logo of Passly."'],
       [`title:"${legacyBrand}"`, 'title:"Passly"'],
       [`"${legacyBrand}"))))`, '"Passly"))))'],
+      ['"View it in passbolt"', '"View in the vault"'],
+      ['"Edit in passbolt"', '"Edit in the vault"'],
+      ["?passlyAction=edit", "?action=edit"],
+      ['"passlyAction"', '"action"'],
+      ["openPasslyEditResourceFromQuery", "openEditResourceFromQuery"],
+      ["removePasslyEditResourceQuery", "removeEditResourceQuery"],
     ]) ? 1 : 0;
   }
 
@@ -507,5 +966,6 @@ function rebrandGeneratedBundles() {
 
 const changedSources = rebrandStyleguideSource();
 const changedQuickAccessPatches = patchQuickAccessPasswordGeneratorSource();
+const changedLocales = patchQuickAccessVaultLocales();
 const changedBundles = rebrandGeneratedBundles();
-console.log(`Passly styleguide rebrand applied (${changedSources} source files, ${changedQuickAccessPatches} quickaccess patches, ${changedBundles} generated files changed).`);
+console.log(`Passly styleguide rebrand applied (${changedSources} source files, ${changedQuickAccessPatches} quickaccess patches, ${changedLocales} locale files changed, ${changedBundles} generated files changed).`);
