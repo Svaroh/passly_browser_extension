@@ -155,7 +155,7 @@ describe("PasswordExpiry service", () => {
       expect.assertions(1);
 
       const expectedId = uuid();
-      fetch.doMockOnceIf(new RegExp(`/password-expiry\/settings\/${expectedId}\.json`), () => {
+      fetch.doMockOnceIf(new RegExp(`/password-expiry/settings/${expectedId}\\.json`), () => {
         throw new Error("Something went wrong");
       });
 

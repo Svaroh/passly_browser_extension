@@ -60,6 +60,6 @@ export default class RedirectPostLoginController {
     const redirectTo = workerUrl.searchParams.get("redirect");
     const domain = this.account.domain.replace(/\/+$/g, "");
 
-    return /^\/[A-Z/-9\-]*$/i.test(redirectTo) ? `${domain}${redirectTo}` : domain;
+    return /^\/[A-Z\d/-]*$/i.test(redirectTo) ? `${domain}${redirectTo}` : domain;
   }
 }
