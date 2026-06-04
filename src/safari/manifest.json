@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Passly - password manager",
   "short_name": "passly",
-  "version": "5.12.91",
+  "version": "5.12.93",
   "description": "Passly extension for the open source password manager.",
   "default_locale": "en",
   "icons": {
