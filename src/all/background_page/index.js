@@ -9,7 +9,6 @@ import SystemRequirementService from "./service/systemRequirementService/systemR
 import OnExtensionInstalledController from "./controller/extension/onExtensionInstalledController";
 import TabService from "./service/tab/tabService";
 import User from "./model/user";
-import Log from "./model/log";
 import OnExtensionUpdateAvailableService from "./service/extension/onExtensionUpdateAvailableService";
 import CheckAuthStatusService from "./service/auth/checkAuthStatusService";
 import GlobalAlarmService from "./service/alarm/globalAlarmService";
@@ -46,7 +45,6 @@ const checkAndProcessIfUserAuthenticated = async () => {
   } catch (error) {
     console.error(error);
     // Service is unavailable, do nothing...
-    Log.write({ level: "debug", message: "The Service is unavailable to check if the user is authenticated" });
     return;
   }
 
@@ -58,17 +56,6 @@ const checkAndProcessIfUserAuthenticated = async () => {
 };
 
 main();
-
-browser.runtime.onMessage.addListener((message, sender) => {
-  if (message?.name === "passbolt.content-script.bootstrap-diagnostic") {
-    console.debug("Content script bootstrap diagnostic:", {
-      ...message,
-      tabId: sender?.tab?.id,
-      frameId: sender?.frameId,
-      senderUrl: sender?.url,
-    });
-  }
-});
 
 /**
  * On installed the extension, add first install in the url tab of setup or recover

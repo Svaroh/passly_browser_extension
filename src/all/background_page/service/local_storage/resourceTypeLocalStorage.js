@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.0.0
  */
-import Log from "../../model/log";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
 import { assertType } from "../../utils/assertions";
 
@@ -33,7 +32,6 @@ class ResourceTypeLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "ResourceTypeLocalStorage flushed" });
     return await browser.storage.local.remove(this.storageKey);
   }
 

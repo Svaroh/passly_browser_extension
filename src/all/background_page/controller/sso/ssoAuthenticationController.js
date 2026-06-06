@@ -132,7 +132,6 @@ class SsoAuthenticationController {
       await PromiseTimeoutService.exec(this.worker.port.request("passbolt.port.check"));
       return;
     } catch (error) {
-      console.debug("The port from the quickaccess is not connected anymore");
       console.error(error);
     }
 

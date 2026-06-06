@@ -82,7 +82,6 @@ class Pagemod {
    */
   /* eslint-disable no-unused-vars */
   async canBeAttachedTo(frameDetails) {
-    console.debug(`The pagemod "${this.appName}" should implement canBeAttachedTo. Default false.`);
     return false;
   }
 
@@ -112,11 +111,9 @@ class Pagemod {
       await scriptExecution.injectCss(this.contentStyleFiles);
       // Insert script files
       await scriptExecution.injectJs(this.contentScriptFiles);
-      console.debug(`Pagemod "${this.appName}" injected into tab ${tabId}, frame ${frameId}, url ${url}.`);
     } catch (error) {
       await WorkersSessionStorage.deleteById(worker.id);
       if (ScriptExecution.isAccessDeniedError(error)) {
-        console.debug(`Pagemod "${this.appName}" cannot be injected into tab ${tabId}.`, error);
         return;
       }
       throw error;

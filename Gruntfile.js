@@ -108,7 +108,7 @@ module.exports = function (grunt) {
           expand: true, cwd: path.src_background_page + 'config',
           src: 'config.json.default',
           dest: path.src_background_page + 'config',
-          rename: function (dest, src) { console.log(dest + '/config.json'); return dest + '/config.json'; }
+          rename: function (dest, src) { return dest + '/config.json'; }
         }]
       },
       background_page: {
@@ -120,6 +120,7 @@ module.exports = function (grunt) {
         files: [
           { expand: true, cwd: path.src_chromium_mv3, src: 'serviceWorker.js', dest: path.build + 'serviceWorker' },
           { expand: true, cwd: `${path.src_chromium_mv3}/offscreens`, src: 'offscreen.html', dest: `${path.build}/offscreens` },
+          { expand: true, cwd: path.src_chromium_mv3, src: 'contentScripts/**/*.js', dest: path.build },
         ]
       },
       web_accessible_resources: {

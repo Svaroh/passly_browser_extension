@@ -54,7 +54,6 @@ class MetadataKeysSessionStorage {
   async flush() {
     await browser.storage.session.remove(this.storageKey);
     delete MetadataKeysSessionStorage._runtimeCachedData[this.account.id];
-    console.debug(`MetadataKeysSessionStorage flushed for (${this.account.id})`);
   }
 
   /**

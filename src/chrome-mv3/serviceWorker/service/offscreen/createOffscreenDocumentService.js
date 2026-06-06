@@ -13,7 +13,7 @@
  */
 const CLIPBOARD_OFFSCREEN_DOCUMENT_REASON = "CLIPBOARD";
 const FETCH_OFFSCREEN_DOCUMENT_REASON = "WORKERS";
-const OFFSCREEN_URL = "offscreens/offscreen.html";
+export const OFFSCREEN_URL = "offscreens/offscreen.html";
 const LOCK_CREATE_OFFSCREEN_DOCUMENT = "LOCK_CREATE_OFFSCREEN_DOCUMENT";
 
 export default class CreateOffscreenDocumentService {

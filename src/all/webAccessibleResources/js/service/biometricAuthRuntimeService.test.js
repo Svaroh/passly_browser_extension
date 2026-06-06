@@ -12,11 +12,21 @@
  */
 
 import BiometricAuthRuntimeService from "./biometricAuthRuntimeService";
+import BiometricAuthClientService from "./biometricAuthClientService";
+import { PASSKEY_PROVIDER_MESSAGES } from "../../../passkey/passkeyProviderConstants";
 
 describe("BiometricAuthRuntimeService", () => {
   const originalLocation = globalThis.location;
+  const passkeyProviderSuspendMessage = PASSKEY_PROVIDER_MESSAGES.SUSPEND;
+  const passkeyProviderResumeMessage = PASSKEY_PROVIDER_MESSAGES.RESUME;
+
+  beforeEach(() => {
+    browser.runtime.sendMessage.mockClear();
+  });
 
   afterEach(() => {
+    jest.restoreAllMocks();
+    delete chrome.webAuthenticationProxy;
     Object.defineProperty(globalThis, "location", {
       configurable: true,
       value: originalLocation,
@@ -113,6 +123,88 @@ describe("BiometricAuthRuntimeService", () => {
       await expect(
         BiometricAuthRuntimeService.getCompatibleConfiguration({ request: jest.fn() }, configuration),
       ).resolves.toBe(configuration);
+    });
+  });
+
+  describe("::unlock", () => {
+    it("Should suspend the MV3 passkey provider while running the local biometric WebAuthn unlock.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      const port = { request: jest.fn() };
+      const configuration = { credential_id: "credential", rp_id: null };
+      jest.spyOn(browser.runtime, "sendMessage").mockResolvedValue({ ok: true });
+      jest.spyOn(BiometricAuthClientService, "unlock").mockImplementation(async () => {
+        expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(1);
+        expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(1, { name: passkeyProviderSuspendMessage });
+        return "passphrase";
+      });
+
+      await expect(BiometricAuthRuntimeService.unlock(port, configuration)).resolves.toBe("passphrase");
+
+      expect(BiometricAuthClientService.unlock).toHaveBeenCalledWith(configuration, null);
+      expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(2);
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(2, { name: passkeyProviderResumeMessage });
+    });
+
+    it("Should resume the MV3 passkey provider when the local biometric WebAuthn unlock fails.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      const port = { request: jest.fn() };
+      const configuration = { credential_id: "credential", rp_id: null };
+      const error = new Error("Biometric unlock failed.");
+      jest.spyOn(browser.runtime, "sendMessage").mockResolvedValue({ ok: true });
+      jest.spyOn(BiometricAuthClientService, "unlock").mockRejectedValue(error);
+
+      await expect(BiometricAuthRuntimeService.unlock(port, configuration)).rejects.toThrow(error);
+
+      expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(2);
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(1, { name: passkeyProviderSuspendMessage });
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(2, { name: passkeyProviderResumeMessage });
+    });
+
+    it("Should directly detach and re-attach the MV3 passkey provider if the runtime message is not acknowledged.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      const port = { request: jest.fn() };
+      const configuration = { credential_id: "credential", rp_id: null };
+      chrome.webAuthenticationProxy = {
+        attach: jest.fn().mockResolvedValue(),
+        detach: jest.fn().mockResolvedValue(),
+      };
+      jest.spyOn(browser.runtime, "sendMessage").mockResolvedValue({ ok: false });
+      jest.spyOn(BiometricAuthClientService, "unlock").mockImplementation(async () => {
+        expect(chrome.webAuthenticationProxy.detach).toHaveBeenCalledTimes(1);
+        return "passphrase";
+      });
+
+      await expect(BiometricAuthRuntimeService.unlock(port, configuration)).resolves.toBe("passphrase");
+
+      expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(2);
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(1, { name: passkeyProviderSuspendMessage });
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(2, { name: passkeyProviderResumeMessage });
+      expect(chrome.webAuthenticationProxy.attach).toHaveBeenCalledTimes(1);
+    });
+
+    it("Should let the service worker re-attach after a direct detach when runtime resume recovers.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      const port = { request: jest.fn() };
+      const configuration = { credential_id: "credential", rp_id: null };
+      chrome.webAuthenticationProxy = {
+        attach: jest.fn().mockResolvedValue(),
+        detach: jest.fn().mockResolvedValue(),
+      };
+      jest
+        .spyOn(browser.runtime, "sendMessage")
+        .mockResolvedValueOnce({ ok: false })
+        .mockResolvedValueOnce({ ok: true });
+      jest.spyOn(BiometricAuthClientService, "unlock").mockImplementation(async () => {
+        expect(chrome.webAuthenticationProxy.detach).toHaveBeenCalledTimes(1);
+        return "passphrase";
+      });
+
+      await expect(BiometricAuthRuntimeService.unlock(port, configuration)).resolves.toBe("passphrase");
+
+      expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(2);
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(1, { name: passkeyProviderSuspendMessage });
+      expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(2, { name: passkeyProviderResumeMessage });
+      expect(chrome.webAuthenticationProxy.attach).not.toHaveBeenCalled();
     });
   });
 });

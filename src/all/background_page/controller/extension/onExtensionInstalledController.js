@@ -19,7 +19,6 @@ import ParseSetupUrlService from "../../service/setup/parseSetupUrlService";
 import ParseRecoverUrlService from "../../service/recover/parseRecoverUrlService";
 import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
 import User from "../../model/user";
-import Log from "../../model/log";
 import { BrowserExtensionIconService } from "../../service/ui/browserExtensionIcon.service";
 import storage from "../../sdk/storage";
 import { Config } from "../../model/config";
@@ -53,7 +52,6 @@ class OnExtensionInstalledController {
         await OnExtensionInstalledController.onBrowserUpdate();
         break;
       default:
-        console.debug(`The install reason ${details.reason} is not supported`);
         break;
     }
   }
@@ -93,10 +91,6 @@ class OnExtensionInstalledController {
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...
-      Log.write({
-        level: "debug",
-        message: "Could not check if the user is authenticated, the service is unavailable.",
-      });
       return;
     }
     // Do nothing if user is not authenticated
@@ -136,10 +130,6 @@ class OnExtensionInstalledController {
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...
-      Log.write({
-        level: "debug",
-        message: "Could not check if the user is authenticated, the service is unavailable.",
-      });
       return;
     }
 

@@ -61,7 +61,6 @@ export default class FetchOffscreenService {
       const response = await fetch(resource, options);
       return await FetchOffscreenService.handleSuccessResponse(response);
     } catch (error) {
-      console.log(error);
       return FetchOffscreenService.handleErrorResponse(error);
     } finally {
       await FetchOffscreenService.decreaseAwaitingRequests();

@@ -100,15 +100,11 @@ class WorkerService {
   static async execNavigationForWorkerWaitingConnection(workerId) {
     const worker = await WorkersSessionStorage.getWorkerById(workerId);
     if (!worker) {
-      console.debug(`WorkerService::execNavigationForWorkerWaitingConnection(${workerId}): Worker not found.`);
       return;
     }
 
     const workerEntity = new WorkerEntity(worker);
     if (!workerEntity.isWaitingConnection && !workerEntity.isReconnecting) {
-      console.debug(
-        `WorkerService::execNavigationForWorkerWaitingConnection(${workerId}): Worker port connected to the content script application.`,
-      );
       return;
     }
 
@@ -122,9 +118,6 @@ class WorkerService {
       url: tab.url,
     };
 
-    console.debug(
-      `WorkerService::execNavigationForWorkerWaitingConnection(${workerId}): Trigger pagemods identification process.`,
-    );
     await WebNavigationService.exec(frameDetails);
   }
 
@@ -150,7 +143,6 @@ class WorkerService {
         try {
           await BrowserTabService.sendMessage(worker, "passbolt.port.connect", worker.id);
         } catch (error) {
-          console.debug("Unable to reconnect the port prior to emitting event");
           console.error(error);
           continue;
         }

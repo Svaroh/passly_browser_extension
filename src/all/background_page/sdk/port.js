@@ -4,7 +4,6 @@
  * @copyright (c) 2017 Passbolt SARL
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
-import Log from "../model/log";
 import { v4 as uuidv4 } from "uuid";
 
 class Port {
@@ -113,7 +112,6 @@ class Port {
    */
   emit(...requestArgs) {
     const message = JSON.stringify(requestArgs);
-    Log.write({ level: "debug", message: `Port emit @ message: ${message}` });
     this.tryPostMessage(message);
   }
 
@@ -199,7 +197,6 @@ class Port {
         reject(new Error("The port disconnected before the request completed."));
       try {
         const message = JSON.stringify(requestArgs);
-        Log.write({ level: "debug", message: `Port request @ message: ${message}` });
         this.postMessage(message);
       } catch (error) {
         delete this._listeners[requestId];

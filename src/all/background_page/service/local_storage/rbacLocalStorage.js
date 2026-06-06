@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.1.0
  */
-import Log from "../../model/log";
 import RbacEntity from "passbolt-styleguide/src/shared/models/entity/rbac/rbacEntity";
 import RbacsCollection from "passbolt-styleguide/src/shared/models/entity/rbac/rbacsCollection";
 
@@ -45,7 +44,6 @@ class RbacsLocalStorage {
    * @return {Promise<void>}
    */
   async flush() {
-    Log.write({ level: "debug", message: "RbacLocalStorage flushed" });
     return await browser.storage.local.remove(this.storageKey);
   }
 

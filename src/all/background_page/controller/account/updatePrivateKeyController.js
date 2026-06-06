@@ -89,7 +89,7 @@ class UpdatePrivateKeyController {
     try {
       currentKit = await SsoDataStorage.get();
     } catch (e) {
-      console.log(e);
+      console.error(e);
       return;
     }
 

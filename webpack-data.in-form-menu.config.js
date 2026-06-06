@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
+const {buildProductionMinimizer} = require("./webpack.production-minimizer");
 
 const config = {
   entry: {
@@ -59,6 +60,7 @@ const config = {
     ]
   },
   optimization: {
+    minimizer: [buildProductionMinimizer()],
     splitChunks: {
       minSize: 0,
       cacheGroups: {

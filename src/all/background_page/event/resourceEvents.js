@@ -6,7 +6,6 @@
  */
 import ResourceCreateController from "../controller/resource/resourceCreateController";
 import ResourceUpdateController from "../controller/resource/resourceUpdateController";
-import Log from "../model/log";
 import GetResourceGridUserSettingController from "../controller/resourceGridSetting/getResourceGridUserSettingController";
 import SetResourceGridUserSettingController from "../controller/resourceGridSetting/setResourceGridUserSettingController";
 import SetResourcesExpiryDateController from "../controller/resource/setResourcesExpiryDateController";
@@ -27,7 +26,6 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.resources.update-local-storage", async (requestId) => {
-    Log.write({ level: "debug", message: "ResourceEvent listen passbolt.resources.update-local-storage" });
     const controller = new ResourceUpdateLocalStorageController(worker, requestId, apiClientOptions, account);
     await controller._exec();
   });

@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.8.0
  */
-import Log from "../../model/log";
 import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 
 const PASSPHRASE_FLUSH_ALARM = "PassphraseStorageFlush";
@@ -65,7 +64,6 @@ class PassphraseStorageService {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "PassphraseStorageService flushed" });
     return Promise.all([PassphraseStorageService.flushPassphrase(), PassphraseStorageService._clearFlushAlarms()]);
   }
 

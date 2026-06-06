@@ -137,8 +137,8 @@ class BiometricAuthPageRelayService {
     try {
       const currentTab = await BrowserTabService.getCurrent();
       addTabId(currentTab?.id);
-    } catch (error) {
-      console.debug(error);
+    } catch {
+      // Continue with registered page workers only.
     }
 
     const pageWorkers = await WorkersSessionStorage.getWorkersByNames(workerNames);

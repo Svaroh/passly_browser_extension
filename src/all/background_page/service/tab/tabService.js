@@ -61,8 +61,6 @@ class TabService {
    * @returns {Promise<void>}
    */
   static async handleNavigation(tabId, url) {
-    console.debug(`TabService::handleNavigation(id: ${tabId}, url: ${url}): Navigation detected.`);
-
     // Get the worker on the main frame
     const worker = await WorkersSessionStorage.getWorkerOnMainFrame(tabId);
 
@@ -89,14 +87,8 @@ class TabService {
        */
       if (workerEntity.isWaitingConnection || workerEntity.isReconnecting) {
         if (workerEntity.url && TabService.hasSameDocumentUrl(workerEntity.url, url)) {
-          console.debug(
-            `TabService::handleNavigation(id: ${tabId}): Waiting content script port initial connection or reconnection for the same document URL.`,
-          );
           return;
         }
-        console.debug(
-          `TabService::handleNavigation(id: ${tabId}): Waiting content script port initial connection or reconnection.`,
-        );
         await WorkerService.checkAndExecNavigationForWorkerWaitingConnection(workerEntity);
         return;
       }
@@ -119,9 +111,6 @@ class TabService {
         if (hasUrlSameOrigin(workerUrl, url) && canUseExistingPort) {
           try {
             await PromiseTimeoutService.exec(port.request("passbolt.port.check"), 1000);
-            console.debug(
-              `TabService::handleNavigation(id: ${tabId}):  Content script application acknowledged presence on worker runtime memory port.`,
-            );
             return;
           } catch (error) {
             console.error(error);
@@ -132,9 +121,6 @@ class TabService {
              * Then retry for 1500ms if any error or timeout start a new navigation
              */
             if (error?.name === "TimeoutError") {
-              console.debug(
-                `TabService::handleNavigation(id: ${tabId}):  Content script application timeout reached on worker runtime memory port.`,
-              );
               const tab = await BrowserTabService.getById(tabId);
               if (tab.url !== url) {
                 return;
@@ -143,22 +129,11 @@ class TabService {
               } else {
                 try {
                   await PromiseTimeoutService.exec(port.request("passbolt.port.check"), 1500);
-                  console.debug(
-                    `TabService::handleNavigation(id: ${tabId}):  Content script application acknowledged presence on worker runtime memory port after retry.`,
-                  );
                   return;
-                } catch (error) {
-                  console.debug(
-                    `TabService::handleNavigation(id: ${tabId}): No content script application acknowledged presence on worker runtime memory port after retry.`,
-                    error,
-                  );
+                } catch {
+                  // Continue with a fresh pagemod identification process.
                 }
               }
-            } else {
-              console.debug(
-                `TabService::handleNavigation(id: ${tabId}): No content script application acknowledged presence on worker runtime memory port.`,
-                error,
-              );
             }
           }
         }
@@ -172,15 +147,9 @@ class TabService {
           workerEntity.status = WorkerEntity.STATUS_RECONNECTING;
           await WorkersSessionStorage.updateWorker(workerEntity);
           await BrowserTabService.sendMessage(workerEntity, "passbolt.port.connect", workerEntity.id);
-          console.debug(
-            `TabService::handleNavigation(id: ${tabId}): A content script application reconnected its port.`,
-          );
           return;
-        } catch (error) {
-          console.debug(
-            `TabService::handleNavigation(id: ${tabId}): No content script application was able to reconnect its port.`,
-            error,
-          );
+        } catch {
+          // Continue with a fresh pagemod identification process.
         }
       }
     }
@@ -192,7 +161,6 @@ class TabService {
       url: url,
     };
     await WebNavigationService.exec(frameDetails);
-    console.debug(`TabService::handleNavigation(id: ${tabId}): Trigger pagemods identification process.`);
   }
 
   /**

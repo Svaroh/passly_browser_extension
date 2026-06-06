@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.11.0
  */
-import Log from "../../model/log";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import Lock from "../../utils/lock";
@@ -45,7 +44,6 @@ class ResourceLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "ResourceLocalStorage flushed" });
     await browser.storage.local.remove(RESOURCES_LOCAL_STORAGE_KEY);
     ResourceLocalStorage._cachedData = null;
   }

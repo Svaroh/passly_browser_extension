@@ -53,7 +53,6 @@ class MetadataKeysSettingsLocalStorage {
   async flush() {
     await browser.storage.local.remove(this.storageKey);
     delete MetadataKeysSettingsLocalStorage._runtimeCachedData[this.account.id];
-    console.debug(`MetadataKeysSettingsLocalStorage flushed for (${this.account.id})`);
   }
 
   /**

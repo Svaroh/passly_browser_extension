@@ -22,6 +22,8 @@ import InformMenuPagemod from "../../pagemod/informMenuPagemod";
 import QuickAccessPagemod from "../../pagemod/quickAccessPagemod";
 import FindSecretService from "../../service/secret/findSecretService";
 
+const PASSKEY_SECRET_OBJECT_TYPE = "PASSLY_PASSKEY";
+
 class AutofillController {
   /**
    * AutofillController constructor
@@ -64,14 +66,17 @@ class AutofillController {
    * @throws {Error} if the passphrase is not valid.
    */
   async exec(resourceId, tabId) {
-    // WebIntegration Worker
-    const webIntegrationWorker = await WorkerService.get("WebIntegration", tabId);
+    let webIntegrationWorker;
     try {
-      const passphrase = await this.getPassphrase();
       // Get the resource, decrypt the resources password and requests to fill the credentials
       const resource = await this.resourceModel.getById(resourceId);
-      const secret = await this.findSecretService.findByResourceId(resourceId);
       const secretSchema = await this.resourceTypeModel.getSecretSchemaById(resource.resourceTypeId);
+      if (this.isPasskeySecretSchema(secretSchema)) {
+        throw new Error("Passkeys cannot be used with password autofill.");
+      }
+
+      const passphrase = await this.getPassphrase();
+      const secret = await this.findSecretService.findByResourceId(resourceId);
       const privateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
       const plaintextSecret = await DecryptAndParseResourceSecretService.decryptAndParse(
         secret,
@@ -82,12 +87,23 @@ class AutofillController {
       const password = plaintextSecret?.password;
       const totp = plaintextSecret?.totp;
 
+      // WebIntegration Worker
+      webIntegrationWorker = await WorkerService.get("WebIntegration", tabId);
       this.fillCredentials(webIntegrationWorker, { username, password, totp });
     } finally {
-      if (this.isInformMenuWorker) {
+      if (this.isInformMenuWorker && webIntegrationWorker) {
         webIntegrationWorker.port.emit("passbolt.in-form-menu.close");
       }
     }
+  }
+
+  /**
+   * Is passkey secret schema.
+   * @param {object|undefined} secretSchema
+   * @returns {boolean}
+   */
+  isPasskeySecretSchema(secretSchema) {
+    return secretSchema?.properties?.object_type?.enum?.includes(PASSKEY_SECRET_OBJECT_TYPE);
   }
 
   /**

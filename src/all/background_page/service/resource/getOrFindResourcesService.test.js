@@ -33,6 +33,16 @@ import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/model
 
 jest.useFakeTimers();
 
+const TEST_RESOURCE_TYPE_V5_PASSKEY = "a4d27e8d-1e25-44f6-a4df-b7d0f85eae25";
+
+const resourceTypeV5PasskeyDto = () => ({
+  id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+  name: "V5 Passkey",
+  slug: "v5-passkey",
+  description: "A resource with an encrypted passkey credential.",
+  definition: {},
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   jest.clearAllTimers();
@@ -216,6 +226,46 @@ describe("GetOrFindResourcesService", () => {
       expect(resources).toHaveLength(2);
       expect(resources.getFirstById(suggestedResource1.id)).toBeTruthy();
       expect(resources.getFirstById(suggestedResource2.id)).toBeTruthy();
+    });
+
+    it("should filter the collection by passkey resource types when the fieldType is passkey", async () => {
+      expect.assertions(4);
+
+      const suggestedPasskeyResource = defaultResourceDto({
+        resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+        metadata: defaultResourceMetadataDto({
+          name: "passkeys.io passkey",
+          username: "ada@example.com",
+          uris: ["https://www.passkeys.io"],
+          resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+        }),
+      });
+      const notSuggestedPasskeyResource = defaultResourceDto({
+        resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+        metadata: defaultResourceMetadataDto({
+          name: "other passkey",
+          username: "ada@example.com",
+          uris: ["https://www.example.org"],
+          resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+        }),
+      });
+      const passwordResource = defaultResourceDto({
+        metadata: defaultResourceMetadataDto({ uris: ["https://www.passkeys.io"] }),
+      });
+
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => [suggestedPasskeyResource, notSuggestedPasskeyResource, passwordResource]);
+      jest
+        .spyOn(ResourceTypeService.prototype, "findAll")
+        .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
+
+      const resources = await service.getOrFindSuggested("https://www.passkeys.io", "passkey");
+
+      expect(resources).toBeInstanceOf(ResourcesCollection);
+      expect(resources).toHaveLength(1);
+      expect(resources.getFirstById(suggestedPasskeyResource.id)).toBeTruthy();
+      expect(resources.getFirstById(passwordResource.id)).toBeFalsy();
     });
 
     it("should filter the collection by default supported resource types when fieldType is unknown and filter by suggested url", async () => {

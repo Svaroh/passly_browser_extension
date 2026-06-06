@@ -12,6 +12,10 @@
  */
 
 import BiometricAuthClientService from "./biometricAuthClientService";
+import {
+  PASSKEY_PROVIDER_ENABLED_STORAGE_KEY,
+  PASSKEY_PROVIDER_MESSAGES,
+} from "../../../passkey/passkeyProviderConstants";
 
 class BiometricAuthRuntimeService {
   /**
@@ -48,11 +52,13 @@ class BiometricAuthRuntimeService {
    * @returns {Promise<boolean>}
    */
   static async isAvailable(port) {
-    const rpId = await this.getRpId(port);
-    if (this.usePassboltPageOrigin()) {
-      return port.request("passbolt.biometric-auth.is-available-in-page", rpId);
-    }
-    return BiometricAuthClientService.isAvailable(rpId);
+    return this.withPasskeyProviderSuspended(async () => {
+      const rpId = await this.getRpId(port);
+      if (this.usePassboltPageOrigin()) {
+        return port.request("passbolt.biometric-auth.is-available-in-page", rpId);
+      }
+      return BiometricAuthClientService.isAvailable(rpId);
+    });
   }
 
   /**
@@ -62,11 +68,13 @@ class BiometricAuthRuntimeService {
    * @returns {Promise<object>}
    */
   static async createConfiguration(port, passphrase) {
-    const rpId = await this.getRpId(port);
-    if (this.usePassboltPageOrigin()) {
-      return port.request("passbolt.biometric-auth.create-configuration-in-page", passphrase, rpId);
-    }
-    return BiometricAuthClientService.createConfiguration(passphrase, rpId);
+    return this.withPasskeyProviderSuspended(async () => {
+      const rpId = await this.getRpId(port);
+      if (this.usePassboltPageOrigin()) {
+        return port.request("passbolt.biometric-auth.create-configuration-in-page", passphrase, rpId);
+      }
+      return BiometricAuthClientService.createConfiguration(passphrase, rpId);
+    });
   }
 
   /**
@@ -76,11 +84,13 @@ class BiometricAuthRuntimeService {
    * @returns {Promise<string>}
    */
   static async unlock(port, configuration) {
-    const rpId = await this.getRpId(port);
-    if (this.usePassboltPageOrigin()) {
-      return port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
-    }
-    return BiometricAuthClientService.unlock(configuration, rpId);
+    return this.withPasskeyProviderSuspended(async () => {
+      const rpId = await this.getRpId(port);
+      if (this.usePassboltPageOrigin()) {
+        return port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
+      }
+      return BiometricAuthClientService.unlock(configuration, rpId);
+    });
   }
 
   /**
@@ -114,6 +124,113 @@ class BiometricAuthRuntimeService {
    */
   static isUnavailableError(error) {
     return BiometricAuthClientService.isUnavailableError(error);
+  }
+
+  /**
+   * Run a callback while the MV3 passkey proxy is detached.
+   * Passly's local biometric auth uses WebAuthn internally and must not be
+   * captured by the vault passkey provider.
+   * @param {Function} callback The WebAuthn callback to execute.
+   * @returns {Promise<*>}
+   */
+  static async withPasskeyProviderSuspended(callback) {
+    const suspensionMode = await this.suspendPasskeyProvider();
+    try {
+      return await callback();
+    } finally {
+      if (suspensionMode === "runtime") {
+        await this.sendPasskeyProviderMessage(PASSKEY_PROVIDER_MESSAGES.RESUME);
+      } else if (suspensionMode === "direct") {
+        const didResumeViaRuntime = await this.sendPasskeyProviderMessage(PASSKEY_PROVIDER_MESSAGES.RESUME);
+        if (!didResumeViaRuntime) {
+          await this.attachPasskeyProviderDirectlyIfEnabled();
+        }
+      } else {
+        await this.sendPasskeyProviderMessage(PASSKEY_PROVIDER_MESSAGES.RESUME);
+      }
+    }
+  }
+
+  /**
+   * Suspend the MV3 passkey provider before running an internal biometric WebAuthn request.
+   * @returns {Promise<"runtime"|"direct"|null>} The suspension mode used.
+   */
+  static async suspendPasskeyProvider() {
+    if (await this.sendPasskeyProviderMessage(PASSKEY_PROVIDER_MESSAGES.SUSPEND)) {
+      return "runtime";
+    }
+
+    if (await this.callWebAuthenticationProxyDirectly("detach")) {
+      return "direct";
+    }
+
+    return null;
+  }
+
+  /**
+   * Send a best-effort internal message to the MV3 service worker.
+   * @param {string} name The message name.
+   * @returns {Promise<boolean>} true when the service worker acknowledged it.
+   */
+  static async sendPasskeyProviderMessage(name) {
+    if (typeof browser === "undefined" || !browser.runtime?.sendMessage) {
+      return false;
+    }
+
+    try {
+      const response = await browser.runtime.sendMessage({ name });
+      return response?.ok === true && response?.result !== false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Re-attach the MV3 passkey provider after a direct fallback detach.
+   * @returns {Promise<boolean>}
+   */
+  static async attachPasskeyProviderDirectlyIfEnabled() {
+    if (!(await this.isPasskeyProviderEnabled())) {
+      return false;
+    }
+
+    return this.callWebAuthenticationProxyDirectly("attach");
+  }
+
+  /**
+   * Returns whether the hidden MV3 passkey provider switch is enabled.
+   * @returns {Promise<boolean>}
+   */
+  static async isPasskeyProviderEnabled() {
+    if (typeof browser === "undefined" || !browser.storage?.local?.get) {
+      return true;
+    }
+
+    try {
+      const settings = await browser.storage.local.get(PASSKEY_PROVIDER_ENABLED_STORAGE_KEY);
+      return settings[PASSKEY_PROVIDER_ENABLED_STORAGE_KEY] ?? true;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * Direct extension-page fallback for browsers exposing chrome.webAuthenticationProxy.
+   * @param {"attach"|"detach"} action The proxy action.
+   * @returns {Promise<boolean>}
+   */
+  static async callWebAuthenticationProxyDirectly(action) {
+    const webAuthenticationProxy = globalThis.chrome?.webAuthenticationProxy;
+    if (typeof webAuthenticationProxy?.[action] !== "function") {
+      return false;
+    }
+
+    try {
+      await webAuthenticationProxy[action]();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

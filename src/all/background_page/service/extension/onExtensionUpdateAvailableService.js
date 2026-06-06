@@ -79,7 +79,6 @@ const isUserAuthenticated = async () => {
       /*
        * Service unavailable
        */
-      console.debug("The Service is unavailable to check if the user is authenticated");
       console.error(error);
     }
   }

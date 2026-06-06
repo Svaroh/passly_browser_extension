@@ -197,6 +197,56 @@ describe("GetPassphraseService", () => {
       expect(receivedPassphrase).toStrictEqual(expectedPassphrase);
     });
 
+    it("should get the passphrase from the quickaccess in attached mode", async () => {
+      expect.assertions(3);
+      const quickAccessWorker = getTestWorker();
+      const expectedWorkerId = uuid();
+      let requestId = null;
+
+      jest.spyOn(KeepSessionAliveService, "start").mockImplementation(async () => {});
+      PassphraseStorageService.get.mockImplementation(async () => null);
+      QuickAccessService.isAttachedModeAvailable.mockImplementation(() => true);
+      PortManager.isPortExist.mockImplementation(() => true);
+      PortManager.getPortById.mockImplementation(() => quickAccessWorker.port);
+
+      QuickAccessService.open.mockImplementation((popupParameters) => {
+        const expectedParameters = [
+          { name: "feature", value: "request-passphrase" },
+          { name: "requestId", value: expect.any(String) },
+        ];
+
+        expect(popupParameters).toStrictEqual(expectedParameters);
+
+        requestId = popupParameters[1].value;
+        return expectedWorkerId;
+      });
+
+      const service = new GetPassphraseService(account);
+
+      const receivedPassphrasePromise = service.requestPassphraseFromQuickAccess();
+      await waitFor()();
+
+      quickAccessWorker.port.emitListener[requestId]("SUCCESS", passphraseRequestResponse);
+      const receivedPassphrase = await receivedPassphrasePromise;
+
+      expect(PortManager.getPortById).toHaveBeenCalledWith(expectedWorkerId);
+      expect(receivedPassphrase).toStrictEqual(expectedPassphrase);
+    });
+
+    it("should not open a detached quickaccess when attachedOnly is requested", async () => {
+      expect.assertions(2);
+
+      PassphraseStorageService.get.mockImplementation(async () => null);
+      QuickAccessService.isAttachedModeAvailable.mockImplementation(() => false);
+
+      const service = new GetPassphraseService(account);
+
+      await expect(service.requestPassphraseFromQuickAccess({ attachedOnly: true })).rejects.toThrow(
+        "The attached QuickAccess popup is not available.",
+      );
+      expect(QuickAccessService.openInDetachedMode).not.toHaveBeenCalled();
+    });
+
     it("should not open the quickacces if the the passphrase is registered locally", async () => {
       expect.assertions(2);
       const worker = getTestWorker();
@@ -226,6 +276,38 @@ describe("GetPassphraseService", () => {
 
       expect(PassphraseStorageService.set).toHaveBeenCalledTimes(1);
       expect(PassphraseStorageService.set).toHaveBeenCalledWith(passphraseToRemember, durationForRememberance);
+      expect(setStorageSpy).toHaveBeenCalledTimes(1);
+      expect(setStorageSpy).toHaveBeenCalledWith(expectedEntityToSave);
+    });
+
+    it("should briefly remember the session when the QuickAccess dialog returns rememberMe false", async () => {
+      expect.assertions(4);
+      jest.spyOn(KeepSessionAliveService, "start").mockImplementation(async () => {});
+      const service = new GetPassphraseService(account);
+      const setStorageSpy = jest.spyOn(service.userRememberMeLatestChoiceStorage, "set");
+
+      const passphraseToRemember = "passphrase to remember";
+      const expectedEntityToSave = new UserRememberMeLatestChoiceEntity({ duration: 0 });
+      await service.rememberPassphrase(passphraseToRemember, false);
+
+      expect(PassphraseStorageService.set).toHaveBeenCalledTimes(1);
+      expect(PassphraseStorageService.set).toHaveBeenCalledWith(passphraseToRemember, 60);
+      expect(setStorageSpy).toHaveBeenCalledTimes(1);
+      expect(setStorageSpy).toHaveBeenCalledWith(expectedEntityToSave);
+    });
+
+    it("should remember until logout if a legacy caller returns rememberMe true", async () => {
+      expect.assertions(4);
+      jest.spyOn(KeepSessionAliveService, "start").mockImplementation(async () => {});
+      const service = new GetPassphraseService(account);
+      const setStorageSpy = jest.spyOn(service.userRememberMeLatestChoiceStorage, "set");
+
+      const passphraseToRemember = "passphrase to remember";
+      const expectedEntityToSave = new UserRememberMeLatestChoiceEntity({ duration: -1 });
+      await service.rememberPassphrase(passphraseToRemember, true);
+
+      expect(PassphraseStorageService.set).toHaveBeenCalledTimes(1);
+      expect(PassphraseStorageService.set).toHaveBeenCalledWith(passphraseToRemember, -1);
       expect(setStorageSpy).toHaveBeenCalledTimes(1);
       expect(setStorageSpy).toHaveBeenCalledWith(expectedEntityToSave);
     });
