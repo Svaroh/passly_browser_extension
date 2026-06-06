@@ -23,23 +23,6 @@ import BiometricAuthPageService from "../service/biometricAuthPageService";
 import BiometricAuthRuntimeService from "../../../webAccessibleResources/js/service/biometricAuthRuntimeService";
 import BiometricAuthFormService from "../../../webAccessibleResources/js/service/biometricAuthFormService";
 
-const sendBootstrapDiagnostic = (stage, extra = {}) => {
-  try {
-    browser.runtime.sendMessage({
-      name: "passbolt.content-script.bootstrap-diagnostic",
-      app: "Login",
-      stage,
-      url: document.location.href,
-      hasSelfPortname: Boolean(self.portname),
-      domPortname: document.documentElement.getAttribute("data-passbolt-portname"),
-      htmlClass: document.documentElement.className,
-      ...extra,
-    });
-  } catch (error) {
-    console.debug("Could not send Login bootstrap diagnostic.", error);
-  }
-};
-
 function BiometricLoginActions({ port, options }) {
   const [configuration, setConfiguration] = React.useState(null);
   const [enableOnLogin, setEnableOnLogin] = React.useState(false);
@@ -92,11 +75,12 @@ function BiometricLoginActions({ port, options }) {
     setIsUnlocking(true);
     try {
       const passphrase = await BiometricAuthRuntimeService.unlock(port, configuration);
-      await port.request("passbolt.auth.login", passphrase, false);
+      const rememberMe = BiometricAuthFormService.getRememberMeChoice();
+      await port.request("passbolt.auth.login", passphrase, rememberMe);
       await port.request("passbolt.auth.post-login-redirect");
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід через PassKey.");
+      setError("Не вдалося виконати вхід по відбитку пальця.");
     } finally {
       setIsUnlocking(false);
     }
@@ -110,7 +94,7 @@ function BiometricLoginActions({ port, options }) {
     <div className="biometric-login-actions">
       {configuration ? (
         <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleLogin}>
-          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
+          {isUnlocking ? "Розблокування..." : "Вхід по відбитку пальця"}
         </button>
       ) : (
         <div className="input checkbox biometric-login-enable">
@@ -121,7 +105,7 @@ function BiometricLoginActions({ port, options }) {
             checked={enableOnLogin}
             onChange={(event) => setEnableOnLogin(event.target.checked)}
           />
-          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
+          <label htmlFor="biometric-login-enable">Увімкнути вхід по відбитку пальця на цьому пристрої</label>
         </div>
       )}
       {error && <p className="error-message">{error}</p>}
@@ -131,16 +115,12 @@ function BiometricLoginActions({ port, options }) {
 }
 
 async function main() {
-  sendBootstrapDiagnostic("main:start");
   // Port connection
   const portname = self.portname || document.documentElement.getAttribute("data-passbolt-portname");
-  sendBootstrapDiagnostic("main:portname", { hasPortname: Boolean(portname) });
   const port = new Port(portname);
   // Emit a success if the port is still connected
   port.on("passbolt.port.check", (requestId) => port.emit(requestId, "SUCCESS"));
-  sendBootstrapDiagnostic("main:before-port-connect");
   await port.connect();
-  sendBootstrapDiagnostic("main:after-port-connect");
   // Message listener
   const messageService = new MessageService();
   const messageEventHandler = new MessageEventHandler(messageService);
@@ -155,10 +135,6 @@ async function main() {
   const browserExtensionUrl = chrome.runtime.getURL("/");
   const domContainer = document.createElement("div");
   document.body.appendChild(domContainer);
-  sendBootstrapDiagnostic("main:dom-container-appended", {
-    isPassboltHtml: document.documentElement.classList.contains("passbolt"),
-    bodyChildren: document.body.children.length,
-  });
 
   /*
    * Empty unload handler to prevent Chrome from caching this page in BFCache.
@@ -178,14 +154,8 @@ async function main() {
       <BiometricLoginActions port={port} options={biometricOptions} />
     </>,
   );
-  sendBootstrapDiagnostic("main:render-called");
 }
 
 main().catch((error) => {
-  sendBootstrapDiagnostic("main:error", {
-    errorName: error?.name,
-    errorMessage: error?.message,
-    errorStack: error?.stack,
-  });
   console.error(error);
 });

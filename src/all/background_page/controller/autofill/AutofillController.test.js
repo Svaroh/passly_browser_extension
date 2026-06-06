@@ -57,6 +57,7 @@ describe("AutofillController", () => {
       });
 
       jest.spyOn(GetDecryptedUserPrivateKeyService, "getKey").mockResolvedValue(privateKey);
+      jest.clearAllMocks();
     });
 
     it("Should autofill from inform menu.", async () => {
@@ -145,6 +146,40 @@ describe("AutofillController", () => {
         tab.url,
       );
       expect(portWrapper.emit).not.toHaveBeenCalledWith("passbolt.in-form-menu.close");
+    });
+
+    it("Should not send passkey resources to password autofill.", async () => {
+      expect.assertions(8);
+
+      const requestId = uuidv4();
+      const worker = readWorker({ name: QuickAccessPagemod.appName });
+      const controller = new AutofillController(worker, requestId, defaultApiClientOptions(), account);
+      const passkeySecretSchema = {
+        type: "object",
+        properties: {
+          object_type: {
+            enum: ["PASSLY_PASSKEY"],
+          },
+        },
+      };
+
+      jest.spyOn(WorkerService, "get");
+      jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue(pgpKeys.ada.passphrase);
+      jest.spyOn(controller.resourceModel, "getById").mockResolvedValue(resource);
+      jest.spyOn(controller.resourceTypeModel, "getSecretSchemaById").mockResolvedValue(passkeySecretSchema);
+      jest.spyOn(controller.findSecretService, "findByResourceId");
+
+      await expect(controller.exec(resource.id, worker.tabId)).rejects.toThrow(
+        "Passkeys cannot be used with password autofill.",
+      );
+
+      expect(controller.getPassphraseService.getPassphrase).not.toHaveBeenCalled();
+      expect(controller.resourceModel.getById).toHaveBeenCalledWith(resource.id);
+      expect(controller.resourceTypeModel.getSecretSchemaById).toHaveBeenCalledWith(resource.resourceTypeId);
+      expect(controller.findSecretService.findByResourceId).not.toHaveBeenCalled();
+      expect(GetDecryptedUserPrivateKeyService.getKey).not.toHaveBeenCalled();
+      expect(WorkerService.get).not.toHaveBeenCalled();
+      expect(controller.isPasskeySecretSchema(passkeySecretSchema)).toBe(true);
     });
 
     it("Should not autofill from a worker that is not inform menu or quickaccess.", async () => {

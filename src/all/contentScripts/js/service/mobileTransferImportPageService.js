@@ -456,8 +456,8 @@ class MobileTransferImportPageService {
     if (this.scanner) {
       try {
         await this.scanner.stop();
-      } catch (error) {
-        console.debug(error);
+      } catch {
+        // The scanner can already be stopped by the browser.
       }
       this.scanner.clear();
     }

@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-import Log from "../../model/log";
 import UserEntity from "../../model/entity/user/userEntity";
 import UsersCollection from "../../model/entity/user/usersCollection";
 import Lock from "../../utils/lock";
@@ -27,7 +26,6 @@ class UserLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "UserLocalStorage flushed" });
     return await browser.storage.local.remove(UserLocalStorage.USER_LOCAL_STORAGE_KEY);
   }
 

@@ -55,8 +55,8 @@ class UserMeSessionStorageService {
     if (userMeDto) {
       try {
         return new UserEntity(userMeDto);
-      } catch (error) {
-        console.debug("Unable to instantiate the user entity based on the cached user dto.", error);
+      } catch {
+        return null;
       }
     }
 

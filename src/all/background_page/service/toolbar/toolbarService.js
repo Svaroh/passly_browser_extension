@@ -15,7 +15,6 @@ import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service"
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import GetActiveAccountService from "../account/getActiveAccountService";
 import CheckAuthStatusService from "../auth/checkAuthStatusService";
-import Log from "../../model/log";
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
@@ -201,14 +200,15 @@ class ToolbarService {
       if (!this.isUrlPassboltDomain(this.tabUrl, account) && !this.isUrlPassboltExtension(this.tabUrl)) {
         // Get the suggested resources for the current tab
         // As we don't know if the page is using OTP or password, we need to check both
-        const [otpSuggestedResources, passwordSuggestedResources] = await Promise.all([
+        const [otpSuggestedResources, passwordSuggestedResources, passkeySuggestedResources] = await Promise.all([
           this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl, "otp"),
           this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl, "password"),
+          this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl, "passkey"),
         ]);
 
         // De-duplicate the resources
         const resourcesIds = new Set();
-        [...otpSuggestedResources, ...passwordSuggestedResources].forEach(({ id }) => {
+        [...otpSuggestedResources, ...passwordSuggestedResources, ...passkeySuggestedResources].forEach(({ id }) => {
           resourcesIds.add(id);
         });
 
@@ -240,10 +240,6 @@ class ToolbarService {
       }
       console.error(error);
       // Service is unavailable, do nothing...
-      Log.write({
-        level: "debug",
-        message: "Could not check if the user is authenticated, the service is unavailable.",
-      });
       // The user is not authenticated
       return false;
     }

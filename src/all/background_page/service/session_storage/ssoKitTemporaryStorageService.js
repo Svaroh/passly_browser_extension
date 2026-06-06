@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.9.0
  */
-import Log from "../../model/log";
 import Lock from "../../utils/lock";
 import SsoKitServerPartEntity from "../../model/entity/sso/ssoKitServerPartEntity";
 const lock = new Lock();
@@ -52,7 +51,6 @@ class SsoKitTemporaryStorageService {
       const entity = new SsoKitServerPartEntity(ssoKitServerPartDto);
 
       // Flush the data in any case
-      Log.write({ level: "debug", message: "SsoKitTemporaryStorageService flushed" });
       await browser.storage.session.remove(SSO_KIT_STORAGE_KEY);
       lock.release();
       return entity;
@@ -69,7 +67,6 @@ class SsoKitTemporaryStorageService {
   static async flush() {
     await lock.acquire();
     try {
-      Log.write({ level: "debug", message: "SsoKitTemporaryStorageService flushed" });
       await browser.storage.session.remove(SSO_KIT_STORAGE_KEY);
     } catch (e) {
       lock.release();

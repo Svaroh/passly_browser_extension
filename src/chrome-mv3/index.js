@@ -20,22 +20,15 @@ import GlobalAlarmService from "../all/background_page/service/alarm/globalAlarm
 import OnStartUpService from "../all/background_page/service/extension/onStartUpService";
 import ToolbarService from "../all/background_page/service/toolbar/toolbarService";
 import HandleOffscreenResponseService from "./serviceWorker/service/offscreen/handleOffscreenResponseService";
+import PasskeyWebAuthenticationProxyService from "./serviceWorker/service/passkey/passkeyWebAuthenticationProxyService";
 
 /**
  * Load all system requirement
  */
+PasskeyWebAuthenticationProxyService.registerRuntimePortListener();
+PasskeyWebAuthenticationProxyService.registerRuntimeMessageListener();
 SystemRequirementService.get();
-
-browser.runtime.onMessage.addListener((message, sender) => {
-  if (message?.name === "passbolt.content-script.bootstrap-diagnostic") {
-    console.debug("Content script bootstrap diagnostic:", {
-      ...message,
-      tabId: sender?.tab?.id,
-      frameId: sender?.frameId,
-      senderUrl: sender?.url,
-    });
-  }
-});
+PasskeyWebAuthenticationProxyService.initialize();
 
 /**
  * Add listener on startup

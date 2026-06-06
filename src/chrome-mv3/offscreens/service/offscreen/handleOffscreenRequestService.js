@@ -16,6 +16,10 @@ import FetchOffscreenService, { SEND_MESSAGE_TARGET_FETCH_OFFSCREEN } from "../n
 import WriteClipobardOffscreenService, {
   SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN,
 } from "../clipboard/writeClipobardOffscreenService";
+import PasskeyKeepAliveOffscreenService, {
+  SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_START,
+  SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_STOP,
+} from "../passkey/passkeyKeepAliveOffscreenService";
 import { assertUuid } from "../../../../all/background_page/utils/assertions";
 
 export const SEND_MESSAGE_TARGET_OFFSCREEN_ERROR_RESPONSE_HANDLER = "service-worker-offscreen-error-response-handler";
@@ -27,18 +31,19 @@ export default class HandleOffscreenRequestService {
    * @returns {Promise<void>}
    */
   static async handleOffscreenRequest(message) {
-    HandleOffscreenRequestService._assertOffscreenRequest(message);
-
     const REQUEST_HANDLE_MAP = {
       [SEND_MESSAGE_TARGET_FETCH_OFFSCREEN]: FetchOffscreenService.handleFetchRequest,
       [SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN]: WriteClipobardOffscreenService.handleClipboardRequest,
+      [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_START]: PasskeyKeepAliveOffscreenService.handleStartRequest,
+      [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_STOP]: PasskeyKeepAliveOffscreenService.handleStopRequest,
     };
 
-    const requestHandler = REQUEST_HANDLE_MAP[message.target];
+    const requestHandler = REQUEST_HANDLE_MAP[message?.target];
     if (!requestHandler) {
-      console.debug(`HandleOffscreenRequestService received an unsupported request: "${message.target}".`);
       return;
     }
+
+    HandleOffscreenRequestService._assertOffscreenRequest(message);
 
     try {
       const result = await requestHandler(message.data);

@@ -11,6 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  */
 import {
+  createRequestPassphraseClosingPort,
   ensureQuickAccessConfigured,
   openPassboltLoginPageForPasskey,
   shouldOpenPassboltPageForQuickAccessPasskey,
@@ -112,6 +113,127 @@ describe("QuickAccess", () => {
         },
       });
       expect(closeWindow).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("createRequestPassphraseClosingPort", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("Should close the attached popup after the bootstrap passphrase response is emitted.", () => {
+      expect.assertions(6);
+      jest.useFakeTimers();
+      const closeWindow = jest.fn();
+      const port = {
+        emit: jest.fn(() => "sent"),
+      };
+
+      const wrappedPort = createRequestPassphraseClosingPort(port, {
+        bootstrapFeature: "request-passphrase",
+        bootstrapRequestId: "request-id",
+        closeWindow,
+      });
+
+      expect(wrappedPort.emit("other-request-id", "SUCCESS")).toBe("sent");
+      expect(closeWindow).not.toHaveBeenCalled();
+
+      expect(wrappedPort.emit("request-id", "SUCCESS", { passphrase: "passphrase" })).toBe("sent");
+      expect(port.emit).toHaveBeenCalledWith("request-id", "SUCCESS", { passphrase: "passphrase" });
+
+      jest.advanceTimersByTime(99);
+      expect(closeWindow).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(1);
+      expect(closeWindow).toHaveBeenCalledTimes(1);
+    });
+
+    it("Should keep detached request-passphrase ports unchanged.", () => {
+      expect.assertions(1);
+      const port = {
+        emit: jest.fn(),
+      };
+
+      const wrappedPort = createRequestPassphraseClosingPort(port, {
+        bootstrapFeature: "request-passphrase",
+        bootstrapRequestId: "request-id",
+        detached: true,
+      });
+
+      expect(wrappedPort).toBe(port);
+    });
+
+    it("Should complete the bootstrap passphrase request and close the attached popup after login succeeds without MFA.", async () => {
+      expect.assertions(7);
+      jest.useFakeTimers();
+      const closeWindow = jest.fn();
+      const port = {
+        request: jest.fn((message) => {
+          if (message === "passbolt.auth.login") {
+            return Promise.resolve();
+          }
+          if (message === "passbolt.auth.is-mfa-required") {
+            return Promise.resolve(false);
+          }
+        }),
+        emit: jest.fn(() => Promise.resolve()),
+      };
+
+      const wrappedPort = createRequestPassphraseClosingPort(port, {
+        bootstrapFeature: "request-passphrase",
+        bootstrapRequestId: "request-id",
+        closeWindow,
+      });
+
+      await wrappedPort.request("passbolt.auth.login", "passphrase", false);
+      await wrappedPort.request("passbolt.auth.is-mfa-required");
+
+      expect(port.request).toHaveBeenCalledWith("passbolt.auth.login", "passphrase", false);
+      expect(port.request).toHaveBeenCalledWith("passbolt.auth.is-mfa-required");
+      expect(port.emit).toHaveBeenCalledWith("request-id", "SUCCESS", {
+        passphrase: "passphrase",
+        rememberMe: false,
+      });
+      expect(closeWindow).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(99);
+      expect(closeWindow).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(1);
+      expect(closeWindow).toHaveBeenCalledTimes(1);
+      expect(port.emit).toHaveBeenCalledTimes(1);
+    });
+
+    it("Should keep the attached popup open when login still requires MFA.", async () => {
+      expect.assertions(4);
+      jest.useFakeTimers();
+      const closeWindow = jest.fn();
+      const port = {
+        request: jest.fn((message) => {
+          if (message === "passbolt.auth.login") {
+            return Promise.resolve();
+          }
+          if (message === "passbolt.auth.is-mfa-required") {
+            return Promise.resolve(true);
+          }
+        }),
+        emit: jest.fn(() => Promise.resolve()),
+      };
+
+      const wrappedPort = createRequestPassphraseClosingPort(port, {
+        bootstrapFeature: "request-passphrase",
+        bootstrapRequestId: "request-id",
+        closeWindow,
+      });
+
+      await wrappedPort.request("passbolt.auth.login", "passphrase", false);
+      await wrappedPort.request("passbolt.auth.is-mfa-required");
+      jest.runOnlyPendingTimers();
+
+      expect(port.request).toHaveBeenCalledWith("passbolt.auth.login", "passphrase", false);
+      expect(port.request).toHaveBeenCalledWith("passbolt.auth.is-mfa-required");
+      expect(port.emit).not.toHaveBeenCalled();
+      expect(closeWindow).not.toHaveBeenCalled();
     });
   });
 });

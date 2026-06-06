@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.2.0
  */
-import Log from "../../model/log";
 import UserRememberMeLatestChoiceEntity from "../../model/entity/rememberMe/userRememberMeLatestChoiceEntity";
 
 export const REMEMBER_ME_LATEST_CHOICE_LOCAL_STORAGE_KEY = "userRememberMeLatestChoice";
@@ -43,7 +42,6 @@ class UserRememberMeLatestChoiceLocalStorage {
    * @return {Promise<void>}
    */
   async flush() {
-    Log.write({ level: "debug", message: "UserRememberMeLatestChoiceLocalStorage flushed" });
     await browser.storage.local.remove(this.storageKey);
   }
 

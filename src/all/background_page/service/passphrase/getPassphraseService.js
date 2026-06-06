@@ -69,16 +69,17 @@ export default class GetPassphraseService {
   }
 
   /**
-   * Request the user passphrase from the Quick Access in detached mode.
-   * This method intentionally uses openInDetachedMode directly (not open()) because it depends on the
-   * returned window object to find the QuickAccess tab/port and set up the passphrase response listener.
-   * On Safari, the passphrase is requested differently via the attached popup,
+   * Request the user passphrase from the Quick Access.
+   * Detached mode intentionally uses openInDetachedMode directly because it depends on the returned
+   * window object to find the QuickAccess tab/port and set up the passphrase response listener.
+   * Attached mode returns the worker id used as the port name,
    * see listenToAttachedQuickaccessPassphraseRequestResponse().
+   * @param {{force?: boolean, attachedOnly?: boolean}} options Options.
    * @returns {Promise<string>}
    */
-  async requestPassphraseFromQuickAccess() {
+  async requestPassphraseFromQuickAccess(options = {}) {
     const storedPassphrase = await PassphraseStorageService.get();
-    if (storedPassphrase) {
+    if (!options.force && storedPassphrase) {
       return storedPassphrase;
     }
 
@@ -93,6 +94,8 @@ export default class GetPassphraseService {
       // Open attached popup — returns the workerId used as the port name
       const workerId = await QuickAccessService.open(queryParameters);
       quickAccessResponse = await this.listenToAttachedQuickaccessPassphraseRequestResponse(requestId, workerId);
+    } else if (options.attachedOnly) {
+      throw new Error("The attached QuickAccess popup is not available.");
     } else {
       const quickAccessWindow = await QuickAccessService.openInDetachedMode(queryParameters);
       quickAccessResponse = await this.listenToDetachedQuickaccessPassphraseRequestResponse(
@@ -183,20 +186,54 @@ export default class GetPassphraseService {
   /**
    * Remember the user passphrase for a given duration.
    * @param {string} passphrase The passphrase.
-   * @param {integer|string} duration The duration in second to remember the passphrase for.
+   * @param {integer|boolean} duration The duration in second to remember the passphrase for.
    *  If -1 given then it will remember the passphrase until the user is logged out.
    * @private
    */
   async rememberPassphrase(passphrase, duration) {
-    if (!duration || !Number.isInteger(duration)) {
+    const storageDuration = this.getStorageDuration(duration);
+    if (storageDuration === null) {
       return;
     }
 
-    await Promise.all([PassphraseStorageService.set(passphrase, duration), KeepSessionAliveService.start()]);
+    await Promise.all([PassphraseStorageService.set(passphrase, storageDuration), KeepSessionAliveService.start()]);
     const userRememberMeLatestChoiceEntity = new UserRememberMeLatestChoiceEntity({
-      duration: parseInt(duration, 10),
+      duration: this.getLatestChoiceDuration(duration, storageDuration),
     });
     this.userRememberMeLatestChoiceStorage.set(userRememberMeLatestChoiceEntity);
+  }
+
+  /**
+   * Normalize the QuickAccess passphrase dialog remember value for session storage.
+   * The dialog emits false when users do not select "remember until logout"; keep
+   * the vault unlocked briefly so background-only flows can complete.
+   * @param {integer|boolean} duration The requested remember duration.
+   * @returns {integer|null}
+   */
+  getStorageDuration(duration) {
+    if (duration === false) {
+      return 60;
+    }
+    if (duration === true) {
+      return -1;
+    }
+    if (Number.isInteger(duration) && duration !== 0) {
+      return duration;
+    }
+    return null;
+  }
+
+  /**
+   * Normalize the persisted remember-me choice.
+   * @param {integer|boolean} duration The requested remember duration.
+   * @param {integer} storageDuration The duration used for session storage.
+   * @returns {integer}
+   */
+  getLatestChoiceDuration(duration, storageDuration) {
+    if (duration === false) {
+      return 0;
+    }
+    return storageDuration;
   }
 
   /**

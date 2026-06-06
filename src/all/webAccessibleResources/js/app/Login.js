@@ -19,26 +19,6 @@ import Port from "../lib/port";
 import BiometricAuthRuntimeService from "../service/biometricAuthRuntimeService";
 import BiometricAuthFormService from "../service/biometricAuthFormService";
 
-const sendBootstrapDiagnostic = (stage, extra = {}) => {
-  try {
-    browser.runtime.sendMessage({
-      name: "passbolt.content-script.bootstrap-diagnostic",
-      app: "LoginIframe",
-      stage,
-      url: document.location.href,
-      ...extra,
-    });
-  } catch (error) {
-    console.debug("Could not send Login iframe bootstrap diagnostic.", error);
-  }
-};
-
-const serializeError = (error) => ({
-  errorName: error?.name,
-  errorMessage: error?.message,
-  errorStack: error?.stack,
-});
-
 const isPassboltDataRequested = (keys) => {
   if (!keys) {
     return true;
@@ -83,10 +63,6 @@ const createLoginStorage = (port, storage) => {
   const get = async (keys) => {
     const storageData = await localStorage.get(keys);
     if (!isPassboltDataRequested(keys) || hasLegacyConfig(storageData)) {
-      sendBootstrapDiagnostic("iframe:legacy-storage-read", {
-        requestedPassboltData: isPassboltDataRequested(keys),
-        hasLegacyConfig: hasLegacyConfig(storageData),
-      });
       return storageData;
     }
 
@@ -94,12 +70,8 @@ const createLoginStorage = (port, storage) => {
       const config = await buildLegacyConfigFromAccount(port);
       const passboltData = { ...(storageData._passbolt_data || {}), config };
       await localStorage.set({ _passbolt_data: passboltData });
-      sendBootstrapDiagnostic("iframe:legacy-storage-recovered", {
-        configKeys: Object.keys(config).length,
-      });
       return { ...storageData, _passbolt_data: passboltData };
-    } catch (error) {
-      sendBootstrapDiagnostic("iframe:legacy-storage-recovery-error", serializeError(error));
+    } catch {
       return storageData;
     }
   };
@@ -116,21 +88,6 @@ const createLoginStorage = (port, storage) => {
   };
 };
 
-const createDiagnosticPort = (port) => {
-  const diagnosticPort = Object.create(port);
-  diagnosticPort.request = async (message, ...args) => {
-    try {
-      const result = await port.request(message, ...args);
-      sendBootstrapDiagnostic("iframe:port-request-success", { message });
-      return result;
-    } catch (error) {
-      sendBootstrapDiagnostic("iframe:port-request-error", { message, ...serializeError(error) });
-      throw error;
-    }
-  };
-  return diagnosticPort;
-};
-
 class LoginErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -138,7 +95,6 @@ class LoginErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error) {
-    sendBootstrapDiagnostic("iframe:react-error", serializeError(error));
     this.setState({ error });
   }
 
@@ -168,7 +124,7 @@ function usePasskeyAutoLoginRequest(port) {
         setAutoLoginRequested(requested);
       }
     };
-    init().catch((error) => console.debug("Could not consume PassKey auto-login request.", error));
+    init().catch(() => {});
     return () => {
       isMounted = false;
     };
@@ -231,11 +187,12 @@ function BiometricLoginActions({ port, options }) {
     setIsUnlocking(true);
     try {
       const passphrase = await BiometricAuthRuntimeService.unlock(port, configuration);
-      await port.request("passbolt.auth.login", passphrase, false);
+      const rememberMe = BiometricAuthFormService.getRememberMeChoice();
+      await port.request("passbolt.auth.login", passphrase, rememberMe);
       await port.request("passbolt.auth.post-login-redirect");
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід через PassKey.");
+      setError("Не вдалося виконати вхід по відбитку пальця.");
     } finally {
       setIsUnlocking(false);
     }
@@ -257,7 +214,7 @@ function BiometricLoginActions({ port, options }) {
     <div className="biometric-login-actions">
       {configuration ? (
         <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleLogin}>
-          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
+          {isUnlocking ? "Розблокування..." : "Вхід по відбитку пальця"}
         </button>
       ) : (
         <div className="input checkbox biometric-login-enable">
@@ -268,7 +225,7 @@ function BiometricLoginActions({ port, options }) {
             checked={enableOnLogin}
             onChange={(event) => setEnableOnLogin(event.target.checked)}
           />
-          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
+          <label htmlFor="biometric-login-enable">Увімкнути вхід по відбитку пальця на цьому пристрої</label>
         </div>
       )}
       {error && <p className="error-message">{error}</p>}
@@ -278,36 +235,28 @@ function BiometricLoginActions({ port, options }) {
 }
 
 async function main() {
-  sendBootstrapDiagnostic("iframe:start");
   const query = new URLSearchParams(window.location.search);
   const portname = query.get("passbolt");
-  sendBootstrapDiagnostic("iframe:portname", { hasPortname: Boolean(portname) });
   const port = new Port(portname);
-  sendBootstrapDiagnostic("iframe:before-port-connect");
   await port.connect();
-  sendBootstrapDiagnostic("iframe:after-port-connect");
-  const diagnosticPort = createDiagnosticPort(port);
-  const storage = createLoginStorage(diagnosticPort, browser.storage);
+  const storage = createLoginStorage(port, browser.storage);
   const biometricOptions = { enableOnLogin: false };
-  const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(diagnosticPort, biometricOptions, {
+  const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(port, biometricOptions, {
     requestMessage: "passbolt.auth.login",
     option: "enableOnLogin",
   });
   const domContainer = document.createElement("div");
   document.body.appendChild(domContainer);
-  sendBootstrapDiagnostic("iframe:dom-container-appended", { bodyChildren: document.body.children.length });
 
   const root = createRoot(domContainer);
   root.render(
     <LoginErrorBoundary>
       <ExtAuthenticationLogin port={biometricAwarePort} storage={storage} />
-      <BiometricLoginActions port={diagnosticPort} options={biometricOptions} />
+      <BiometricLoginActions port={port} options={biometricOptions} />
     </LoginErrorBoundary>,
   );
-  sendBootstrapDiagnostic("iframe:render-called");
 }
 
 main().catch((error) => {
-  sendBootstrapDiagnostic("iframe:error", serializeError(error));
   console.error(error);
 });

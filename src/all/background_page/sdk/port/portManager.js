@@ -56,16 +56,7 @@ class PortManager {
       if (!this.isPortExist(port.name) && (await this.isKnownPortSender(workerEntity, port.sender))) {
         await this.updateWorkerStatus(workerEntity);
         await this.registerAndAttachEvent(port, workerEntity.name);
-      } else {
-        console.debug(
-          `A known port has been denied connection or reconnection with name=${port.name}, tabUrl=${port.sender.tab.url}, tabId=${port.sender.tab.id}, frameId=${port.sender.frameId}`,
-        );
       }
-    } else {
-      // If there is no worker associate to this port
-      console.debug(
-        `An unknown port has been denied connection with name=${port.name}, tabUrl=${port.sender.tab.url}, tabId=${port.sender.tab.id}, frameId=${port.sender.frameId}`,
-      );
     }
   }
 
@@ -125,9 +116,6 @@ class PortManager {
     this.registerPort(portWrapper);
     await PagemodManager.attachEventToPort(portWrapper, name);
     portWrapper.emit("passbolt.port.ready");
-    console.debug(
-      `PortManager::registerAndAttachEvent: connected "${name}" with port=${port.name}, tabUrl=${port.sender?.tab?.url || port.sender?.url}, tabId=${port.sender?.tab?.id}, frameId=${port.sender?.frameId}`,
-    );
   }
 
   /**

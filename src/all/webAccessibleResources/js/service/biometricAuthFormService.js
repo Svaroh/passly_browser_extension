@@ -122,9 +122,7 @@ class BiometricAuthFormService {
       const configuration = await BiometricAuthRuntimeService.createConfiguration(port, passphrase);
       await port.request("passbolt.biometric-auth.save-configuration", configuration);
     } catch (error) {
-      if (BiometricAuthRuntimeService.isUnavailableError(error)) {
-        console.debug(error);
-      } else {
+      if (!BiometricAuthRuntimeService.isUnavailableError(error)) {
         console.error(error);
       }
     }
@@ -169,6 +167,22 @@ class BiometricAuthFormService {
 
     this.setInputValue(passphraseInput, passphrase);
     submitButton.click();
+  }
+
+  /**
+   * Read the remember-until-logout choice from an authentication form.
+   * @param {string} [formSelector="#container .login .enter-passphrase"] The form selector.
+   * @returns {boolean}
+   */
+  static getRememberMeChoice(formSelector = "#container .login .enter-passphrase") {
+    if (typeof document === "undefined") {
+      return false;
+    }
+
+    const form = document.querySelector(formSelector);
+    const rememberMeInput = form?.querySelector("#remember-me, input[name='remember-me'], input[name='rememberMe']");
+
+    return Boolean(rememberMeInput?.checked);
   }
 
   /**

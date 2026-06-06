@@ -1,6 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
-const TerserPlugin = require("terser-webpack-plugin");
+const {buildProductionMinimizer} = require("./webpack.production-minimizer");
 
 const config = {
   entry: {
@@ -27,7 +27,7 @@ const config = {
   },
   optimization: {
     minimize: true,
-    minimizer: [new TerserPlugin()],
+    minimizer: [buildProductionMinimizer()],
     splitChunks: {
       minSize: 0,
       cacheGroups: {

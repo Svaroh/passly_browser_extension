@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.3.0
  */
-import Log from "../../model/log";
 
 const PASSWORD_GENERATOR_LOCAL_STORAGE_KEY = "passwordGenerator";
 
@@ -27,7 +26,6 @@ class PasswordGeneratorLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "PasswordGeneratorLocalStorage flushed" });
     return await browser.storage.local.remove(PASSWORD_GENERATOR_LOCAL_STORAGE_KEY);
   }
 }

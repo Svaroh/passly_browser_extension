@@ -61,7 +61,6 @@ class SessionKeysBundlesSessionStorageService {
   async flush() {
     await browser.storage.session.remove(this.storageKey);
     delete SessionKeysBundlesSessionStorageService._runtimeCachedData[this.account.id];
-    console.debug(`SessionKeysBundlesSessionStorageStorage flushed for (${this.account.id})`);
   }
 
   /**
