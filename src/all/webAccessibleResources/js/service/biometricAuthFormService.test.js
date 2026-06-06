@@ -276,4 +276,46 @@ describe("BiometricAuthFormService", () => {
       await expect(browser.storage.local.get("passbolt.quickaccess.passkeyAutoLogin")).resolves.toEqual({});
     });
   });
+
+  describe("BiometricAuthFormService::getRememberMeChoice", () => {
+    const originalDocument = globalThis.document;
+
+    afterEach(() => {
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: originalDocument,
+      });
+    });
+
+    it("Should return true when the login remember-me checkbox is checked.", () => {
+      const form = {
+        querySelector: jest.fn(() => ({ checked: true })),
+      };
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+          querySelector: jest.fn(() => form),
+        },
+      });
+
+      expect(BiometricAuthFormService.getRememberMeChoice()).toBe(true);
+      expect(globalThis.document.querySelector).toHaveBeenCalledWith("#container .login .enter-passphrase");
+      expect(form.querySelector).toHaveBeenCalledWith(
+        "#remember-me, input[name='remember-me'], input[name='rememberMe']",
+      );
+    });
+
+    it("Should return false when the login remember-me checkbox is not checked.", () => {
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+          querySelector: jest.fn(() => ({
+            querySelector: jest.fn(() => ({ checked: false })),
+          })),
+        },
+      });
+
+      expect(BiometricAuthFormService.getRememberMeChoice()).toBe(false);
+    });
+  });
 });

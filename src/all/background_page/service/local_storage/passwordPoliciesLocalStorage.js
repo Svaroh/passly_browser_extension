@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.2.0
  */
-import Log from "../../model/log";
 import PasswordPoliciesEntity from "../../model/entity/passwordPolicies/passwordPoliciesEntity";
 
 export const PASSWORD_POLICIES_LOCAL_STORAGE_KEY = "passwordPolicies";
@@ -44,7 +43,6 @@ class PasswordPoliciesLocalStorage {
    * @return {Promise<void>}
    */
   async flush() {
-    Log.write({ level: "debug", message: "PasswordPoliciesLocalStorage flushed" });
     return await browser.storage.local.remove(this.storageKey);
   }
 

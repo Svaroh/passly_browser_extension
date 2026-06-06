@@ -18,6 +18,7 @@ import {
   SEND_MESSAGE_TARGET_FETCH_OFFSCREEN_RESPONSE_HANDLER,
 } from "../../../offscreens/service/network/fetchOffscreenService";
 import { SEND_MESSAGE_TARGET_OFFSCREEN_ERROR_RESPONSE_HANDLER } from "../../../offscreens/service/offscreen/handleOffscreenRequestService";
+import { SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_RESPONSE } from "../../../offscreens/service/passkey/passkeyKeepAliveOffscreenService";
 import ResponseClipboardOffscreenService from "../clipboard/responseClipboardOffscreenService";
 import ResponseFetchOffscreenService from "../network/responseFetchOffscreenService";
 
@@ -37,6 +38,7 @@ export default class HandleOffscreenResponseService {
     [SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN_RESPONSE_HANDLER]:
       ResponseClipboardOffscreenService.handleClipboardResponse,
     [SEND_MESSAGE_TARGET_OFFSCREEN_ERROR_RESPONSE_HANDLER]: HandleOffscreenResponseService.handleOffscreenError,
+    [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_RESPONSE]: HandleOffscreenResponseService.handlePasskeyKeepAliveResponse,
   };
 
   /**
@@ -44,6 +46,10 @@ export default class HandleOffscreenResponseService {
    * @param {object} message Browser runtime.onMessage listener message.
    */
   static handleOffscreenResponse(message) {
+    if (!message?.target) {
+      return;
+    }
+
     if (message.target === SEND_MESSAGE_TARGET_FETCH_OFFSCREEN_POLLING_HANDLER) {
       //it's a polling message that is only here to keep the offscreen document alive.
       return;
@@ -51,7 +57,6 @@ export default class HandleOffscreenResponseService {
 
     const responseHandler = HandleOffscreenResponseService.REPONSE_HANDLE_MAP[message.target];
     if (!responseHandler) {
-      console.debug("HandleOffscreenResponseService received response not specific to offscreen.");
       return;
     }
 
@@ -80,6 +85,16 @@ export default class HandleOffscreenResponseService {
     }
 
     promise.reject(error);
+  }
+
+  /**
+   * Handles passkey keepalive acknowledgements from the offscreen document.
+   * @param {object} message
+   * @param {{resolve: function}} promise
+   * @private
+   */
+  static handlePasskeyKeepAliveResponse(message, promise) {
+    promise.resolve(message.data);
   }
 
   /**

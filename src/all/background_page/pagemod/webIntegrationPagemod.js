@@ -82,7 +82,7 @@ class WebIntegration extends Pagemod {
       if (isMissingAccountError(error)) {
         return false;
       }
-      console.log(error);
+      console.error(error);
       return false;
     }
   }

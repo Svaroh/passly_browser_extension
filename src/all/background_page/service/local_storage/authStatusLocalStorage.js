@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.4
  */
-import Log from "../../model/log";
 
 const AUTH_STATUS_STORAGE_KEY = "auth_status";
 
@@ -30,7 +29,6 @@ class AuthStatusLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "AuthStatusLocalStorage flushed" });
     return await browser.storage.local.remove(this.storageKey);
   }
 

@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.0.0
  */
-import Log from "../../model/log";
 import RoleEntity from "passbolt-styleguide/src/shared/models/entity/role/roleEntity";
 import RolesCollection from "passbolt-styleguide/src/shared/models/entity/role/rolesCollection";
 import Lock from "../../utils/lock";
@@ -27,7 +26,6 @@ class RolesLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "RolesLocalStorage flushed" });
     return await browser.storage.local.remove(ROLES_LOCAL_STORAGE_KEY);
   }
 

@@ -16,6 +16,7 @@ import ResourcesCollection from "../../model/entity/resource/resourcesCollection
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
 import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
 import { assertArrayUUID } from "../../utils/assertions";
+import { PASSKEY_RESOURCE_TYPE_SLUG } from "../../../passkey/passkeyProviderConstants";
 
 /**
  * The service aims to get resources from the local storage if it is set, or retrieve them from the API and
@@ -56,7 +57,7 @@ export default class GetOrFindResourcesService {
   /**
    * Returns the possible resources to suggest given an url.
    * @param {string} url The url to suggest for.
-   * @param {"username"|"password"|"otp"} fieldType The field type to suggest for
+   * @param {"username"|"password"|"otp"|"passkey"} fieldType The field type to suggest for
    * @return {Promise<ResourcesCollection>}
    */
   async getOrFindSuggested(url, fieldType) {
@@ -70,6 +71,8 @@ export default class GetOrFindResourcesService {
     // Filter resource types according to what we need
     if (fieldType === "otp") {
       resourceTypesCollection.filterByTOTPResourceTypes();
+    } else if (fieldType === "passkey") {
+      resourceTypesCollection.filterByPropertyValueIn("slug", [PASSKEY_RESOURCE_TYPE_SLUG]);
     } else {
       resourceTypesCollection.filterByPasswordResourceTypes();
     }

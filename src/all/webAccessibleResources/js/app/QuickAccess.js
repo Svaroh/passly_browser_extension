@@ -19,6 +19,10 @@ import Port from "../lib/port";
 import BiometricAuthRuntimeService from "../service/biometricAuthRuntimeService";
 import BiometricAuthFormService from "../service/biometricAuthFormService";
 
+const QUICKACCESS_FEATURE_REQUEST_PASSPHRASE = "request-passphrase";
+const MESSAGE_AUTH_IS_MFA_REQUIRED = "passbolt.auth.is-mfa-required";
+const MESSAGE_AUTH_LOGIN = "passbolt.auth.login";
+
 export async function ensureQuickAccessConfigured(port, { detached = false, closeWindow = () => window.close() } = {}) {
   const isConfigured = await port.request("passbolt.addon.is-configured");
   if (isConfigured) {
@@ -52,6 +56,63 @@ export async function openPassboltLoginPageForPasskey(port, { closeWindow = () =
   await BiometricAuthFormService.preparePasskeyAutoLoginUrl(browser.storage, url);
   await browser.tabs.create({ url: url.toString(), active: true });
   closeWindow();
+}
+
+export function createRequestPassphraseClosingPort(
+  port,
+  { bootstrapFeature, bootstrapRequestId, detached = false, closeWindow = () => window.close() } = {},
+) {
+  if (detached || bootstrapFeature !== QUICKACCESS_FEATURE_REQUEST_PASSPHRASE || !bootstrapRequestId) {
+    return port;
+  }
+
+  let pendingLoginPassphrase = null;
+  let pendingLoginRememberMe = false;
+  const closeAfterResponse = () => setTimeout(closeWindow, 100);
+  const closeAfterPortResponse = (response) => {
+    if (!response || typeof response.then !== "function") {
+      closeAfterResponse();
+      return;
+    }
+
+    return Promise.resolve(response)
+      .catch(() => {})
+      .then(closeAfterResponse);
+  };
+
+  return new Proxy(port, {
+    get(target, property, receiver) {
+      if (property === "request") {
+        return async (message, ...args) => {
+          const result = await target.request(message, ...args);
+          if (message === MESSAGE_AUTH_LOGIN) {
+            pendingLoginPassphrase = args[0];
+            pendingLoginRememberMe = args[1];
+          } else if (message === MESSAGE_AUTH_IS_MFA_REQUIRED && result === false && pendingLoginPassphrase) {
+            const passphrase = pendingLoginPassphrase;
+            const rememberMe = pendingLoginRememberMe;
+            pendingLoginPassphrase = null;
+            pendingLoginRememberMe = false;
+            await target.emit(bootstrapRequestId, "SUCCESS", { passphrase, rememberMe });
+            closeAfterResponse();
+          }
+          return result;
+        };
+      }
+
+      if (property === "emit") {
+        return (message, ...args) => {
+          const result = target.emit(message, ...args);
+          if (message === bootstrapRequestId) {
+            closeAfterPortResponse(result);
+          }
+          return result;
+        };
+      }
+
+      return Reflect.get(target, property, receiver);
+    },
+  });
 }
 
 function submitQuickAccessPassphrase(passphrase) {
@@ -143,7 +204,7 @@ function BiometricQuickAccessActions({ port, options, detached }) {
       }
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід через PassKey.");
+      setError("Не вдалося виконати вхід по відбитку пальця.");
       setIsUnlocking(false);
     }
   };
@@ -156,7 +217,7 @@ function BiometricQuickAccessActions({ port, options, detached }) {
     <div className="biometric-login-actions">
       {configuration ? (
         <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleLogin}>
-          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
+          {isUnlocking ? "Розблокування..." : "Вхід по відбитку пальця"}
         </button>
       ) : (
         <div className="input checkbox biometric-login-enable">
@@ -167,7 +228,7 @@ function BiometricQuickAccessActions({ port, options, detached }) {
             checked={enableOnLogin}
             onChange={(event) => setEnableOnLogin(event.target.checked)}
           />
-          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
+          <label htmlFor="biometric-login-enable">Увімкнути вхід по відбитку пальця на цьому пристрої</label>
         </div>
       )}
       {error && <div className="error-message">{error}</div>}
@@ -204,6 +265,11 @@ export async function main() {
   const bootstrapRequestId = urlSearchParams.get("requestId");
   const openerTabId = urlSearchParams.get("tabId");
   const detached = urlSearchParams.get("uiMode") === "detached";
+  const quickAccessPort = createRequestPassphraseClosingPort(biometricAwarePort, {
+    bootstrapFeature,
+    bootstrapRequestId,
+    detached,
+  });
 
   const isConfigured = await ensureQuickAccessConfigured(port, { detached });
   if (!isConfigured) {
@@ -214,7 +280,7 @@ export async function main() {
   root.render(
     <>
       <ExtQuickAccess
-        port={biometricAwarePort}
+        port={quickAccessPort}
         storage={storage}
         bootstrapFeature={bootstrapFeature}
         bootstrapRequestId={bootstrapRequestId}

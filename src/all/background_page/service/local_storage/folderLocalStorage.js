@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-import Log from "../../model/log";
 import FolderEntity from "../../model/entity/folder/folderEntity";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
 import Lock from "../../utils/lock";
@@ -43,7 +42,6 @@ class FolderLocalStorage {
    * @return {Promise<void>}
    */
   static async flush() {
-    Log.write({ level: "debug", message: "FolderLocalStorage flushed" });
     await browser.storage.local.remove(FOLDERS_LOCAL_STORAGE_KEY);
     FolderLocalStorage._cachedData = null;
   }

@@ -53,7 +53,6 @@ class TrustedMetadataKeyLocalStorage {
   async flush() {
     await browser.storage.local.remove(this.storageKey);
     delete TrustedMetadataKeyLocalStorage._runtimeCachedData[this.account.id];
-    console.debug(`TrustedMetadataKeyLocalStorage flushed for (${this.account.id})`);
   }
 
   /**

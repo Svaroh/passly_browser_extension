@@ -66,8 +66,6 @@ Log.write = function (log) {
       console.error(consoleLog);
     } else if (log.level === WARNING) {
       console.warn(consoleLog);
-    } else {
-      console.log(consoleLog);
     }
   }
 };

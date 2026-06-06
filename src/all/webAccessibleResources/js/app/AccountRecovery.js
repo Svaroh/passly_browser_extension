@@ -84,7 +84,7 @@ function BiometricAccountRecoveryActions({ port, options }) {
       submitAccountRecoveryPassphrase(passphrase);
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід через PassKey.");
+      setError("Не вдалося виконати вхід по відбитку пальця.");
       setIsUnlocking(false);
     }
   };
@@ -97,7 +97,7 @@ function BiometricAccountRecoveryActions({ port, options }) {
     <div className="biometric-login-actions">
       {configuration ? (
         <button type="button" className="button primary big full-width" disabled={isUnlocking} onClick={handleRecover}>
-          {isUnlocking ? "Розблокування..." : "Вхід через PassKey"}
+          {isUnlocking ? "Розблокування..." : "Вхід по відбитку пальця"}
         </button>
       ) : (
         <div className="input checkbox biometric-login-enable">
@@ -108,7 +108,7 @@ function BiometricAccountRecoveryActions({ port, options }) {
             checked={enableOnRecover}
             onChange={(event) => setEnableOnRecover(event.target.checked)}
           />
-          <label htmlFor="biometric-login-enable">Увімкнути вхід через PassKey на цьому пристрої</label>
+          <label htmlFor="biometric-login-enable">Увімкнути вхід по відбитку пальця на цьому пристрої</label>
         </div>
       )}
       {error && <p className="error-message">{error}</p>}

@@ -86,7 +86,6 @@ class SsoDataStorage {
 
       openRequest.onupgradeneeded = (e) => {
         const db = e.target.result;
-        console.log(`Upgrading SSO IndexedDB from version ${e.oldVersion} to version ${e.newVersion}.`);
 
         if (e.oldVersion < 1) {
           const objectStore = db.createObjectStore(SSO_KEYS_OBECT_STORE, {
@@ -94,8 +93,6 @@ class SsoDataStorage {
           });
           objectStore.createIndex("sso_kit", "sso_kit", { unique: true });
         }
-
-        console.log("SSO IndexedDB upgrade completed.");
       };
 
       openRequest.onsuccess = () => {
@@ -173,7 +170,6 @@ class SsoDataStorage {
       const objectStoreRequest = objectStore.clear();
 
       objectStoreRequest.onsuccess = () => {
-        console.log("IndexDB SSO client data cleared");
         resolve();
       };
 
@@ -199,11 +195,7 @@ class SsoDataStorage {
       const objectStore = transaction.objectStore(SSO_KEYS_OBECT_STORE);
 
       const ssoKit = ssoKitClientPartEntity.toDbSerializableObject();
-      const addRequest = objectStore.add({ pk_id: 1, sso_kit: ssoKit });
-
-      addRequest.onsuccess = () => {
-        console.log("New SSO client data stored successfully");
-      };
+      objectStore.add({ pk_id: 1, sso_kit: ssoKit });
 
       transaction.oncomplete = () => {
         //Apparently, according to an MDN documentation, the modification is not 100% guaranteed to be flushed on disk for Firefox
@@ -233,11 +225,7 @@ class SsoDataStorage {
       const objectStore = transaction.objectStore(SSO_KEYS_OBECT_STORE);
 
       const newSsoKit = Object.assign({}, ssoData.toDbSerializableObject(), { id: ssoKitId });
-      const putRequest = objectStore.put({ pk_id: 1, sso_kit: newSsoKit });
-
-      putRequest.onsuccess = () => {
-        console.log("The SSO Kit identifier has been updated successfully");
-      };
+      objectStore.put({ pk_id: 1, sso_kit: newSsoKit });
 
       transaction.oncomplete = () => {
         //Apparently, according to an MDN documentation, the modification is not 100% guaranteed to be flushed on disk for Firefox
@@ -267,11 +255,7 @@ class SsoDataStorage {
       const objectStore = transaction.objectStore(SSO_KEYS_OBECT_STORE);
 
       const newSsoKit = Object.assign({}, ssoData.toDbSerializableObject(), { provider });
-      const putRequest = objectStore.put({ pk_id: 1, sso_kit: newSsoKit });
-
-      putRequest.onsuccess = () => {
-        console.log("The SSO provider has been updated successfully");
-      };
+      objectStore.put({ pk_id: 1, sso_kit: newSsoKit });
 
       transaction.oncomplete = () => {
         //Apparently, according to an MDN documentation, the modification is not 100% guaranteed to be flushed on disk for Firefox

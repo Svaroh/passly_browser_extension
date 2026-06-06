@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.5.0
  */
-import Log from "../../model/log";
 
 export const PASSWORD_EXPIRY_SETTINGS_LOCAL_STORAGE_KEY = "passwordExpirySettings";
 
@@ -43,7 +42,6 @@ class PasswordExpirySettingsLocalStorage {
    * @return {Promise<void>}
    */
   async flush() {
-    Log.write({ level: "debug", message: "PasswordExpirySettingsLocalStorage flushed" });
     return await browser.storage.local.remove(this.storageKey);
   }
 

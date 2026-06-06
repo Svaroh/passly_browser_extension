@@ -14,8 +14,10 @@
 
 import { SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN_RESPONSE_HANDLER } from "../../../offscreens/service/clipboard/writeClipobardOffscreenService";
 import { SEND_MESSAGE_TARGET_FETCH_OFFSCREEN_RESPONSE_HANDLER } from "../../../offscreens/service/network/fetchOffscreenService";
+import { SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_RESPONSE } from "../../../offscreens/service/passkey/passkeyKeepAliveOffscreenService";
 import { defaultCallbacks } from "../network/responseFetchOffscreenService.test.data";
 import HandleOffscreenResponseService from "./handleOffscreenResponseService";
+import { PASSKEY_PROVIDER_MESSAGES } from "../../../../all/passkey/passkeyProviderConstants";
 import { v4 as uuidv4 } from "uuid";
 
 beforeEach(() => {
@@ -83,6 +85,32 @@ describe("HandleOffscreenResponseService", () => {
 
       expect(clipboardWriteFunction).toHaveBeenCalledTimes(1);
       expect(clipboardWriteFunction).toHaveBeenCalledWith(message, promises);
+      expect(fetchFunction).not.toHaveBeenCalled();
+    });
+
+    it("should handle passkey keepalive responses", () => {
+      expect.assertions(2);
+
+      const message = {
+        id: uuidv4(),
+        target: SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_RESPONSE,
+        data: { started: true },
+      };
+      const promises = defaultCallbacks();
+      HandleOffscreenResponseService.setResponseCallback(message.id, promises);
+
+      HandleOffscreenResponseService.handleOffscreenResponse(message);
+
+      expect(promises.resolve).toHaveBeenCalledTimes(1);
+      expect(promises.resolve).toHaveBeenCalledWith(message.data);
+    });
+
+    it("should ignore messages without target", () => {
+      expect.assertions(2);
+
+      HandleOffscreenResponseService.handleOffscreenResponse({ name: PASSKEY_PROVIDER_MESSAGES.KEEPALIVE });
+
+      expect(clipboardWriteFunction).not.toHaveBeenCalled();
       expect(fetchFunction).not.toHaveBeenCalled();
     });
 

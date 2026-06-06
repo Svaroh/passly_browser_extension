@@ -97,11 +97,24 @@ async function buildDetachedQuickaccessPosition() {
 /**
  * Check if attached mode is available for the current browser.
  * Attached mode opens the quickaccess as the browser action popup (attached to the toolbar icon).
- * Currently only supported on Safari.
  * @returns {boolean}
  */
 function isAttachedModeAvailable() {
-  return BrowserService.isSafari();
+  return BrowserService.isSafari() || Boolean(getToolbarActionApi());
+}
+
+/**
+ * Get the toolbar action API that can open an attached popup.
+ * @returns {object|null}
+ */
+function getToolbarActionApi() {
+  if (browser.action?.openPopup) {
+    return browser.action;
+  }
+  if (browser.browserAction?.openPopup) {
+    return browser.browserAction;
+  }
+  return null;
 }
 
 /**
@@ -112,12 +125,20 @@ function isAttachedModeAvailable() {
  * @returns {Promise<string>} The worker id used as port identifier
  */
 async function openInAttachedMode(queryParameters = []) {
+  const toolbarAction = getToolbarActionApi();
+  if (!toolbarAction) {
+    throw new Error("The browser does not expose an attached QuickAccess popup API.");
+  }
+
   const workerId = uuidv4();
   const url = await buildDetachedQuickaccessUrl(queryParameters, workerId);
 
-  browser.browserAction.setPopup({ popup: url });
-  await browser.browserAction.openPopup();
-  browser.browserAction.setPopup({ popup: QUICKACCESS_POPUP_URL });
+  toolbarAction.setPopup({ popup: url });
+  try {
+    await toolbarAction.openPopup();
+  } finally {
+    toolbarAction.setPopup({ popup: QUICKACCESS_POPUP_URL });
+  }
 
   return workerId;
 }

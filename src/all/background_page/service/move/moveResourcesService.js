@@ -212,11 +212,7 @@ class MoveResourcesService {
    */
   async move(resources, destinationFolderId) {
     resources.filterByCallback((resource) => {
-      const isMoving = resource.folderParentId !== destinationFolderId;
-      if (!isMoving) {
-        console.debug(`Resource "${resource.id}" is already in the destination folder, skipping.`);
-      }
-      return isMoving;
+      return resource.folderParentId !== destinationFolderId;
     });
 
     if (resources.length === 0) {
