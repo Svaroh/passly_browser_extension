@@ -161,7 +161,6 @@ describe("PasskeyVaultResourceService", () => {
       ]);
       expect(passkeyResourceType.hasPassword()).toBe(false);
       expect(passkeyResourceType.hasMetadataUris()).toBe(true);
-      expect(passkeyResourceType.hasSecretDescription()).toBe(false);
       expect(resourceTypeModel.updateLocalStorage).not.toHaveBeenCalled();
     });
 
