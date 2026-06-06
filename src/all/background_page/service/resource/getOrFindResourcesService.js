@@ -16,7 +16,7 @@ import ResourcesCollection from "../../model/entity/resource/resourcesCollection
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
 import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
 import { assertArrayUUID } from "../../utils/assertions";
-import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypeSchemasDefinition";
+import { PASSKEY_RESOURCE_TYPE_SLUG } from "../../../passkey/passkeyProviderConstants";
 
 /**
  * The service aims to get resources from the local storage if it is set, or retrieve them from the API and
@@ -72,7 +72,7 @@ export default class GetOrFindResourcesService {
     if (fieldType === "otp") {
       resourceTypesCollection.filterByTOTPResourceTypes();
     } else if (fieldType === "passkey") {
-      resourceTypesCollection.filterByPropertyValueIn("slug", [RESOURCE_TYPE_V5_PASSKEY_SLUG]);
+      resourceTypesCollection.filterByPropertyValueIn("slug", [PASSKEY_RESOURCE_TYPE_SLUG]);
     } else {
       resourceTypesCollection.filterByPasswordResourceTypes();
     }

@@ -195,7 +195,7 @@ class SsoDataStorage {
       const objectStore = transaction.objectStore(SSO_KEYS_OBECT_STORE);
 
       const ssoKit = ssoKitClientPartEntity.toDbSerializableObject();
-      const addRequest = objectStore.add({ pk_id: 1, sso_kit: ssoKit });
+      objectStore.add({ pk_id: 1, sso_kit: ssoKit });
 
       transaction.oncomplete = () => {
         //Apparently, according to an MDN documentation, the modification is not 100% guaranteed to be flushed on disk for Firefox

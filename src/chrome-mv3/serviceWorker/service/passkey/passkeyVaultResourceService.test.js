@@ -15,7 +15,6 @@
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import ResourceFormEntity from "passbolt-styleguide/src/shared/models/entity/resource/resourceFormEntity";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
-import SecretDataV5PasskeyEntity from "passbolt-styleguide/src/shared/models/entity/secretData/secretDataV5PasskeyEntity";
 import GetPassphraseService from "../../../../all/background_page/service/passphrase/getPassphraseService";
 import PassphraseStorageService from "../../../../all/background_page/service/session_storage/passphraseStorageService";
 import {
@@ -195,7 +194,7 @@ describe("PasskeyVaultResourceService", () => {
 
       const resourceFormEntity = new ResourceFormEntity(resourceDto, { resourceTypes });
 
-      expect(resourceFormEntity.secret).toBeInstanceOf(SecretDataV5PasskeyEntity);
+      expect(resourceFormEntity.secret.constructor.name).toBe("SecretDataV5PasskeyEntity");
       expect(resourceFormEntity.toSecretDto()).toStrictEqual(secretDto);
       expect(resourceFormEntity.secret.areSecretsDifferent(secretDto)).toBe(false);
       expect(passkeyResourceType.hasPassword()).toBe(false);
