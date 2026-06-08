@@ -255,7 +255,9 @@ describe("ExportResourcesService", () => {
         await encryptMetadataService.encryptAllFromForeignModels(resourceCollection, pgpKeys.ada.passphrase);
         const encryptedResourceCollectionDto = resourceCollection.resources;
 
-        jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => encryptedResourceCollectionDto);
+        jest
+          .spyOn(ResourceService.prototype, "findAll")
+          .mockImplementation(() => mockPassboltResponse(encryptedResourceCollectionDto));
 
         await service.prepareExportContent(exportResourcesFileEntity);
         await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);
