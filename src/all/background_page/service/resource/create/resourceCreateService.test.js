@@ -55,6 +55,7 @@ import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import GetDecryptedUserPrivateKeyService from "../../account/getDecryptedUserPrivateKeyService";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
 import { ownerFolderPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
+import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -374,7 +375,7 @@ describe("ResourceCreateService", () => {
         },
       };
 
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse([resourceDto]));
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => resourceDto);
       jest
         .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
@@ -427,7 +428,7 @@ describe("ResourceCreateService", () => {
         resourceEntity.metadata = resourceToAPI.metadata;
         return resourceEntity.toDto(ResourceLocalStorage.DEFAULT_CONTAIN);
       });
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse([resourceDto]));
       jest
         .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
         .mockImplementation(

@@ -33,22 +33,18 @@ export default class FindGroupsService {
    *
    * @param {Object|null} [contains] optional
    * @param {Object|null} [filters] optional
-   * @param {Object|null} [orders] optional
    * @param {boolean?} [ignoreInvalidEntity] Should invalid entities be ignored.
    * @returns {Promise<GroupsCollection>}
    */
-  async findAll(contains, filters, orders, ignoreInvalidEntity) {
+  async findAll(contains, filters, ignoreInvalidEntity) {
     if (contains) {
       assertType(contains, Object);
     }
     if (filters) {
       assertType(filters, Object);
     }
-    if (orders) {
-      assertType(orders, Object);
-    }
     assertBoolean(ignoreInvalidEntity);
-    const response = await this.groupApiService.findAll(contains, filters, orders);
+    const response = await this.groupApiService.findAll(contains, filters);
     return new GroupsCollection(response.body ?? [], { clone: false, ignoreInvalidEntity: ignoreInvalidEntity });
   }
 
@@ -72,6 +68,6 @@ export default class FindGroupsService {
    */
   async findAllForLocalStorage() {
     const contains = { groups_users: true, my_group_user: true, modifier: false };
-    return await this.findAll(contains, null, null, true);
+    return await this.findAll(contains, null, true);
   }
 }

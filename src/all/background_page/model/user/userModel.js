@@ -62,7 +62,7 @@ class UserModel {
         contains.missing_metadata_key_ids = true;
       }
     }
-    const usersCollection = await this.findAll(contains, null, null, true);
+    const usersCollection = await this.findAll(contains, null, true);
     await UserLocalStorage.set(usersCollection);
     return usersCollection;
   }
@@ -137,12 +137,11 @@ class UserModel {
    *
    * @param {Object} [contains] optional example: {groups_users: true}
    * @param {Object} [filters] optional
-   * @param {Object} [orders] optional
    * @param {boolean?} [ignoreInvalidEntity] Should invalid entities be ignored.
    * @returns {Promise<UsersCollection>}
    */
-  async findAll(contains, filters, orders, ignoreInvalidEntity) {
-    const usersDto = (await this.userApiService.findAll(contains, filters, orders)).body ?? [];
+  async findAll(contains, filters, ignoreInvalidEntity) {
+    const usersDto = (await this.userApiService.findAll(contains, filters)).body ?? [];
     return new UsersCollection(usersDto, { clone: false, ignoreInvalidEntity: ignoreInvalidEntity });
   }
 
