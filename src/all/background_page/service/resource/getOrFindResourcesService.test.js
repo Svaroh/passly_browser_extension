@@ -209,7 +209,9 @@ describe("GetOrFindResourcesService", () => {
         notSuggestedResource3,
       ];
 
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourcesCollectionDto);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourcesCollectionDto));
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
 
       const resources = await service.getOrFindSuggested("https://www.passbolt.com", "otp");
@@ -241,7 +243,9 @@ describe("GetOrFindResourcesService", () => {
         notSuggestedResource2,
       ];
 
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourcesCollectionDto);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourcesCollectionDto));
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
 
       const resources = await service.getOrFindSuggested("https://www.passbolt.com", "test");
