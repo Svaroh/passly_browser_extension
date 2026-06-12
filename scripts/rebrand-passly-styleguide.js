@@ -113,6 +113,21 @@ function writeIfChanged(file, content) {
   return true;
 }
 
+function copyFileIfChanged(source, destination) {
+  if (!fs.existsSync(source) || !fs.existsSync(destination)) {
+    return false;
+  }
+
+  const sourceContent = fs.readFileSync(source);
+  const destinationContent = fs.readFileSync(destination);
+  if (sourceContent.equals(destinationContent)) {
+    return false;
+  }
+
+  fs.writeFileSync(destination, sourceContent);
+  return true;
+}
+
 function replaceIfExists(file, replacements) {
   if (!fs.existsSync(file)) {
     return false;
@@ -196,10 +211,66 @@ function rebrandStyleguideSource() {
   let changed = 0;
 
   changed += writeIfChanged(logoSvg, passlyInlineLogo) ? 1 : 0;
+  changed += syncStyleguideLogoAssets();
   changed += replaceIfExists(logoComponent, [
     [`title="${legacyLogoTitle}"`, 'title="Passly logo"'],
     [`<span>${legacyBrand}</span>`, "<span>Passly</span>"],
   ]) ? 1 : 0;
+
+  return changed;
+}
+
+function syncStyleguideLogoAssets() {
+  const styleguideLogoPath = path.join(root, "node_modules/passbolt-styleguide/src/img/logo");
+  const passlyLogoPath = path.join(root, "src/all/webAccessibleResources/img/logo");
+  const passlyIconPath = path.join(root, "src/all/webAccessibleResources/img/icons");
+  const generatedBases = [
+    "build/all/webAccessibleResources",
+    "build/chromium-mv3-unpacked/webAccessibleResources",
+    "build/firefox-unpacked/webAccessibleResources",
+  ];
+  const logoAssets = [
+    "icon-48.png",
+    "logo.svg",
+    "logo_white.svg",
+    "icon-without-badge.svg",
+    "icon-inactive.svg",
+    "icon-badge-1.svg",
+    "icon-badge-2.svg",
+    "icon-badge-3.svg",
+    "icon-badge-4.svg",
+    "icon-badge-5.svg",
+    "icon-badge-5+.svg",
+  ];
+  const iconAssets = [
+    "icon-16.png",
+    "icon-32.png",
+    "icon-32-signout.png",
+    "icon-32-badge-1.png",
+    "icon-32-badge-2.png",
+    "icon-32-badge-3.png",
+    "icon-32-badge-4.png",
+    "icon-32-badge-5.png",
+    "icon-32-badge-5+.png",
+    "icon-48.png",
+    "icon-128.png",
+  ];
+  let changed = 0;
+
+  for (const asset of logoAssets) {
+    changed += copyFileIfChanged(path.join(passlyLogoPath, asset), path.join(styleguideLogoPath, asset)) ? 1 : 0;
+  }
+  for (const asset of iconAssets) {
+    changed += copyFileIfChanged(path.join(passlyIconPath, asset), path.join(styleguideLogoPath, asset)) ? 1 : 0;
+  }
+  for (const base of generatedBases.map(generatedBase => path.join(root, generatedBase))) {
+    for (const asset of logoAssets) {
+      changed += copyFileIfChanged(path.join(passlyLogoPath, asset), path.join(base, "img/logo", asset)) ? 1 : 0;
+    }
+    for (const asset of iconAssets) {
+      changed += copyFileIfChanged(path.join(passlyIconPath, asset), path.join(base, "img/icons", asset)) ? 1 : 0;
+    }
+  }
 
   return changed;
 }
