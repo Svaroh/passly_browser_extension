@@ -38,12 +38,13 @@ describe("DeleteResourceService", () => {
       },
     };
     deleteResourceService = new DeleteResourceService(account, apiClientOptions, new ProgressService(worker, ""));
+    jest.spyOn(ResourceLocalStorage, "softDeleteResources");
     jest.spyOn(ResourceLocalStorage, "deleteResources");
   });
 
   describe("DeleteResourceService::deleteResources", () => {
     it("Should delete the resources and call local storage update", async () => {
-      expect.assertions(5);
+      expect.assertions(6);
 
       const resourceDto1 = defaultResourceDto();
       const resourceDto2 = defaultResourceDto();
@@ -52,14 +53,31 @@ describe("DeleteResourceService", () => {
       await deleteResourceService.deleteResources([resourceDto1.id, resourceDto2.id, resourceDto3.id]);
 
       expect(deleteResourceService.resourceService.delete).toHaveBeenCalledTimes(3);
-      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto1.id);
-      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto2.id);
-      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto3.id);
-      expect(ResourceLocalStorage.deleteResources).toHaveBeenCalledWith([
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto1.id, true);
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto2.id, true);
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto3.id, true);
+      expect(ResourceLocalStorage.softDeleteResources).toHaveBeenCalledWith([
         resourceDto1.id,
         resourceDto2.id,
         resourceDto3.id,
       ]);
+      expect(ResourceLocalStorage.deleteResources).not.toHaveBeenCalled();
+    });
+
+    it("Should permanently delete the resources and remove them from local storage when recoverable is false", async () => {
+      expect.assertions(6);
+
+      const resourceDto1 = defaultResourceDto();
+      const resourceDto2 = defaultResourceDto();
+      jest.spyOn(deleteResourceService.resourceService, "delete").mockImplementation(() => {});
+      await deleteResourceService.deleteResources([resourceDto1.id, resourceDto2.id], { recoverable: false });
+
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledTimes(2);
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto1.id, false);
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto2.id, false);
+      expect(ResourceLocalStorage.softDeleteResources).not.toHaveBeenCalled();
+      expect(ResourceLocalStorage.deleteResources).toHaveBeenCalledTimes(1);
+      expect(ResourceLocalStorage.deleteResources).toHaveBeenCalledWith([resourceDto1.id, resourceDto2.id]);
     });
 
     it("Should call progress service during the different steps of deletion", async () => {

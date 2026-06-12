@@ -9,14 +9,16 @@
  * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since         5.4.0
+ * @since         6.0.1
  */
 import ResourceService from "../../api/resource/resourceService";
 import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
+import ResourcesCollection from "../../../model/entity/resource/resourcesCollection";
 import i18n from "../../../sdk/i18n";
 import { assertArrayUUID } from "../../../utils/assertions";
 import ExecuteConcurrentlyService from "../../execute/executeConcurrentlyService";
-class DeleteResourceService {
+
+class RestoreResourceService {
   /**
    * Constructor
    * @param {AccountEntity} account The user account
@@ -30,39 +32,41 @@ class DeleteResourceService {
   }
 
   /**
-   * Delete a bulk of resources
+   * Restore a bulk of resources
    * @param {Array<string>} resourceIds The resourceIds
-   * @param {object} options The delete options
-   * @param {boolean} [options.recoverable=true] Whether resources should be recoverably deleted.
-   * @returns {Promise<void>}
+   * @returns {Promise<Array<object>>}
    */
-  async deleteResources(resourceIds, options = {}) {
+  async restoreResources(resourceIds) {
     assertArrayUUID(resourceIds);
-    const recoverable = options.recoverable !== false;
     /**
-     * 1. Delete the Resources
+     * 1. Restore the Resources
      * 2. Update the local storage
      */
-    this.progressService.finishStep(i18n.t("Deleting Resource(s)"), true);
-    let deleteCounter = 0;
-    const deleteCallBacks = (resourceId) => {
+    this.progressService.finishStep(i18n.t("Restoring Resource(s)"), true);
+    let restoreCounter = 0;
+    const restoredResources = [];
+    const restoreCallBacks = async (resourceId) => {
       this.progressService.updateStepMessage(
-        i18n.t("Deleting resource(s) {{counter}}/{{total}}", { counter: ++deleteCounter, total: resourceIds.length }),
+        i18n.t("Restoring resource(s) {{counter}}/{{total}}", {
+          counter: ++restoreCounter,
+          total: resourceIds.length,
+        }),
       );
-      return this.resourceService.delete(resourceId, recoverable);
+      const restoredResource = await this.resourceService.restore(resourceId);
+      restoredResources.push(restoredResource);
+
+      return restoredResource;
     };
 
-    const callbacks = resourceIds.map((resourceId) => () => deleteCallBacks(resourceId));
+    const callbacks = resourceIds.map((resourceId) => () => restoreCallBacks(resourceId));
     const executeConcurrentlyService = new ExecuteConcurrentlyService();
     await executeConcurrentlyService.execute(callbacks, 5);
 
     this.progressService.finishStep(i18n.t("Updating resources local storage"), true);
-    if (recoverable) {
-      await ResourceLocalStorage.softDeleteResources(resourceIds);
-    } else {
-      await ResourceLocalStorage.deleteResources(resourceIds);
-    }
+    await ResourceLocalStorage.addOrReplaceResourcesCollection(new ResourcesCollection(restoredResources));
+
+    return restoredResources;
   }
 }
 
-export default DeleteResourceService;
+export default RestoreResourceService;

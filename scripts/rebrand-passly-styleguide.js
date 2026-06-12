@@ -79,6 +79,34 @@ const quickAccessVaultTranslations = {
     view: "Переглянути в сховищі",
   },
 };
+const trashTranslations = {
+  "en-UK": "Trash",
+  "uk-UA": "Кошик",
+};
+const restoreActionTranslations = {
+  "en-UK": {
+    restore: "Restore",
+    recoverableDeleteSingle: "Once the resource is deleted, it will be removed from the vault until it is restored.",
+    recoverableDeleteMultiple:
+      "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+    permanentDeleteSingle: "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+    permanentDeleteMultiple:
+      "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.",
+    successOne: "The resource has been restored successfully.",
+    successOther: "The resources have been restored successfully.",
+  },
+  "uk-UA": {
+    restore: "Відновити",
+    recoverableDeleteSingle: "Після видалення ресурс буде прибрано зі сховища, доки його не буде відновлено.",
+    recoverableDeleteMultiple:
+      "Будь ласка, підтвердьте, що ви дійсно хочете видалити ресурси. Після натискання OK ресурси буде прибрано зі сховища, доки їх не буде відновлено.",
+    permanentDeleteSingle: "Після видалення ресурсу його буде видалено назавжди та неможливо відновити.",
+    permanentDeleteMultiple:
+      "Будь ласка, підтвердьте, що ви дійсно хочете видалити ресурси. Після натискання \"OK\" ресурси буде видалено назавжди.",
+    successOne: "Ресурс успішно відновлено.",
+    successOther: "Ресурси успішно відновлено.",
+  },
+};
 
 const passlyInlineLogo = `<svg xmlns="http://www.w3.org/2000/svg" aria-labelledby="logo-title logo-description" width="151" height="27" viewBox="0 0 151 27" fill="none">
   <title id="logo-title">Passly logo</title>
@@ -173,6 +201,21 @@ function updateQuickAccessVaultLocale(file, locale) {
   delete common["View it in passbolt"];
   common["Edit in the vault"] = translations.edit;
   common["View in the vault"] = translations.view;
+  common["Trash"] = trashTranslations[locale] || "Trash";
+  const restoreActionTranslation = restoreActionTranslations[locale] || restoreActionTranslations["en-UK"];
+  common["Restore"] = restoreActionTranslation.restore;
+  common["Once the resource is deleted, it will be removed from the vault until it is restored."] =
+    restoreActionTranslation.recoverableDeleteSingle;
+  common[
+    "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored."
+  ] = restoreActionTranslation.recoverableDeleteMultiple;
+  common["Once the resource is deleted, it will be removed permanently and will not be recoverable."] =
+    restoreActionTranslation.permanentDeleteSingle;
+  common[
+    "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
+  ] = restoreActionTranslation.permanentDeleteMultiple;
+  common["The resource has been restored successfully._one"] = restoreActionTranslation.successOne;
+  common["The resource has been restored successfully._other"] = restoreActionTranslation.successOther;
 
   const nextContent = `${JSON.stringify(common, null, 2)}\n`;
   if (content === nextContent) {
@@ -185,6 +228,7 @@ function updateQuickAccessVaultLocale(file, locale) {
 
 function patchQuickAccessVaultLocales() {
   const localeBases = [
+    "src/all/locales",
     "node_modules/passbolt-styleguide/src/locales",
     "build/all/webAccessibleResources/locales",
     "build/chromium-mv3-unpacked/webAccessibleResources/locales",
@@ -709,7 +753,7 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
                 </p>
                 <p>
                   <Trans>
-                    Once the resource is deleted, it will be removed permanently and will not be recoverable.
+                    Once the resource is deleted, it will be removed from the vault until it is restored.
                   </Trans>
                 </p>
                 {this.state.deleteError && <div className="error-message">{this.state.deleteError}</div>}
@@ -843,6 +887,1282 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
       `                  withResourceTypesLocalStorage(
                     withActionFeedback(withRouter(withTranslation("common")(DisplayResourcesWorkspaceMenu))),
                   ),`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchRecoverableDeleteDialogSource() {
+  const deleteResource = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DeleteResource/DeleteResource.js");
+  let changed = 0;
+
+  if (!fs.existsSync(deleteResource)) {
+    return changed;
+  }
+
+  const deleteResourceContent = fs.readFileSync(deleteResource, "utf8");
+  if (!deleteResourceContent.includes("isRecoverableDelete()")) {
+    changed += replaceIfExists(deleteResource, [
+      [
+        `Once the resource is deleted, it will be removed permanently and will not be recoverable.`,
+        `Once the resource is deleted, it will be removed from the vault until it is restored.`,
+      ],
+      [
+        `Please confirm you really want to delete the resources. After clicking ok, the resources will be
+                  deleted permanently.`,
+        `Please confirm you really want to delete the resources. After clicking ok, the resources will be
+                  removed from the vault until they are restored.`,
+      ],
+    ]) ? 1 : 0;
+  }
+
+  changed += replaceIfMissing(deleteResource, "isRecoverableDelete()", [
+    [
+      `    await this.props.actionFeedbackContext.displaySuccess(
+      this.translate("The resource has been deleted successfully.", { count: this.resources.length }),
+    );
+    this.props.onClose();`,
+      `    await this.props.actionFeedbackContext.displaySuccess(
+      this.translate("The resource has been deleted successfully.", { count: this.resources.length }),
+    );
+    await this.props.resourceWorkspaceContext.onResourcesDeleted?.(this.resources, {
+      recoverable: this.isRecoverableDelete(),
+    });
+    this.props.onClose();`,
+    ],
+    [
+      `      await this.props.context.port.request("passbolt.resources.delete-all", resourcesIds);`,
+      `      await this.props.context.port.request("passbolt.resources.delete-all", resourcesIds, {
+        recoverable: this.isRecoverableDelete(),
+      });`,
+    ],
+    [
+      `  /**
+   * has multiple resources
+   * @returns {boolean}
+   */
+  hasMultipleResources() {`,
+      `  /**
+   * Is the delete action recoverable.
+   * @returns {boolean}
+   */
+  isRecoverableDelete() {
+    return this.props.recoverable !== false;
+  }
+
+  /**
+   * has multiple resources
+   * @returns {boolean}
+   */
+  hasMultipleResources() {`,
+    ],
+    [
+      `                <p>
+                  <Trans>
+                    Once the resource is deleted, it will be removed from the vault until it is restored.
+                  </Trans>
+                </p>`,
+      `                {this.isRecoverableDelete() ? (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed from the vault until it is restored.
+                    </Trans>
+                  </p>
+                ) : (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed permanently and will not be recoverable.
+                    </Trans>
+                  </p>
+                )}`,
+    ],
+    [
+      `            {this.hasMultipleResources() && (
+              <p>
+                <Trans>
+                  Please confirm you really want to delete the resources. After clicking ok, the resources will be
+                  removed from the vault until they are restored.
+                </Trans>
+              </p>
+            )}`,
+      `            {this.hasMultipleResources() && (
+              <p>
+                {this.isRecoverableDelete() ? (
+                  <Trans>
+                    Please confirm you really want to delete the resources. After clicking ok, the resources will be
+                    removed from the vault until they are restored.
+                  </Trans>
+                ) : (
+                  <Trans>
+                    Please confirm you really want to delete the resources. After clicking ok, the resources will be
+                    deleted permanently.
+                  </Trans>
+                )}
+              </p>
+            )}`,
+    ],
+    [
+      `  resources: PropTypes.array, // The resources to delete
+  t: PropTypes.func, // The translation function`,
+      `  resources: PropTypes.array, // The resources to delete
+  recoverable: PropTypes.bool, // Whether the delete action is recoverable
+  t: PropTypes.func, // The translation function`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(deleteResource, [
+    [
+      `  isRecoverableDelete() {
+    return this.props.recoverable !== false;
+  }`,
+      `  isRecoverableDelete() {
+    const resources = this.resources || [];
+    const isTrashSelection = resources.length > 0 && resources.every((resource) => Boolean(resource.deleted));
+    const isTrashFilter = this.props.resourceWorkspaceContext?.filter?.type === "FILTER-BY-TRASH";
+
+    return this.props.recoverable !== false && !isTrashSelection && !isTrashFilter;
+  }`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(deleteResource, [
+    [
+      `                {this.isRecoverableDelete() ? (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed from the vault until it is restored.
+                    </Trans>
+                  </p>
+                ) : (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed from the vault until it is restored.
+                    </Trans>
+                  </p>
+                )}`,
+      `                {this.isRecoverableDelete() ? (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed from the vault until it is restored.
+                    </Trans>
+                  </p>
+                ) : (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed permanently and will not be recoverable.
+                    </Trans>
+                  </p>
+                )}`,
+    ],
+    [
+      `                {this.isRecoverableDelete() ? (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed permanently and will not be recoverable.
+                    </Trans>
+                  </p>
+                ) : (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed permanently and will not be recoverable.
+                    </Trans>
+                  </p>
+                )}`,
+      `                {this.isRecoverableDelete() ? (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed from the vault until it is restored.
+                    </Trans>
+                  </p>
+                ) : (
+                  <p>
+                    <Trans>
+                      Once the resource is deleted, it will be removed permanently and will not be recoverable.
+                    </Trans>
+                  </p>
+                )}`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchTrashFilterSource() {
+  const filters = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceFilters.js");
+  const workspaceContext = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.js");
+  const resourcesList = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesList/DisplayResourcesList.js");
+  const breadcrumb = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/FilterResourcesByBreadcrumb/FilterResourcesByBreadcrumb.js");
+  const filtersTest = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceFilters.test.js");
+  const breadcrumbTest = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/FilterResourcesByBreadcrumb/FilterResourcesByBreadcrumb.test.js");
+  const workspaceContextTest = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.test.js");
+  const workspaceContextTestPage = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.test.page.js");
+  let changed = 0;
+
+  changed += replaceIfMissing(filters, "ResourceWorkspaceFilterTypes.TRASH", [
+    [
+      `import FavoriteSVG from "../../../../img/svg/favorite.svg";
+import OwnedByMeSVG from "../../../../img/svg/owned_by_me.svg";`,
+      `import FavoriteSVG from "../../../../img/svg/favorite.svg";
+import OwnedByMeSVG from "../../../../img/svg/owned_by_me.svg";
+import DeleteSVG from "../../../../img/svg/delete.svg";`,
+    ],
+    [
+      `    this.handleSharedWithMeClick = this.handleSharedWithMeClick.bind(this);
+    this.handleResourcesExpiredClick = this.handleResourcesExpiredClick.bind(this);
+    this.handleRemoveFilterClick = this.handleRemoveFilterClick.bind(this);`,
+      `    this.handleSharedWithMeClick = this.handleSharedWithMeClick.bind(this);
+    this.handleResourcesExpiredClick = this.handleResourcesExpiredClick.bind(this);
+    this.handleTrashClick = this.handleTrashClick.bind(this);
+    this.handleRemoveFilterClick = this.handleRemoveFilterClick.bind(this);`,
+    ],
+    [
+      `      case ResourceWorkspaceFilterTypes.ITEMS_I_OWN:
+        return (`,
+      `      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );
+      case ResourceWorkspaceFilterTypes.ITEMS_I_OWN:
+        return (`,
+    ],
+    [
+      `  handleResourcesExpiredClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.EXPIRED };
+    this.props.history.push({ pathname: "/app/passwords/filter/expired", state: { filter } });
+  }
+
+  /**
+   * Whenever a filter has been removed go back to all items filter
+   */`,
+      `  handleResourcesExpiredClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.EXPIRED };
+    this.props.history.push({ pathname: "/app/passwords/filter/expired", state: { filter } });
+  }
+
+  /**
+   * Whenever the filter "Trash" has been selected
+   */
+  handleTrashClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.TRASH };
+    this.props.history.push({ pathname: "/app/passwords/filter/trash", state: { filter } });
+  }
+
+  /**
+   * Whenever a filter has been removed go back to all items filter
+   */`,
+    ],
+    [
+      `              {this.props.passwordExpiryContext.isFeatureEnabled() && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleResourcesExpiredClick}>
+                    <CalendarClockSVG />
+                    <span>
+                      <Trans>Expired</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenu>`,
+      `              {this.props.passwordExpiryContext.isFeatureEnabled() && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleResourcesExpiredClick}>
+                    <CalendarClockSVG />
+                    <span>
+                      <Trans>Expired</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>
+            </DropdownMenu>`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, 'TRASH: "FILTER-BY-TRASH"', [
+    [
+      `  get resources() {
+    return this.props.context.resources;
+  }
+
+  /**
+   * Get the folders`,
+      `  get resources() {
+    return this.props.context.resources;
+  }
+
+  /**
+   * Get the resources not marked as deleted.
+   * @return {*}
+   */
+  get activeResources() {
+    return this.resources.filter((resource) => !resource.deleted);
+  }
+
+  /**
+   * Get the folders`,
+    ],
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+    [
+      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
+      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
+      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+    [
+      `    this.sort(this.resources);
+    this.setState({ filter, filteredResources: this.resources });`,
+      `    const activeResources = this.activeResources;
+    this.sort(activeResources);
+    this.setState({ filter, filteredResources: activeResources });`,
+    ],
+    [`this.resources.filter((resource) => !resource.folder_parent_id)`, `this.activeResources.filter((resource) => !resource.folder_parent_id)`],
+    [`this.resources.filter((resource) => resource.folder_parent_id === folderId)`, `this.activeResources.filter((resource) => resource.folder_parent_id === folderId)`],
+    [`const tagResources = this.resources.filter(`, `const tagResources = this.activeResources.filter(`],
+    [`const filteredResources = this.resources.filter(matchText);`, `const filteredResources = this.activeResources.filter(matchText);`],
+    [`const groupResources = this.resources.filter((resource) => resourceIds.includes(resource.id));`, `const groupResources = this.activeResources.filter((resource) => resourceIds.includes(resource.id));`],
+    [`const filteredResources = this.resources.filter((resource) => resource.permission.type === 15);`, `const filteredResources = this.activeResources.filter((resource) => resource.permission.type === 15);`],
+    [`const filteredResources = this.resources.filter((resource) => Boolean(resource.personal));`, `const filteredResources = this.activeResources.filter((resource) => Boolean(resource.personal));`],
+    [`const filteredResources = this.resources.filter((resource) => resource.favorite !== null);`, `const filteredResources = this.activeResources.filter((resource) => resource.favorite !== null);`],
+    [`const filteredResources = this.resources.filter((resource) => resource.permission.type < 15);`, `const filteredResources = this.activeResources.filter((resource) => resource.permission.type < 15);`],
+    [`const filteredResources = this.resources.filter(
+      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
+    );`, `const filteredResources = this.activeResources.filter(
+      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
+    );`],
+    [
+      `  /** RESOURCE SELECTION */`,
+      `  /**
+   * Keep the deleted resources.
+   * @param filter A "trash" filter
+   */
+  searchByTrash(filter) {
+    this.props.loadingContext.add();
+    this.setState({ filter, selectedResources: [] }, async () => {
+      try {
+        const deletedResources =
+          (await this.props.context.port.request("passbolt.resources.find-deleted-for-local-storage")) || [];
+        const filteredResources =
+          deletedResources.length > 0 ? deletedResources : this.resources.filter((resource) => resource.deleted);
+        this.sort(filteredResources);
+        this.setState({ filteredResources });
+      } catch (error) {
+        await this.props.actionFeedbackContext.displayError(error.message);
+      } finally {
+        this.props.loadingContext.remove();
+      }
+    });
+  }
+
+  /** RESOURCE SELECTION */`,
+    ],
+    [
+      `    // Case of resources
+    const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
+      `    // Case of resources filtered by trash
+    const isTrashFilter = filter.type === ResourceWorkspaceFilterTypes.TRASH;
+    if (isTrashFilter) {
+      const mustRedirect = this.props.location.pathname !== \`/app/passwords/filter/trash\`;
+      if (mustRedirect) {
+        this.props.history.push({ pathname: \`/app/passwords/filter/trash\` });
+      }
+      return;
+    }
+
+    // Case of resources
+    const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
+    ],
+    [
+      `  SHARED_WITH_ME: "FILTER-BY-SHARED-WITH-ME", // Resources shared with the current user (who is not the owner)
+  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
+};`,
+      `  SHARED_WITH_ME: "FILTER-BY-SHARED-WITH-ME", // Resources shared with the current user (who is not the owner)
+  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
+  TRASH: "FILTER-BY-TRASH", // Deleted resources
+};`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
+      const isTrashResourceLocation = this.props.match.params?.filterType === "trash";
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (isTrashResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.TRASH };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(resourcesList, "No passwords in the trash.", [
+    [
+      `            {(filterType === ResourceWorkspaceFilterTypes.ITEMS_I_OWN ||
+              filterType === ResourceWorkspaceFilterTypes.ALL) && (`,
+      `            {filterType === ResourceWorkspaceFilterTypes.TRASH && (
+              <div className="empty-content">
+                <CircleOffSVG />
+                <div className="message">
+                  <h1>
+                    <Trans>No passwords in the trash.</Trans>
+                  </h1>
+                  <p>
+                    <Trans>Deleted passwords will appear here until they are restored.</Trans>
+                  </p>
+                </div>
+              </div>
+            )}
+            {(filterType === ResourceWorkspaceFilterTypes.ITEMS_I_OWN ||
+              filterType === ResourceWorkspaceFilterTypes.ALL) && (`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(breadcrumb, 'this.translate("Trash")', [
+    [
+      `      case ResourceWorkspaceFilterTypes.EXPIRED:
+        return [...items, this.getBreadcrumb(this.translate("Expired"))];
+      case ResourceWorkspaceFilterTypes.ITEMS_I_OWN:`,
+      `      case ResourceWorkspaceFilterTypes.EXPIRED:
+        return [...items, this.getBreadcrumb(this.translate("Expired"))];
+      case ResourceWorkspaceFilterTypes.TRASH:
+        return [...items, this.getBreadcrumb(this.translate("Trash"))];
+      case ResourceWorkspaceFilterTypes.ITEMS_I_OWN:`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(filtersTest, "ResourceWorkspaceFilterTypes.TRASH", [
+    [`expect(page.filterItemsLength).toBe(5);`, `expect(page.filterItemsLength).toBe(6);`],
+    [
+      `      itemIndex: 5,
+    },
+  ])("I should be able to filter", (scenario) => {`,
+      `      itemIndex: 5,
+    },
+    {
+      filter: ResourceWorkspaceFilterTypes.TRASH,
+      itemSelected: "Trash",
+      pathname: "/app/passwords/filter/trash",
+      itemIndex: 6,
+    },
+  ])("I should be able to filter", (scenario) => {`,
+    ],
+    [
+      `    { filter: ResourceWorkspaceFilterTypes.PRIVATE, itemSelected: "Private" },
+    { filter: ResourceWorkspaceFilterTypes.EXPIRED, itemSelected: "Expired" },
+  ])("I should be able to identify the filters", (scenario) => {`,
+      `    { filter: ResourceWorkspaceFilterTypes.PRIVATE, itemSelected: "Private" },
+    { filter: ResourceWorkspaceFilterTypes.EXPIRED, itemSelected: "Expired" },
+    { filter: ResourceWorkspaceFilterTypes.TRASH, itemSelected: "Trash" },
+  ])("I should be able to identify the filters", (scenario) => {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(breadcrumbTest, "breadcrumb for trash", [
+    [
+      `  it("As LU I should see a breadcrumb for resources favorite", () => {`,
+      `  it("As LU I should see a breadcrumb for trash", () => {
+    const props = defaultResourceWorkspaceContext(ResourceWorkspaceFilterTypes.TRASH); // The props to pass
+    page = new FilterResourcesByBreadcrumbPage(context, props);
+    expect(page.displayBreadcrumb.exists()).toBeTruthy();
+    expect(page.displayBreadcrumb.count).toBe(2);
+    expect(page.displayBreadcrumb.item(1)).toBe("Home");
+    expect(page.displayBreadcrumb.item(2)).toBe("Trash");
+    expect(page.displayBreadcrumb.itemNumberDisplayed).toContain("0");
+  });
+
+  it("As LU I should see a breadcrumb for resources favorite", () => {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContextTestPage, "goToTrashDirect", [
+    [
+      `  /**
+   * Select all resources
+   */`,
+      `  /**
+   * Go directly to the trash route without relying on router location state.
+   */
+  async goToTrashDirect() {
+    this.setup(this.context, this.props, { initialEntry: "/app/passwords/filter/trash" });
+    await waitForTrue(() => this.filter.type === ResourceWorkspaceFilterTypes.TRASH);
+  }
+
+  /**
+   * Select all resources
+   */`,
+    ],
+    [
+      `          history={createMemoryHistory({
+            initialEntries: [
+              "/app/folders/view/:filterByFolderId",
+              "/app/passwords/view/:selectedResourceId",
+              "/app/passwords/filter/:filterType",
+              "/app/passwords",
+            ],
+          })}`,
+      `          history={createMemoryHistory({
+            initialEntries: [args.initialEntry || "/app/passwords"],
+          })}`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContextTest, "went directly to /app/passwords/filter/trash", [
+    [
+      `    it("AS LU I should have an ITEMS-I-OWN filter when I went to /app/passwords with such a filter", async () => {`,
+      `    it("AS LU I should have a TRASH filter when I went directly to /app/passwords/filter/trash", async () => {
+      await page.goToTrashDirect();
+      expect(page.filter.type).toBe(ResourceWorkspaceFilterTypes.TRASH);
+    });
+
+    it("AS LU I should have an ITEMS-I-OWN filter when I went to /app/passwords with such a filter", async () => {`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchTrashRestoreActionsSource() {
+  const workspaceContext = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.js");
+  const workspaceContextTestData = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.test.data.js");
+  const workspaceMenu = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceMenu.js");
+  const workspaceMenuTest = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceMenu.test.js");
+  const workspaceMenuTestPage = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceMenu.test.page.js");
+  const workspaceMenuTestData = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesWorkspace/DisplayResourcesWorkspaceMenu.test.data.js");
+  const contextualMenu = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesList/DisplayResourcesListContextualMenu.js");
+  const contextualMenuTest = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesList/DisplayResourcesListContextualMenu.test.js");
+  const contextualMenuTestPage = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesList/DisplayResourcesListContextualMenu.test.page.js");
+  const contextualMenuTestData = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/components/Resource/DisplayResourcesList/DisplayResourcesListContextualMenu.test.data.js");
+  let changed = 0;
+
+  changed += replaceIfMissing(workspaceContext, "onResourcesRestored: () => {}", [
+    [
+      `  onResourcesToExport: () => {}, // Whenever resources and/or folder will be exported
+  onGoToResourceUriRequested: () => {}, // Whenever the users wants to follow a resource uri`,
+      `  onResourcesToExport: () => {}, // Whenever resources and/or folder will be exported
+  onResourcesRestored: () => {}, // Whenever resources have been restored
+  onGoToResourceUriRequested: () => {}, // Whenever the users wants to follow a resource uri`,
+    ],
+    [
+      `      onResourcesToExport: this.handleResourcesToExportChange.bind(this), // Whenever resources and/or folder have to be exported
+      onGoToResourceUriRequested: this.onGoToResourceUriRequested.bind(this), // Whenever the users wants to follow a resource uri`,
+      `      onResourcesToExport: this.handleResourcesToExportChange.bind(this), // Whenever resources and/or folder have to be exported
+      onResourcesRestored: this.handleResourcesRestored.bind(this), // Whenever resources have been restored
+      onGoToResourceUriRequested: this.onGoToResourceUriRequested.bind(this), // Whenever the users wants to follow a resource uri`,
+    ],
+    [
+      `  /** Resource export */`,
+      `  /**
+   * Refresh the current filter after resources have been restored.
+   */
+  handleResourcesRestored() {
+    this.setState({ selectedResources: [] }, () => this.search(this.state.filter));
+  }
+
+  /** Resource export */`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContextTestData, "onResourcesRestored: jest.fn()", [
+    [
+      `    onResourcesToExport: jest.fn(),
+    onResourceFileImportResult: jest.fn(),`,
+      `    onResourcesToExport: jest.fn(),
+    onResourcesRestored: jest.fn(),
+    onResourceFileImportResult: jest.fn(),`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(workspaceContext, "onResourcesDeleted: () => {}", [
+    [
+      `  onResourcesRestored: () => {}, // Whenever resources have been restored
+  onGoToResourceUriRequested: () => {}, // Whenever the users wants to follow a resource uri`,
+      `  onResourcesRestored: () => {}, // Whenever resources have been restored
+  onResourcesDeleted: () => {}, // Whenever resources have been deleted
+  onGoToResourceUriRequested: () => {}, // Whenever the users wants to follow a resource uri`,
+    ],
+    [
+      `      onResourcesRestored: this.handleResourcesRestored.bind(this), // Whenever resources have been restored
+      onGoToResourceUriRequested: this.onGoToResourceUriRequested.bind(this), // Whenever the users wants to follow a resource uri`,
+      `      onResourcesRestored: this.handleResourcesRestored.bind(this), // Whenever resources have been restored
+      onResourcesDeleted: this.handleResourcesDeleted.bind(this), // Whenever resources have been deleted
+      onGoToResourceUriRequested: this.onGoToResourceUriRequested.bind(this), // Whenever the users wants to follow a resource uri`,
+    ],
+    [
+      `  /**
+   * Refresh the current filter after resources have been restored.
+   */
+  handleResourcesRestored() {
+    this.setState({ selectedResources: [] }, () => this.search(this.state.filter));
+  }
+
+  /** Resource export */`,
+      `  /**
+   * Refresh the current filter after resources have been restored.
+   */
+  handleResourcesRestored() {
+    this.setState({ selectedResources: [] }, () => this.search(this.state.filter));
+  }
+
+  /**
+   * Refresh the current filter after resources have been deleted.
+   */
+  handleResourcesDeleted() {
+    this.setState({ selectedResources: [] }, () => this.search(this.state.filter));
+  }
+
+  /** Resource export */`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfMissing(workspaceContextTestData, "onResourcesDeleted: jest.fn()", [
+    [
+      `    onResourcesRestored: jest.fn(),
+    onResourceFileImportResult: jest.fn(),`,
+      `    onResourcesRestored: jest.fn(),
+    onResourcesDeleted: jest.fn(),
+    onResourceFileImportResult: jest.fn(),`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceMenu, "handleRestoreClickEvent", [
+    [
+      `import { withResourceWorkspace } from "../../../contexts/ResourceWorkspaceContext";`,
+      `import { ResourceWorkspaceFilterTypes, withResourceWorkspace } from "../../../contexts/ResourceWorkspaceContext";`,
+    ],
+    [
+      `import SecretHistorySVG from "../../../../img/svg/history.svg";`,
+      `import SecretHistorySVG from "../../../../img/svg/history.svg";
+import RestoreSVG from "../../../../img/svg/reply.svg";`,
+    ],
+    [
+      `    this.handleDeleteClickEvent = this.handleDeleteClickEvent.bind(this);
+    this.handleEditClickEvent = this.handleEditClickEvent.bind(this);`,
+      `    this.handleDeleteClickEvent = this.handleDeleteClickEvent.bind(this);
+    this.handleRestoreClickEvent = this.handleRestoreClickEvent.bind(this);
+    this.handleEditClickEvent = this.handleEditClickEvent.bind(this);`,
+    ],
+    [
+      `  /**
+   * Handle mark as expired
+   * @returns {Promise<void>}
+   */
+  async handleMarkAsExpiredClick() {`,
+      `  /**
+   * Restore one or more resources.
+   * @returns {Promise<void>}
+   */
+  async handleRestoreClickEvent() {
+    const resourcesIds = this.selectedResources.map((resource) => resource.id);
+    try {
+      await this.props.context.port.request("passbolt.resources.restore-all", resourcesIds);
+      await this.props.actionFeedbackContext.displaySuccess(
+        this.translate("The resource has been restored successfully.", { count: resourcesIds.length }),
+      );
+      this.props.resourceWorkspaceContext.onResourcesRestored();
+    } catch (error) {
+      Logger.error(error);
+      await this.props.actionFeedbackContext.displayError(error.message);
+    }
+  }
+
+  /**
+   * Handle mark as expired
+   * @returns {Promise<void>}
+   */
+  async handleMarkAsExpiredClick() {`,
+    ],
+    [
+      `  /**
+   * Can share the selected resources
+   * @return {boolean}
+   */
+  canShare() {`,
+      `  /**
+   * Is the current filter the trash.
+   * @return {boolean}
+   */
+  isTrashFilter() {
+    return this.props.resourceWorkspaceContext.filter.type === ResourceWorkspaceFilterTypes.TRASH;
+  }
+
+  /**
+   * Can share the selected resources
+   * @return {boolean}
+   */
+  canShare() {`,
+    ],
+    [
+      `    // Main actions
+    const canViewShare = this.canShare();
+    const canViewCopy = hasOneResourceSelected;
+    const canUpdate = this.canUpdate();
+    const canViewEdit = hasOneResourceSelected && canUpdate;
+    const canViewDelete = canUpdate;
+    const hasMoreActionAllowed = this.hasMoreActionAllowed();`,
+      `    // Main actions
+    const isTrashFilter = this.isTrashFilter();
+    const canUpdate = this.canUpdate();
+    const canViewRestore = isTrashFilter && canUpdate;
+    const canViewShare = !isTrashFilter && this.canShare();
+    const canViewCopy = !isTrashFilter && hasOneResourceSelected;
+    const canViewEdit = !isTrashFilter && hasOneResourceSelected && canUpdate;
+    const canViewDelete = !isTrashFilter && canUpdate;
+    const hasMoreActionAllowed = !isTrashFilter && this.hasMoreActionAllowed();`,
+    ],
+    [
+      `          <ul>
+            {canViewShare && (`,
+      `          <ul>
+            {canViewRestore && (
+              <li id="restore_action">
+                <button type="button" className="button-action-contextual" onClick={this.handleRestoreClickEvent}>
+                  <RestoreSVG />
+                  <span>
+                    <Trans>Restore</Trans>
+                  </span>
+                </button>
+              </li>
+            )}
+            {canViewShare && (`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(workspaceMenu, [
+    [
+      `  handleDeleteClickEvent() {
+    this.props.dialogContext.open(DeleteResource, { resources: this.selectedResources });
+  }`,
+      `  handleDeleteClickEvent() {
+    this.props.dialogContext.open(DeleteResource, {
+      resources: this.selectedResources,
+      recoverable: !this.isTrashFilter(),
+    });
+  }`,
+    ],
+    [
+      `    const canViewDelete = !isTrashFilter && canUpdate;`,
+      `    const canViewDelete = canUpdate;`,
+    ],
+    [
+      `  isTrashFilter() {
+    return this.props.resourceWorkspaceContext.filter.type === ResourceWorkspaceFilterTypes.TRASH;
+  }`,
+      `  isTrashFilter() {
+    const selectedResources = this.selectedResources || [];
+    return (
+      this.props.resourceWorkspaceContext.filter?.type === ResourceWorkspaceFilterTypes.TRASH ||
+      this.props.location?.pathname?.includes("/app/passwords/filter/trash") ||
+      (selectedResources.length > 0 && selectedResources.every((resource) => Boolean(resource.deleted)))
+    );
+  }`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(workspaceMenuTest, [
+    [
+      `  describe("As LU I can restore a resource from the workspace menu in trash", () => {
+    it("As LU I should see only the restore action for trash resources", () => {
+      expect.assertions(6);
+      const props = defaultPropsOneResourceInTrash();
+      page = new DisplayResourcesWorkspaceMenuPage(props.context, props);
+
+      expect(page.displayMenu.exists()).toBeTruthy();
+      expect(page.displayMenu.restoreMenu).not.toBeNull();
+      expect(page.displayMenu.shareMenu).toBeNull();
+      expect(page.displayMenu.copyMenuDropdown).toBeNull();
+      expect(page.displayMenu.editMenu).toBeNull();
+      expect(page.displayMenu.deleteMenu).toBeNull();
+    });`,
+      `  describe("As LU I can restore or delete a resource from the workspace menu in trash", () => {
+    it("As LU I should see only the restore and delete actions for trash resources", () => {
+      expect.assertions(6);
+      const props = defaultPropsOneResourceInTrash();
+      page = new DisplayResourcesWorkspaceMenuPage(props.context, props);
+
+      expect(page.displayMenu.exists()).toBeTruthy();
+      expect(page.displayMenu.restoreMenu).not.toBeNull();
+      expect(page.displayMenu.shareMenu).toBeNull();
+      expect(page.displayMenu.copyMenuDropdown).toBeNull();
+      expect(page.displayMenu.editMenu).toBeNull();
+      expect(page.displayMenu.deleteMenu).not.toBeNull();
+    });`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceMenuTestData, "defaultPropsOneResourceInTrash", [
+    [
+      `import { defaultResourceWorkspaceContext } from "../../../contexts/ResourceWorkspaceContext.test.data";`,
+      `import { defaultResourceWorkspaceContext } from "../../../contexts/ResourceWorkspaceContext.test.data";
+import { ResourceWorkspaceFilterTypes } from "../../../contexts/ResourceWorkspaceContext";`,
+    ],
+    [
+      `export const defaultPropsOneResourceNotOwned = (data = {}) =>`,
+      `export const defaultPropsOneResourceInTrash = (data = {}) =>
+  defaultProps({
+    resourceWorkspaceContext: defaultResourceWorkspaceContext({
+      filter: { type: ResourceWorkspaceFilterTypes.TRASH },
+      selectedResources: [resourcesMock[0]],
+      lockDisplayDetail: true,
+    }),
+    ...data,
+  });
+
+export const defaultPropsOneResourceNotOwned = (data = {}) =>`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceMenuTestPage, "restoreMenu", [
+    [
+      `  get shareMenu() {
+    return this._container.querySelector("#share_action button");
+  }`,
+      `  get shareMenu() {
+    return this._container.querySelector("#share_action button");
+  }
+
+  /**
+   * Returns the restore menu elements of password workspace menu
+   * @returns {HTMLElement}
+   */
+  get restoreMenu() {
+    return this._container.querySelector("#restore_action button");
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceMenuTest, "workspace menu in trash", [
+    [
+      `  defaultPropsOneResourceOwned,
+  defaultPropsOneResourceV5Private,`,
+      `  defaultPropsOneResourceOwned,
+  defaultPropsOneResourceInTrash,
+  defaultPropsOneResourceV5Private,`,
+    ],
+    [
+      `  describe("As LU I cannot use the password expiry feature if the feature flag is disabled", () => {`,
+      `  describe("As LU I can restore or delete a resource from the workspace menu in trash", () => {
+    it("As LU I should see only the restore and delete actions for trash resources", () => {
+      expect.assertions(6);
+      const props = defaultPropsOneResourceInTrash();
+      page = new DisplayResourcesWorkspaceMenuPage(props.context, props);
+
+      expect(page.displayMenu.exists()).toBeTruthy();
+      expect(page.displayMenu.restoreMenu).not.toBeNull();
+      expect(page.displayMenu.shareMenu).toBeNull();
+      expect(page.displayMenu.copyMenuDropdown).toBeNull();
+      expect(page.displayMenu.editMenu).toBeNull();
+      expect(page.displayMenu.deleteMenu).not.toBeNull();
+    });
+
+    it("As LU I can restore a resource via the workspace main menu", async () => {
+      expect.assertions(4);
+      const props = defaultPropsOneResourceInTrash();
+      jest.spyOn(props.context.port, "request").mockImplementationOnce(() => []);
+      jest.spyOn(ActionFeedbackContext._currentValue, "displaySuccess").mockImplementation(() => {});
+      page = new DisplayResourcesWorkspaceMenuPage(props.context, props);
+
+      await page.displayMenu.clickOnMenu(page.displayMenu.restoreMenu);
+
+      expect(props.context.port.request).toHaveBeenCalledWith("passbolt.resources.restore-all", [
+        props.resourceWorkspaceContext.selectedResources[0].id,
+      ]);
+      expect(ActionFeedbackContext._currentValue.displaySuccess).toHaveBeenCalledWith(
+        "The resource has been restored successfully.",
+      );
+      expect(props.resourceWorkspaceContext.onResourcesRestored).toHaveBeenCalled();
+      expect(props.resourceWorkspaceContext.onResourceSelected.none).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("As LU I cannot use the password expiry feature if the feature flag is disabled", () => {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(contextualMenu, "handleRestoreClickEvent", [
+    [
+      `import { resourceLinkAuthorizedProtocols, withResourceWorkspace } from "../../../contexts/ResourceWorkspaceContext";`,
+      `import {
+  ResourceWorkspaceFilterTypes,
+  resourceLinkAuthorizedProtocols,
+  withResourceWorkspace,
+} from "../../../contexts/ResourceWorkspaceContext";`,
+    ],
+    [
+      `import HistoryIcon from "../../../../img/svg/history.svg";`,
+      `import HistoryIcon from "../../../../img/svg/history.svg";
+import RestoreIcon from "../../../../img/svg/reply.svg";`,
+    ],
+    [
+      `    this.handleDeleteClickEvent = this.handleDeleteClickEvent.bind(this);
+    this.handleGoToResourceUriClick = this.handleGoToResourceUriClick.bind(this);`,
+      `    this.handleDeleteClickEvent = this.handleDeleteClickEvent.bind(this);
+    this.handleRestoreClickEvent = this.handleRestoreClickEvent.bind(this);
+    this.handleGoToResourceUriClick = this.handleGoToResourceUriClick.bind(this);`,
+    ],
+    [
+      `  /**
+   * handle open the uri in a new tab
+   */
+  handleGoToResourceUriClick() {`,
+      `  /**
+   * Restore the resource.
+   * @returns {Promise<void>}
+   */
+  async handleRestoreClickEvent() {
+    try {
+      await this.props.context.port.request("passbolt.resources.restore-all", [this.resource.id]);
+      await this.props.actionFeedbackContext.displaySuccess(
+        this.translate("The resource has been restored successfully.", { count: 1 }),
+      );
+      this.props.resourceWorkspaceContext.onResourcesRestored();
+    } catch (error) {
+      Logger.error(error);
+      await this.props.actionFeedbackContext.displayError(error.message);
+    } finally {
+      this.props.hide();
+    }
+  }
+
+  /**
+   * handle open the uri in a new tab
+   */
+  handleGoToResourceUriClick() {`,
+    ],
+    [
+      `  /**
+   * Can update the resource
+   */
+  canUpdate() {`,
+      `  /**
+   * Is the current filter the trash.
+   * @return {boolean}
+   */
+  isTrashFilter() {
+    return this.props.resourceWorkspaceContext.filter.type === ResourceWorkspaceFilterTypes.TRASH;
+  }
+
+  /**
+   * Can update the resource
+   */
+  canUpdate() {`,
+    ],
+    [
+      `    return (
+      <ContextualMenuWrapper hide={this.props.hide} left={this.props.left} top={this.props.top} className="floating">
+        {!this.isStandaloneTotpResource && (`,
+      `    if (this.isTrashFilter()) {
+      return (
+        <ContextualMenuWrapper hide={this.props.hide} left={this.props.left} top={this.props.top} className="floating">
+          {this.canUpdate() && (
+            <li key="option-restore-resource" className="ready">
+              <div className="row">
+                <div className="main-cell-wrapper">
+                  <div className="main-cell">
+                    <button type="button" id="restore" className="link no-border" onClick={this.handleRestoreClickEvent}>
+                      <RestoreIcon />
+                      <span>
+                        <Trans>Restore</Trans>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          )}
+          {this.canUpdate() && (
+            <li key="option-delete-resource" className="ready">
+              <div className="row">
+                <div className="main-cell-wrapper">
+                  <div className="main-cell">
+                    <button type="button" id="delete" className="link no-border" onClick={this.handleDeleteClickEvent}>
+                      <DeleteIcon />
+                      <span>
+                        <Trans>Delete</Trans>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          )}
+        </ContextualMenuWrapper>
+      );
+    }
+
+    return (
+      <ContextualMenuWrapper hide={this.props.hide} left={this.props.left} top={this.props.top} className="floating">
+        {!this.isStandaloneTotpResource && (`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(contextualMenu, [
+    [
+      `  handleDeleteClickEvent() {
+    const resources = [this.resource];
+    this.props.dialogContext.open(DeleteResource, { resources });
+    this.props.hide();
+  }`,
+      `  handleDeleteClickEvent() {
+    const resources = [this.resource];
+    this.props.dialogContext.open(DeleteResource, {
+      resources,
+      recoverable: !this.isTrashFilter(),
+    });
+    this.props.hide();
+  }`,
+    ],
+    [
+      `  isTrashFilter() {
+    return this.props.resourceWorkspaceContext.filter.type === ResourceWorkspaceFilterTypes.TRASH;
+  }`,
+      `  isTrashFilter() {
+    return (
+      this.props.resourceWorkspaceContext.filter?.type === ResourceWorkspaceFilterTypes.TRASH ||
+      Boolean(this.resource.deleted)
+    );
+  }`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(contextualMenu, [
+    [
+      `          {this.canUpdate() && (
+            <li key="option-restore-resource" className="ready">
+              <div className="row">
+                <div className="main-cell-wrapper">
+                  <div className="main-cell">
+                    <button type="button" id="restore" className="link no-border" onClick={this.handleRestoreClickEvent}>
+                      <RestoreIcon />
+                      <span>
+                        <Trans>Restore</Trans>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          )}
+        </ContextualMenuWrapper>`,
+      `          {this.canUpdate() && (
+            <li key="option-restore-resource" className="ready">
+              <div className="row">
+                <div className="main-cell-wrapper">
+                  <div className="main-cell">
+                    <button type="button" id="restore" className="link no-border" onClick={this.handleRestoreClickEvent}>
+                      <RestoreIcon />
+                      <span>
+                        <Trans>Restore</Trans>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          )}
+          {this.canUpdate() && (
+            <li key="option-delete-resource" className="ready">
+              <div className="row">
+                <div className="main-cell-wrapper">
+                  <div className="main-cell">
+                    <button type="button" id="delete" className="link no-border" onClick={this.handleDeleteClickEvent}>
+                      <DeleteIcon />
+                      <span>
+                        <Trans>Delete</Trans>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          )}
+        </ContextualMenuWrapper>`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(contextualMenuTest, [
+    [
+      `  describe("As LU I can restore a resource from the contextual menu in trash", () => {
+    const props = propsResourceInTrash();
+    jest.spyOn(ActionFeedbackContext._currentValue, "displaySuccess").mockImplementation(() => {});
+
+    beforeEach(() => {
+      page = new DisplayResourcesListContextualMenuPage(props);
+    });
+
+    it("As LU I should see only the restore action for trash resources", () => {
+      expect.assertions(12);
+      expect(page.restoreItem).not.toBeNull();
+      expect(page.copyUsernameItem).toBeNull();
+      expect(page.copyPasswordItem).toBeNull();
+      expect(page.copyUriItem).toBeNull();
+      expect(page.copyPermalinkItem).toBeNull();
+      expect(page.copyTotpItem).toBeNull();
+      expect(page.openUriItem).toBeNull();
+      expect(page.editItem).toBeNull();
+      expect(page.shareItem).toBeNull();
+      expect(page.deleteItem).toBeNull();
+      expect(page.markAsExpiredItem).toBeNull();
+      expect(page.setExpiryDateItem).toBeNull();
+    });`,
+      `  describe("As LU I can restore or delete a resource from the contextual menu in trash", () => {
+    const props = propsResourceInTrash();
+    jest.spyOn(ActionFeedbackContext._currentValue, "displaySuccess").mockImplementation(() => {});
+
+    beforeEach(() => {
+      page = new DisplayResourcesListContextualMenuPage(props);
+    });
+
+    it("As LU I should see only the restore and delete actions for trash resources", () => {
+      expect.assertions(12);
+      expect(page.restoreItem).not.toBeNull();
+      expect(page.copyUsernameItem).toBeNull();
+      expect(page.copyPasswordItem).toBeNull();
+      expect(page.copyUriItem).toBeNull();
+      expect(page.copyPermalinkItem).toBeNull();
+      expect(page.copyTotpItem).toBeNull();
+      expect(page.openUriItem).toBeNull();
+      expect(page.editItem).toBeNull();
+      expect(page.shareItem).toBeNull();
+      expect(page.deleteItem).not.toBeNull();
+      expect(page.markAsExpiredItem).toBeNull();
+      expect(page.setExpiryDateItem).toBeNull();
+    });`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(contextualMenuTestData, "propsResourceInTrash", [
+    [
+      `import { defaultResourceWorkspaceContext } from "../../../contexts/ResourceWorkspaceContext.test.data";`,
+      `import { defaultResourceWorkspaceContext } from "../../../contexts/ResourceWorkspaceContext.test.data";
+import { ResourceWorkspaceFilterTypes } from "../../../contexts/ResourceWorkspaceContext";`,
+    ],
+    [
+      `export function propsResourceWithReadOnlyPermission() {`,
+      `export function propsResourceInTrash() {
+  return {
+    ...defaultProps({
+      resourceWorkspaceContext: defaultResourceWorkspaceContext({
+        filter: { type: ResourceWorkspaceFilterTypes.TRASH },
+      }),
+    }),
+  };
+}
+
+export function propsResourceWithReadOnlyPermission() {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(contextualMenuTestPage, "restoreItem", [
+    [
+      `  get editItem() {
+    return this.menu.querySelector("li .row .main-cell-wrapper .main-cell button#edit");
+  }`,
+      `  get editItem() {
+    return this.menu.querySelector("li .row .main-cell-wrapper .main-cell button#edit");
+  }
+
+  /**
+   * Returns the item.
+   * @return {HTMLElement}
+   */
+  get restoreItem() {
+    return this.menu.querySelector("li .row .main-cell-wrapper .main-cell button#restore");
+  }`,
+    ],
+    [
+      `  /**
+   * Click on the menu edit folder
+   */
+  async edit() {`,
+      `  /**
+   * Click on the menu restore resource
+   */
+  async restore() {
+    await this.click(this.restoreItem);
+  }
+
+  /**
+   * Click on the menu edit folder
+   */
+  async edit() {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(contextualMenuTest, "contextual menu in trash", [
+    [
+      `  propsResourceExpired,
+  propsResourceStandaloneTotp,`,
+      `  propsResourceExpired,
+  propsResourceInTrash,
+  propsResourceStandaloneTotp,`,
+    ],
+    [
+      `  describe("As LU I should be able to access all the offered capabilities on totp resources I have owner access", () => {`,
+      `  describe("As LU I can restore or delete a resource from the contextual menu in trash", () => {
+    const props = propsResourceInTrash();
+    jest.spyOn(ActionFeedbackContext._currentValue, "displaySuccess").mockImplementation(() => {});
+
+    beforeEach(() => {
+      page = new DisplayResourcesListContextualMenuPage(props);
+    });
+
+    it("As LU I should see only the restore and delete actions for trash resources", () => {
+      expect.assertions(12);
+      expect(page.restoreItem).not.toBeNull();
+      expect(page.copyUsernameItem).toBeNull();
+      expect(page.copyPasswordItem).toBeNull();
+      expect(page.copyUriItem).toBeNull();
+      expect(page.copyPermalinkItem).toBeNull();
+      expect(page.copyTotpItem).toBeNull();
+      expect(page.openUriItem).toBeNull();
+      expect(page.editItem).toBeNull();
+      expect(page.shareItem).toBeNull();
+      expect(page.deleteItem).not.toBeNull();
+      expect(page.markAsExpiredItem).toBeNull();
+      expect(page.setExpiryDateItem).toBeNull();
+    });
+
+    it("As LU I can restore a resource", async () => {
+      expect.assertions(4);
+      jest.spyOn(props.context.port, "request").mockImplementationOnce(() => []);
+
+      await page.restore();
+
+      expect(props.context.port.request).toHaveBeenCalledWith("passbolt.resources.restore-all", [props.resource.id]);
+      expect(ActionFeedbackContext._currentValue.displaySuccess).toHaveBeenCalledWith(
+        "The resource has been restored successfully.",
+      );
+      expect(props.resourceWorkspaceContext.onResourcesRestored).toHaveBeenCalled();
+      expect(props.hide).toHaveBeenCalled();
+    });
+  });
+
+  describe("As LU I should be able to access all the offered capabilities on totp resources I have owner access", () => {`,
     ],
   ]) ? 1 : 0;
 
@@ -1450,6 +2770,9 @@ function patchQuickAccessPasswordGeneratorSource() {
     + patchQuickAccessGeneratePasswordPage()
     + patchQuickAccessResourceViewPage()
     + patchWorkspaceEditFromQueryAction()
+    + patchRecoverableDeleteDialogSource()
+    + patchTrashFilterSource()
+    + patchTrashRestoreActionsSource()
     + patchAppIframeActionParameter();
 }
 

@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Middelen-metadata bijwerken {{counter}}/{{total}}",
   "Updating users' key...": "Gebruikerssleutel wordt bijgewerkt...",
   "User key not found": "Gebruikerssleutel niet gevonden",
-  "You have already started the process on another tab.": "Je bent dit proces al in een ander tabblad gestart."
+  "You have already started the process on another tab.": "Je bent dit proces al in een ander tabblad gestart.",
+  "Edit in the vault": "Bewerken in de kluis",
+  "View in the vault": "Bekijken in de kluis",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }

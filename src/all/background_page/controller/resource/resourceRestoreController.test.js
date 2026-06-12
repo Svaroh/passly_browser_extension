@@ -9,12 +9,12 @@
  * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since         5.4.0
+ * @since         6.0.1
  */
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import ResourceDeleteController from "./resourceDeleteController";
+import ResourceRestoreController from "./resourceRestoreController";
 import { enableFetchMocks } from "jest-fetch-mock";
 import { v4 as uuidv4 } from "uuid";
 
@@ -25,7 +25,7 @@ beforeEach(() => {
   fetch.resetMocks();
 });
 
-describe("ResourceDeleteController", () => {
+describe("ResourceRestoreController", () => {
   let controller, worker;
 
   beforeEach(() => {
@@ -37,74 +37,61 @@ describe("ResourceDeleteController", () => {
   });
 
   describe("::exec", () => {
-    it("should call deletion of IDs for the requested ids", async () => {
+    it("should call restoration of IDs for the requested ids", async () => {
       expect.assertions(6);
       const account = new AccountEntity(defaultAccountDto());
       const apiClientOptions = defaultApiClientOptions();
-      controller = new ResourceDeleteController(worker, null, apiClientOptions, account);
+      controller = new ResourceRestoreController(worker, null, apiClientOptions, account);
 
       const resourceId1 = uuidv4();
       const resourceId2 = uuidv4();
       const resourceId3 = uuidv4();
 
-      jest.spyOn(controller.resourceDeleteService, "deleteResources").mockImplementation(() => {});
+      jest.spyOn(controller.resourceRestoreService, "restoreResources").mockImplementation(() => {});
 
       await controller.exec([resourceId1, resourceId2, resourceId3]);
 
       expect(controller.progressService.start).toHaveBeenCalledTimes(1);
-      expect(controller.progressService.start).toHaveBeenCalledWith(2, "Deleting Resource(s)");
+      expect(controller.progressService.start).toHaveBeenCalledWith(2, "Restoring Resource(s)");
       expect(controller.progressService.close).toHaveBeenCalledTimes(1);
       expect(controller.progressService.finishStep).toHaveBeenCalledTimes(1);
 
-      expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledTimes(1);
-      expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledWith(
-        [resourceId1, resourceId2, resourceId3],
-        {},
-      );
+      expect(controller.resourceRestoreService.restoreResources).toHaveBeenCalledTimes(1);
+      expect(controller.resourceRestoreService.restoreResources).toHaveBeenCalledWith([
+        resourceId1,
+        resourceId2,
+        resourceId3,
+      ]);
     });
 
-    it("should pass delete options to the service", async () => {
-      expect.assertions(1);
-      const account = new AccountEntity(defaultAccountDto());
-      const apiClientOptions = defaultApiClientOptions();
-      controller = new ResourceDeleteController(worker, null, apiClientOptions, account);
-      const resourceId = uuidv4();
-      const options = { recoverable: false };
-      jest.spyOn(controller.resourceDeleteService, "deleteResources").mockImplementation(() => {});
-
-      await controller.exec([resourceId], options);
-
-      expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledWith([resourceId], options);
-    });
-
-    it("Should close progressService when delete succeeds", async () => {
+    it("Should close progressService when restore succeeds", async () => {
       expect.assertions(1);
 
       const account = new AccountEntity(defaultAccountDto());
       const apiClientOptions = defaultApiClientOptions();
-      controller = new ResourceDeleteController(worker, null, apiClientOptions, account);
+      controller = new ResourceRestoreController(worker, null, apiClientOptions, account);
 
       const resourceId1 = uuidv4();
       const resourceId2 = uuidv4();
       const resourceId3 = uuidv4();
 
-      jest.spyOn(controller.resourceDeleteService, "deleteResources").mockImplementation(() => {});
+      jest.spyOn(controller.resourceRestoreService, "restoreResources").mockImplementation(() => {});
 
       await controller.exec([resourceId1, resourceId2, resourceId3]);
       expect(controller.progressService.close).toHaveBeenCalledTimes(1);
     });
 
-    it("Should close progressService when deletion fails", async () => {
+    it("Should close progressService when restoration fails", async () => {
       expect.assertions(1);
       const account = new AccountEntity(defaultAccountDto());
       const apiClientOptions = defaultApiClientOptions();
-      controller = new ResourceDeleteController(worker, null, apiClientOptions, account);
+      controller = new ResourceRestoreController(worker, null, apiClientOptions, account);
 
       const resourceId1 = uuidv4();
       const resourceId2 = uuidv4();
       const resourceId3 = uuidv4();
 
-      jest.spyOn(controller.resourceDeleteService, "deleteResources").mockImplementation(() => {
+      jest.spyOn(controller.resourceRestoreService, "restoreResources").mockImplementation(() => {
         throw new Error();
       });
 
@@ -120,7 +107,7 @@ describe("ResourceDeleteController", () => {
 
       const account = new AccountEntity(defaultAccountDto());
       const apiClientOptions = defaultApiClientOptions();
-      const controller = new ResourceDeleteController(null, null, apiClientOptions, account);
+      const controller = new ResourceRestoreController(null, null, apiClientOptions, account);
 
       const expectedError = new TypeError("The given parameter is not a valid array of uuid");
       try {

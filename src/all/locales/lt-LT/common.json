@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Atnaujinami išteklių metaduomenys {{counter}}/{{total}}",
   "Updating users' key...": "Atnaujinamas naudotojų raktas...",
   "User key not found": "Naudotojo raktas nerastas",
-  "You have already started the process on another tab.": "Jūs jau pradėjote procesą kitame skirtuke."
+  "You have already started the process on another tab.": "Jūs jau pradėjote procesą kitame skirtuke.",
+  "Edit in the vault": "Redaguoti saugykloje",
+  "View in the vault": "Peržiūrėti saugykloje",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }

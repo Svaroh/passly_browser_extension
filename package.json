@@ -1,6 +1,6 @@
 {
   "name": "passly-browser-extension",
-  "version": "6.0.1",
+  "version": "6.0.2",
   "license": "AGPL-3.0",
   "copyright": "Copyright 2025 Passbolt SA",
   "description": "Passly web extension for the open source password manager for teams",
