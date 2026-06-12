@@ -1,3 +1,19 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Passly">
-  <image href="/webAccessibleResources/img/icons/icon-32-badge-4.png" width="32" height="32" preserveAspectRatio="xMidYMid meet"/>
+<svg width="228" height="228" viewBox="0 0 228 228" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Passly">
+  <defs>
+    <linearGradient id="passlyShieldIcon" x1="43" y1="0" x2="184" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17413F"/>
+      <stop offset="1" stop-color="#8BBF45"/>
+    </linearGradient>
+  </defs>
+  <g opacity="1" transform="translate(24 0) scale(0.81818)">
+    <path d="M160 50L246 84V146C246 201 211 244 160 270C109 244 74 201 74 146V84L160 50Z" fill="url(#passlyShieldIcon)"/>
+    <path d="M118 143L160 111L202 143L160 211L118 143Z" fill="#FAFBF7" opacity=".96"/>
+    <circle cx="118" cy="143" r="15" fill="#17413F"/>
+    <circle cx="160" cy="111" r="15" fill="#17413F"/>
+    <circle cx="202" cy="143" r="15" fill="#17413F"/>
+    <circle cx="160" cy="211" r="15" fill="#17413F"/>
+    <path d="M118 143L160 111L202 143M118 143L160 211L202 143" fill="none" stroke="#8BBF45" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <circle cx="176" cy="176" r="42" fill="#17413F" stroke="#FFFFFF" stroke-width="10"/>
+  <text x="176" y="191" text-anchor="middle" font-family="Arial, Avenir Next, Segoe UI, sans-serif" font-size="44" font-weight="700" fill="#FFFFFF">4</text>
 </svg>
