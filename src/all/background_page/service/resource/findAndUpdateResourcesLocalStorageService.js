@@ -126,6 +126,55 @@ class FindAndUpdateResourcesLocalStorage {
   }
 
   /**
+   * Find and update the local storage with recoverably deleted resources retrieved from the API.
+   * @param {string|null} [passphrase = null] The passphrase to use to decrypt the metadata.
+   * @return {Promise<ResourcesCollection>} The deleted resources.
+   */
+  async findAndUpdateDeleted(passphrase = null) {
+    const localStorageResourcesCollection = new ResourcesCollection((await ResourceLocalStorage.get()) || [], {
+      validate: false,
+    });
+    const resourcesCollection = await this.findResourcesServices.findAllDeletedForLocalStorage();
+    const resourceTypes = await this.resourceTypeModel.updateLocalStorage();
+    resourcesCollection.filterByResourceTypes(resourceTypes);
+    resourcesCollection.setDecryptedMetadataFromCollection(localStorageResourcesCollection);
+    this.setDeletedResourcesDecryptedMetadataFromCollection(resourcesCollection, localStorageResourcesCollection);
+
+    await this.decryptMetadataService.decryptAllFromForeignModels(resourcesCollection, passphrase, {
+      ignoreDecryptionError: true,
+      updateSessionKeys: true,
+    });
+    resourcesCollection.filterOutMetadataEncrypted();
+
+    await ResourceLocalStorage.addOrReplaceResourcesCollection(resourcesCollection);
+    return resourcesCollection;
+  }
+
+  /**
+   * Restore decrypted metadata from local storage for deleted resources.
+   * Deleting a resource updates its modified date but does not change metadata, so the regular modified-date guard
+   * would force unnecessary decryption and can hide the resource from the trash.
+   * @param {ResourcesCollection} deletedResourcesCollection The deleted resources fetched from the API.
+   * @param {ResourcesCollection} localStorageResourcesCollection The locally stored resources.
+   * @return {void}
+   */
+  setDeletedResourcesDecryptedMetadataFromCollection(deletedResourcesCollection, localStorageResourcesCollection) {
+    const localResourcesById = {};
+    localStorageResourcesCollection.items.forEach((resource) => {
+      if (resource.isMetadataDecrypted()) {
+        localResourcesById[resource.id] = resource;
+      }
+    });
+
+    deletedResourcesCollection.items.forEach((deletedResource) => {
+      const localResource = localResourcesById[deletedResource.id];
+      if (localResource) {
+        deletedResource.metadata = localResource.metadata;
+      }
+    });
+  }
+
+  /**
    * Find and update the local storage with the resources filtered by parent folder id retrieved from the API.
    * @param {string} parentFolderId The parent folder id to filter the resources with.
    * @param {string|null} [passphrase = null] The passphrase to use to decrypt the metadata. Marked as optional as it

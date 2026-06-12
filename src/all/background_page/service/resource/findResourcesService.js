@@ -92,6 +92,14 @@ export default class FindResourcesService {
   }
 
   /**
+   * Retrieve all recoverably deleted resources for the local storage.
+   * @returns {Promise<ResourcesCollection>}
+   */
+  async findAllDeletedForLocalStorage() {
+    return await this.findAll(ResourceLocalStorage.DEFAULT_CONTAIN, { "is-deleted": true }, true);
+  }
+
+  /**
    * Retrieve all resources shared with group for the local storage.
    * @param {string} groupId The group id to filter the resources with.
    * @param {string|null} [passphrase = null] The passphrase to use to decrypt the metadata. Marked as optional as it

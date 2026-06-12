@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Actualizarea metadatelor resurselor {{counter}}/{{total}}",
   "Updating users' key...": "Se actualizează cheia utilizatorilor...",
   "User key not found": "Cheia utilizatorului nu a fost găsită",
-  "You have already started the process on another tab.": "Ați început deja procesul într-o altă filă."
+  "You have already started the process on another tab.": "Ați început deja procesul într-o altă filă.",
+  "Edit in the vault": "Editați în seif",
+  "View in the vault": "Vizualizați în seif",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }
