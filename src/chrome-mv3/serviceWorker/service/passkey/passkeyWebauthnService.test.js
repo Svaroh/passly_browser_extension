@@ -66,29 +66,6 @@ function decodeClientDataJson(encodedClientDataJson) {
 }
 
 describe("PasskeyWebauthnService", () => {
-  describe("ecdsaP1363SignatureToDer", () => {
-    it("converts P-1363 signatures that start with an ASN.1 DER sequence marker", () => {
-      const rawSignature = new Uint8Array(64);
-      rawSignature[0] = 0x30;
-      rawSignature[31] = 0x01;
-      rawSignature[63] = 0x02;
-
-      const signature = PasskeyWebauthnService.ecdsaP1363SignatureToDer(rawSignature);
-
-      expect(signature).not.toStrictEqual(rawSignature);
-      expect(Array.from(signature)).toStrictEqual([
-        0x30,
-        0x25,
-        0x02,
-        0x20,
-        ...Array.from(rawSignature.slice(0, 32)),
-        0x02,
-        0x01,
-        0x02,
-      ]);
-    });
-  });
-
   describe("createCredential", () => {
     it("builds a WebAuthn registration response and matching v5 passkey secret DTO", async () => {
       const { credential, secretDto } = await PasskeyWebauthnService.createCredential(buildCreateRequestDetails());

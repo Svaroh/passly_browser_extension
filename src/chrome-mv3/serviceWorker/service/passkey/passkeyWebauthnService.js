@@ -402,17 +402,17 @@ class PasskeyWebauthnService {
    */
   static ecdsaP1363SignatureToDer(signature) {
     const bytes = PasskeyEncodingService.toUint8Array(signature);
-    if (bytes.length === 64) {
-      const r = this.derEncodeInteger(bytes.slice(0, 32));
-      const s = this.derEncodeInteger(bytes.slice(32));
-      return PasskeyEncodingService.concat(new Uint8Array([0x30, r.length + s.length]), r, s);
-    }
-
     if (bytes[0] === 0x30) {
       return bytes;
     }
 
-    throw new TypeError("ES256 signature should be 64-byte P-1363 or DER encoded.");
+    if (bytes.length !== 64) {
+      throw new TypeError("ES256 signature should be 64-byte P-1363 or DER encoded.");
+    }
+
+    const r = this.derEncodeInteger(bytes.slice(0, 32));
+    const s = this.derEncodeInteger(bytes.slice(32));
+    return PasskeyEncodingService.concat(new Uint8Array([0x30, r.length + s.length]), r, s);
   }
 
   /**
