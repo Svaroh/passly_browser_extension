@@ -4,6 +4,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [5.13.1] - 2026-06-15
+### Fixed
+PB-52478 Remove subscription CTA when edition plugin is not enabled
+
+### Maintenance
+PB-52428 Update subscription links
+
 ## [5.13.0] - 2026-06-11
 ### Added
 PB-51594 Move findAllForActionLogController and test to the correct location
