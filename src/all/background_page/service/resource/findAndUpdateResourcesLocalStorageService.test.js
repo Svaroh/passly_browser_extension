@@ -41,6 +41,10 @@ import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
 import GetDecryptedUserPrivateKeyService from "../account/getDecryptedUserPrivateKeyService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import { v4 as uuidv4 } from "uuid";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
+import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
+import { readSecret as readSecretDto } from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 
 jest.useFakeTimers();
@@ -61,6 +65,10 @@ describe("UpdateResourcesLocalStorage", () => {
     beforeEach(() => {
       service = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+      // Default: offline disabled, so the OPFS branch short-circuits. Individual tests can override.
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
+      jest.spyOn(OfflineResourcesOPFSStorage.prototype, "flush").mockResolvedValue();
+      jest.spyOn(OfflineSecretsOPFSStorage.prototype, "flush").mockResolvedValue();
     });
 
     it("asserts updatePeriodThreshold parameter", async () => {
@@ -303,6 +311,136 @@ describe("UpdateResourcesLocalStorage", () => {
       expect(FindResourcesService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(1);
       expect(resourcesLSDto).toHaveLength(1);
       expect(new ResourcesCollection(resourcesLSDto)).toEqual(new ResourcesCollection(resourcesDto));
+    });
+
+    describe("offline OPFS storage refresh", () => {
+      let opfsResourcesGetSpy,
+        opfsResourcesSetSpy,
+        opfsResourcesFlushSpy,
+        opfsSecretsAddOrReplaceSpy,
+        opfsSecretsDeleteSpy,
+        opfsSecretsFlushSpy;
+
+      beforeEach(() => {
+        // Spy on the actual instances held by the service under test so we are not at the mercy
+        // of prototype-vs-instance method resolution.
+        opfsResourcesGetSpy = jest.spyOn(service.offlineResourcesOPFSStorage, "get").mockResolvedValue(undefined);
+        opfsResourcesSetSpy = jest.spyOn(service.offlineResourcesOPFSStorage, "set").mockResolvedValue();
+        opfsResourcesFlushSpy = jest.spyOn(service.offlineResourcesOPFSStorage, "flush").mockResolvedValue();
+        opfsSecretsAddOrReplaceSpy = jest
+          .spyOn(service.offlineSecretsOPFSStorage, "addOrReplaceSecretsCollection")
+          .mockResolvedValue();
+        opfsSecretsDeleteSpy = jest.spyOn(service.offlineSecretsOPFSStorage, "deleteByResourceIds").mockResolvedValue();
+        opfsSecretsFlushSpy = jest.spyOn(service.offlineSecretsOPFSStorage, "flush").mockResolvedValue();
+      });
+
+      it("flushes both OPFS stores when offline is disabled.", async () => {
+        expect.assertions(4);
+        jest
+          .spyOn(ResourceService.prototype, "findAll")
+          .mockImplementation(() => mockPassboltResponse(singleResourceDtos()));
+
+        await service.findAndUpdateAll();
+
+        expect(opfsResourcesFlushSpy).toHaveBeenCalledTimes(1);
+        expect(opfsSecretsFlushSpy).toHaveBeenCalledTimes(1);
+        expect(opfsResourcesSetSpy).not.toHaveBeenCalled();
+        expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
+      });
+
+      it("flushes both OPFS stores when offline is enabled but no offline-tagged resources are returned.", async () => {
+        expect.assertions(4);
+        jest.spyOn(service.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
+        // None of the returned resources carry the offline association.
+        jest
+          .spyOn(ResourceService.prototype, "findAll")
+          .mockImplementation(() => mockPassboltResponse(multipleResourceDtos()));
+
+        await service.findAndUpdateAll();
+
+        expect(opfsResourcesFlushSpy).toHaveBeenCalledTimes(1);
+        expect(opfsSecretsFlushSpy).toHaveBeenCalledTimes(1);
+        expect(opfsResourcesSetSpy).not.toHaveBeenCalled();
+        expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
+      });
+
+      it("persists offline-tagged resources and their secrets to OPFS on first refresh (cache empty).", async () => {
+        expect.assertions(4);
+        jest.spyOn(service.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
+
+        const offlineResource = defaultResourceDto({}, { withOffline: true });
+        const offlineResourceId = offlineResource.id;
+        const nonOfflineResource = defaultResourceDto();
+
+        // Pre-build the bulk-fetch result as a ResourcesCollection so we control exactly which items
+        // reach the snapshot filter without being subject to resource-type filtering, decryption,
+        // or invalid-entity dropping inside the service.
+        const bulkCollection = new ResourcesCollection([offlineResource, nonOfflineResource], {
+          clone: true,
+          ignoreInvalidEntity: true,
+        });
+        jest.spyOn(service.findResourcesServices, "findAllForLocalStorage").mockResolvedValue(bulkCollection);
+
+        // findAllByIds (secrets fetch) returns the same resource decorated with its secret.
+        const secretDto = readSecretDto({ resource_id: offlineResourceId });
+        const resourceWithSecret = { ...offlineResource, secrets: [secretDto] };
+        jest
+          .spyOn(service.findResourcesServices, "findAllByIds")
+          .mockResolvedValue(new ResourcesCollection([resourceWithSecret], { ignoreInvalidEntity: true }));
+
+        await service.findAndUpdateAll();
+
+        expect(opfsResourcesSetSpy).toHaveBeenCalledTimes(1);
+        const passedCollection = opfsResourcesSetSpy.mock.calls[0][0];
+        expect(passedCollection.items.map((r) => r.id)).toEqual([offlineResourceId]);
+        expect(opfsSecretsAddOrReplaceSpy).toHaveBeenCalledTimes(1);
+        expect(opfsResourcesFlushSpy).not.toHaveBeenCalled();
+      });
+
+      it("skips the secret fetch when no offline resource has changed since the last cached snapshot.", async () => {
+        expect.assertions(3);
+        jest.spyOn(service.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
+
+        const offlineResource = defaultResourceDto({}, { withOffline: true });
+        // Cache reports the same id+modified -> diff yields no changes.
+        opfsResourcesGetSpy.mockResolvedValue([{ id: offlineResource.id, modified: offlineResource.modified }]);
+
+        const bulkCollection = new ResourcesCollection([offlineResource], {
+          clone: true,
+          ignoreInvalidEntity: true,
+        });
+        jest.spyOn(service.findResourcesServices, "findAllForLocalStorage").mockResolvedValue(bulkCollection);
+        const findAllByIdsSpy = jest.spyOn(service.findResourcesServices, "findAllByIds");
+
+        await service.findAndUpdateAll();
+
+        expect(findAllByIdsSpy).not.toHaveBeenCalled();
+        expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
+        expect(opfsSecretsDeleteSpy).not.toHaveBeenCalled();
+      });
+
+      it("drops secrets for resources that left the offline set.", async () => {
+        expect.assertions(2);
+        jest.spyOn(service.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
+
+        const remainingOffline = defaultResourceDto({}, { withOffline: true });
+        const droppedId = "00000000-0000-0000-0000-000000000001";
+        opfsResourcesGetSpy.mockResolvedValue([
+          { id: remainingOffline.id, modified: remainingOffline.modified },
+          { id: droppedId, modified: "2020-01-01T00:00:00+00:00" },
+        ]);
+
+        const bulkCollection = new ResourcesCollection([remainingOffline], {
+          clone: true,
+          ignoreInvalidEntity: true,
+        });
+        jest.spyOn(service.findResourcesServices, "findAllForLocalStorage").mockResolvedValue(bulkCollection);
+
+        await service.findAndUpdateAll();
+
+        expect(opfsSecretsDeleteSpy).toHaveBeenCalledTimes(1);
+        expect(opfsSecretsDeleteSpy.mock.calls[0][0]).toEqual([droppedId]);
+      });
     });
   });
 

@@ -58,6 +58,7 @@ class ResourceService extends AbstractService {
       "tag",
       // resource types - since v3
       "resource-type",
+      "offline",
     ];
   }
 

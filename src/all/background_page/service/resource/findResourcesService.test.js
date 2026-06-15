@@ -91,11 +91,14 @@ describe("FindResourcesService", () => {
       const collection = multipleResourceDtos();
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(collection));
 
-      const resources = await findResourcesService.findAll({ favorite: true, permission: true, tag: true }, null);
+      const resources = await findResourcesService.findAll(
+        { favorite: true, permission: true, tag: true, offline: true },
+        null,
+      );
 
       expect(resources).toBeInstanceOf(ResourcesCollection);
       expect(findResourcesService.resourceService.findAll).toHaveBeenCalledWith(
-        { favorite: true, permission: true, tag: true },
+        { favorite: true, permission: true, tag: true, offline: true },
         null,
       );
       expect(resources).toEqual(new ResourcesCollection(collection));
@@ -225,7 +228,7 @@ describe("FindResourcesService", () => {
       const resources = await findResourcesService.findAllForLocalStorage();
 
       expect(findResourcesService.resourceService.findAll).toHaveBeenCalledWith(
-        { favorite: true, permission: true, tag: true },
+        { favorite: true, permission: true, tag: true, offline: true },
         null,
         { limit: 10_000, page: 1, sorts: { "Resources.modified": "desc" } },
       );
@@ -718,6 +721,7 @@ describe("FindResourcesService", () => {
         permission: true,
         favorite: true,
         tag: true,
+        offline: true,
       };
     });
 
@@ -756,6 +760,7 @@ describe("FindResourcesService", () => {
         permission: true,
         favorite: true,
         tag: true,
+        offline: true,
       };
 
       expectedFilters = {

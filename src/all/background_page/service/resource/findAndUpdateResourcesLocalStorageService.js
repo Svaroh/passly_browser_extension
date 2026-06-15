@@ -17,6 +17,10 @@ import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FindResourcesService from "./findResourcesService";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
+import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 const RESOURCES_UPDATE_ALL_LS_LOCK_PREFIX = "RESOURCES_UPDATE_LS_LOCK_";
@@ -42,6 +46,9 @@ class FindAndUpdateResourcesLocalStorage {
     this.findResourcesServices = new FindResourcesService(account, apiClientOptions);
     this.getOrFindResourceTypesService = new GetOrFindResourceTypesService(account, apiClientOptions);
     this.decryptMetadataService = new DecryptMetadataService(apiClientOptions, account);
+    this.canUseOfflineStorageService = new CanUseOfflineStorageService(account, apiClientOptions);
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
+    this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
   }
 
   /**
@@ -89,9 +96,16 @@ class FindAndUpdateResourcesLocalStorage {
         validate: isRuntimeCacheInitialized,
       });
 
+      const canUseOffline = await this.canUseOfflineStorageService.canUseOfflineStorage();
       const updatedResourcesCollection = await this.findResourcesServices.findAllForLocalStorage();
       const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
       updatedResourcesCollection.filterByResourceTypes(resourceTypes);
+
+      // Snapshot offline-tagged items with encrypted metadata before decryption mutates the collection.
+      const offlineEncryptedDtos = canUseOffline
+        ? updatedResourcesCollection.items.filter((resourceEntity) => Boolean(resourceEntity.offline))
+        : [];
+
       updatedResourcesCollection.setDecryptedMetadataFromCollection(localResourcesCollection);
 
       await this.decryptMetadataService.decryptAllFromForeignModels(updatedResourcesCollection, passphrase, {
@@ -102,11 +116,65 @@ class FindAndUpdateResourcesLocalStorage {
 
       await ResourceLocalStorage.set(updatedResourcesCollection);
 
+      await this._refreshOfflineOPFSStorage(canUseOffline, offlineEncryptedDtos);
+
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 
       // Return the updated resources collection from the API
       return updatedResourcesCollection;
     });
+  }
+
+  /**
+   * Refresh the offline OPFS stores from the latest fetch.
+   *
+   * - Disabled or no offline-tagged resources -> flush both stores.
+   * - Otherwise -> persist the offline resources (encrypted metadata) and selectively re-fetch the
+   *   secrets only for resources that are new or whose `modified` timestamp changed since the last
+   *   cached snapshot. Secrets for resources that left the offline set are deleted.
+   *
+   * @param {boolean} canUseOffline Whether the offline feature is enabled for this user.
+   * @param {Array<object>} offlineEncryptedDtos Resource DTOs (with offline association, encrypted metadata).
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _refreshOfflineOPFSStorage(canUseOffline, offlineEncryptedDtos) {
+    if (!canUseOffline || offlineEncryptedDtos.length === 0) {
+      await this.offlineResourcesOPFSStorage.flush();
+      await this.offlineSecretsOPFSStorage.flush();
+      return;
+    }
+
+    // Diff against the cached snapshot. Resources whose "modified" matches the cache are unchanged
+    // and their secrets are still valid - skip them entirely.
+    const cachedResources = (await this.offlineResourcesOPFSStorage.get()) || [];
+    const cachedById = new Map(cachedResources.map((r) => [r.id, r]));
+    const freshIds = new Set(offlineEncryptedDtos.map((r) => r.id));
+
+    const idsRequiringSecretFetch = offlineEncryptedDtos
+      .filter((fresh) => cachedById.get(fresh.id)?.modified !== fresh.modified)
+      .map((fresh) => fresh.id);
+    const removedResourceIds = cachedResources.filter((r) => !freshIds.has(r.id)).map((r) => r.id);
+
+    const offlineCollection = new ResourcesCollection(offlineEncryptedDtos, { validate: false });
+    await this.offlineResourcesOPFSStorage.set(offlineCollection);
+
+    if (removedResourceIds.length > 0) {
+      await this.offlineSecretsOPFSStorage.deleteByResourceIds(removedResourceIds);
+    }
+
+    if (idsRequiringSecretFetch.length === 0) {
+      return;
+    }
+
+    const resourcesWithSecrets = await this.findResourcesServices.findAllByIds(
+      idsRequiringSecretFetch,
+      { secret: true },
+      true,
+    );
+    const secretDtos = resourcesWithSecrets.items.flatMap((resourceEntity) => resourceEntity.secrets?.toDto() || []);
+    const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
+    await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
   }
 
   /**

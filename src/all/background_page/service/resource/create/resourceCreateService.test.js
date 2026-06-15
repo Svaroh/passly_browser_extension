@@ -50,6 +50,7 @@ import ResourceSecretsCollection from "../../../model/entity/secret/resource/res
 import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import GetDecryptedUserPrivateKeyService from "../../account/getDecryptedUserPrivateKeyService";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
+import CanUseOfflineStorageService from "../../offline/canUseOfflineStorageService";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -364,6 +365,7 @@ describe("ResourceCreateService", () => {
       const resourceDto = defaultResourceDto({ folder_parent_id: folderId });
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => resourceDto);
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
       jest.spyOn(FindFoldersService.prototype, "findByIdWithPermissions");
       jest.spyOn(ShareApiService.prototype, "shareResource");
       jest.spyOn(resourceCreateService.shareResourceService, "shareAll");
@@ -474,7 +476,10 @@ describe("ResourceCreateService", () => {
         return resourceEntity.toDto(ResourceLocalStorage.DEFAULT_CONTAIN);
       });
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
-      jest.spyOn(FindFoldersService.prototype, "findByIdWithPermissions");
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
+      jest
+        .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
+        ;
       jest.spyOn(ShareApiService.prototype, "shareResource");
 
       await resourceCreateService.create(resourceDto, plaintextDto, pgpKeys.ada.passphrase);

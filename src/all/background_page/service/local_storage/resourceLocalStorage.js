@@ -321,7 +321,7 @@ class ResourceLocalStorage {
    * @private
    */
   static get DEFAULT_CONTAIN() {
-    return { permission: true, favorite: true, tag: true };
+    return { permission: true, favorite: true, tag: true, offline: true };
   }
 
   /**

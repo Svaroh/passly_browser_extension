@@ -28,6 +28,7 @@ import { METADATA_KEY_TYPE_USER_KEY } from "../../model/entity/resource/resource
 import { v4 as uuidv4 } from "uuid";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import CanUseOfflineStorageService from "../../service/offline/canUseOfflineStorageService";
 
 describe("ResourceUpdateLocalStorageController", () => {
   let controller, worker;
@@ -87,6 +88,7 @@ describe("ResourceUpdateLocalStorageController", () => {
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
       jest.spyOn(GetPassphraseService.prototype, "requestPassphrase").mockImplementation(() => pgpKeys.ada.passphrase);
       jest.spyOn(PassphraseStorageService, "set").mockImplementation(() => {});
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
       jest.spyOn(controller.findAndUpdateResourcesLocalStorage, "findAndUpdateAll");
 
       await controller._exec();
