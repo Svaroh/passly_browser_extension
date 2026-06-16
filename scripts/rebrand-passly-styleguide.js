@@ -1537,8 +1537,44 @@ function patchTrashRestoreActionsSource() {
   /**
    * Refresh the current filter after resources have been deleted.
    */
+  handleResourcesDeleted(resources = [], options = {}) {
+    const isPermanentDelete = options.recoverable === false;
+    const filter = isPermanentDelete ? { type: ResourceWorkspaceFilterTypes.TRASH } : this.state.filter;
+    if (isPermanentDelete) {
+      this.props.history.replace({
+        pathname: \`/app/passwords/filter/trash\`,
+        state: { filter },
+      });
+    }
+    this.setState({ selectedResources: [], details: { folder: null, resource: null }, filter }, () => this.search(filter));
+  }
+
+  /** Resource export */`,
+    ],
+  ]) ? 1 : 0;
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `  /**
+   * Refresh the current filter after resources have been deleted.
+   */
   handleResourcesDeleted() {
     this.setState({ selectedResources: [] }, () => this.search(this.state.filter));
+  }
+
+  /** Resource export */`,
+      `  /**
+   * Refresh the current filter after resources have been deleted.
+   */
+  handleResourcesDeleted(resources = [], options = {}) {
+    const isPermanentDelete = options.recoverable === false;
+    const filter = isPermanentDelete ? { type: ResourceWorkspaceFilterTypes.TRASH } : this.state.filter;
+    if (isPermanentDelete) {
+      this.props.history.replace({
+        pathname: \`/app/passwords/filter/trash\`,
+        state: { filter },
+      });
+    }
+    this.setState({ selectedResources: [], details: { folder: null, resource: null }, filter }, () => this.search(filter));
   }
 
   /** Resource export */`,
