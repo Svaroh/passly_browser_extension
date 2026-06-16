@@ -80,6 +80,39 @@ describe("DeleteResourceService", () => {
       expect(ResourceLocalStorage.deleteResources).toHaveBeenCalledWith([resourceDto1.id, resourceDto2.id]);
     });
 
+    it("Should treat a missing resource as already permanently deleted", async () => {
+      expect.assertions(4);
+
+      const resourceDto = defaultResourceDto();
+      const error = new Error("The resource does not exist.");
+      error.name = "PassboltApiFetchError";
+      error.data = { code: 404 };
+      jest.spyOn(deleteResourceService.resourceService, "delete").mockRejectedValue(error);
+
+      await deleteResourceService.deleteResources([resourceDto.id], { recoverable: false });
+
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledTimes(1);
+      expect(deleteResourceService.resourceService.delete).toHaveBeenCalledWith(resourceDto.id, false);
+      expect(ResourceLocalStorage.softDeleteResources).not.toHaveBeenCalled();
+      expect(ResourceLocalStorage.deleteResources).toHaveBeenCalledWith([resourceDto.id]);
+    });
+
+    it("Should throw a missing resource error for recoverable delete", async () => {
+      expect.assertions(2);
+
+      const resourceDto = defaultResourceDto();
+      const error = new Error("The resource does not exist.");
+      error.name = "PassboltApiFetchError";
+      error.data = { code: 404 };
+      jest.spyOn(deleteResourceService.resourceService, "delete").mockRejectedValue(error);
+
+      await expect(deleteResourceService.deleteResources([resourceDto.id], { recoverable: true })).rejects.toThrow(
+        error,
+      );
+
+      expect(ResourceLocalStorage.softDeleteResources).not.toHaveBeenCalled();
+    });
+
     it("Should call progress service during the different steps of deletion", async () => {
       expect.assertions(3);
 
