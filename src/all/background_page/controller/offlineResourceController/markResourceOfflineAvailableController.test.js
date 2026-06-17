@@ -17,13 +17,16 @@ import MarkResourceOfflineAvailableController from "./markResourceOfflineAvailab
 import { v4 as uuidv4 } from "uuid";
 import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
 import OfflineItemEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("MarkResourceOfflineAvailableController", () => {
-  let apiClientOptions, controller;
+  let apiClientOptions, account, controller;
 
   beforeEach(() => {
     apiClientOptions = defaultApiClientOptions();
-    controller = new MarkResourceOfflineAvailableController(null, null, apiClientOptions);
+    account = new AccountEntity(defaultAccountDto());
+    controller = new MarkResourceOfflineAvailableController(null, null, apiClientOptions, account);
   });
 
   describe("::exec", () => {

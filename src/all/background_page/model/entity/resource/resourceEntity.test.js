@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
 import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
+import OfflineItemEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity";
 
 describe("Resource entity", () => {
   describe("ResourceEntity::getSchema", () => {
@@ -344,6 +345,38 @@ describe("Resource entity", () => {
         entityV5.metadataKeyId = metadataKeyId;
       } catch (error) {
         expect(error.getError("metadata_key_id", "format")).toEqual("The metadata_key_id is not a valid uuid.");
+      }
+    });
+  });
+
+  describe("ResourceEntity::offline", () => {
+    it("Should set offline with offlineItemEntity", () => {
+      expect.assertions(3);
+
+      const resourceDTO = defaultResourceDto();
+      const offlineItemEntity = new OfflineItemEntity(defaultOfflineItemDto());
+      const entityV5 = new ResourceEntity(resourceDTO);
+
+      expect(entityV5.offline).toBeNull();
+
+      entityV5.offline = offlineItemEntity;
+      const expectedDto = { ...resourceDTO, offline: offlineItemEntity.toDto() };
+
+      expect(entityV5._offline).toBeDefined();
+      expect(entityV5.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toEqual(expectedDto);
+    });
+
+    it("Should failed to set offline with object", () => {
+      expect.assertions(1);
+
+      const resourceDTO = defaultResourceDto();
+      const offline = {};
+      const entityV5 = new ResourceEntity(resourceDTO);
+
+      try {
+        entityV5.offline = offline;
+      } catch (error) {
+        expect(error.message).toEqual("The parameter 'offline' should be an OfflineItemEntity.");
       }
     });
   });

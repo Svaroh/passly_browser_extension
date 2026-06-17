@@ -24,6 +24,7 @@ import UserEntity from "../user/userEntity";
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import CanSuggestService from "passbolt-styleguide/src/shared/services/canSuggestService/canSuggestService";
 import OfflineItemEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity";
+import { assertType } from "../../../utils/assertions";
 
 const ENTITY_NAME = "Resource";
 
@@ -717,6 +718,15 @@ class ResourceEntity extends EntityV2 {
   set personal(personal) {
     EntitySchema.validateProp("personal", personal, ResourceEntity.getSchema().properties.personal);
     this._props.personal = personal;
+  }
+
+  /**
+   * Set resource offline
+   * @param {OfflineItemEntity} offline
+   */
+  set offline(offline) {
+    assertType(offline, OfflineItemEntity, "The parameter 'offline' should be an OfflineItemEntity.");
+    this._offline = offline;
   }
 
   /**

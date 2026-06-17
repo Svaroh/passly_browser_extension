@@ -968,7 +968,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param id {uuid} resourceId
    */
   worker.port.on("passbolt.offline.mark-resource-offline", async (requestId, id) => {
-    const controller = new MarkResourceOfflineAvailableController(worker, requestId, apiClientOptions);
+    const controller = new MarkResourceOfflineAvailableController(worker, requestId, apiClientOptions, account);
     await controller._exec(id);
   });
   /*
@@ -979,7 +979,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param id {uuid} resourceId
    */
   worker.port.on("passbolt.offline.unmark-item-offline", async (requestId, id) => {
-    const controller = new MarkItemOfflineUnavailableController(worker, requestId, apiClientOptions);
+    const controller = new MarkItemOfflineUnavailableController(worker, requestId, apiClientOptions, account);
     await controller._exec(id);
   });
 };

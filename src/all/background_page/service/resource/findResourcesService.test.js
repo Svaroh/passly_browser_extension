@@ -742,6 +742,54 @@ describe("FindResourcesService", () => {
     });
   });
 
+  describe("::findOneByIdForOffline", () => {
+    let service, expectedContains;
+
+    beforeEach(() => {
+      service = new FindResourcesService(account, apiClientOptions);
+      expectedContains = {
+        secret: true,
+        ...ResourceLocalStorage.DEFAULT_CONTAIN,
+      };
+    });
+
+    it("should retrieve the resource by id for offline", async () => {
+      expect.assertions(3);
+
+      const ressource = defaultResourceDto();
+
+      jest.spyOn(ResourceService.prototype, "get").mockImplementation(() => ressource);
+
+      const result = await service.findOneByIdForOffline(ressource.id);
+
+      expect(result).toEqual(new ResourceEntity(ressource));
+      expect(ResourceService.prototype.get).toHaveBeenCalledTimes(1);
+      expect(ResourceService.prototype.get).toHaveBeenCalledWith(ressource.id, expectedContains);
+    });
+
+    it("should validate the resource id to be an uuid", async () => {
+      expect.assertions(1);
+
+      const promise = service.findOneByIdForOffline("Not an uuid");
+
+      await expect(promise).rejects.toThrow("The given parameter is not a valid UUID");
+    });
+
+    it("should throw an error in case of api error", async () => {
+      expect.assertions(1);
+
+      const ressource = defaultResourceDto();
+
+      jest.spyOn(ResourceService.prototype, "get").mockImplementation(() => {
+        throw new Error("API error");
+      });
+
+      const promise = service.findOneByIdForOffline(ressource.id);
+
+      await expect(promise).rejects.toThrow("API error");
+    });
+  });
+
   describe("::findAllByIdsForLocalStorage", () => {
     let service, expectedContains;
 

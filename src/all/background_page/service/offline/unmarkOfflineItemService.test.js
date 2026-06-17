@@ -19,14 +19,22 @@ import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/Pass
 import PassboltServiceUnavailableError from "passbolt-styleguide/src/shared/lib/Error/PassboltServiceUnavailableError";
 import { v4 as uuidv4 } from "uuid";
 import UnmarkOfflineItemService from "./unmarkOfflineItemService";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
+import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
 
-describe("MarkOfflineResourceService", () => {
-  let apiClientOptions;
+describe("UnmarkOfflineItemService", () => {
+  let apiClientOptions, account;
 
   beforeEach(async () => {
     enableFetchMocks();
     fetch.resetMocks();
     apiClientOptions = defaultApiClientOptions();
+    account = new AccountEntity(defaultAccountDto());
+    // Keep the OPFS-side cleanup inert across this suite.
+    jest.spyOn(OfflineResourcesOPFSStorage.prototype, "delete").mockResolvedValue();
+    jest.spyOn(OfflineSecretsOPFSStorage.prototype, "deleteByResourceId").mockResolvedValue();
   });
 
   describe("::create", () => {
@@ -35,7 +43,7 @@ describe("MarkOfflineResourceService", () => {
       const offlineItemId = uuidv4();
       fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () => mockApiResponse(null));
 
-      const service = new UnmarkOfflineItemService(apiClientOptions);
+      const service = new UnmarkOfflineItemService(account, apiClientOptions);
       const result = await service.delete(offlineItemId);
 
       expect(result).toEqual(null);
@@ -43,7 +51,7 @@ describe("MarkOfflineResourceService", () => {
 
     it("throws an Error if the parameter is not a valid uuid", async () => {
       expect.assertions(1);
-      const service = new UnmarkOfflineItemService(apiClientOptions);
+      const service = new UnmarkOfflineItemService(account, apiClientOptions);
 
       await expect(() => service.delete({})).rejects.toThrow("The given parameter is not a valid UUID");
     });
@@ -55,7 +63,7 @@ describe("MarkOfflineResourceService", () => {
         throw new Error("Service unavailable");
       });
 
-      const service = new UnmarkOfflineItemService(apiClientOptions);
+      const service = new UnmarkOfflineItemService(account, apiClientOptions);
 
       await expect(() => service.delete(offlineItemId)).rejects.toThrow(PassboltServiceUnavailableError);
     });
@@ -67,7 +75,7 @@ describe("MarkOfflineResourceService", () => {
         mockApiResponseError(500, "Something wrong happened!"),
       );
 
-      const service = new UnmarkOfflineItemService(apiClientOptions);
+      const service = new UnmarkOfflineItemService(account, apiClientOptions);
 
       await expect(() => service.delete(offlineItemId)).rejects.toThrow(PassboltApiFetchError);
     });

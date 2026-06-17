@@ -239,7 +239,7 @@ export default class FindResourcesService {
   /**
    * Find a resource given an id
    *
-   * @param {array} resourceId resource id
+   * @param {string} resourceId resource id
    * @param {Object} [contains] optional example: {permissions: true}
    * @returns {Promise<ResourceEntity>}
    */
@@ -255,7 +255,7 @@ export default class FindResourcesService {
   /**
    * Find the resource detail given an id
    *
-   * @param {array} resourceId resource id
+   * @param {string} resourceId resource id
    * @returns {Promise<ResourceEntity>}
    */
   async findOneByIdForDetails(resourceId) {
@@ -268,6 +268,23 @@ export default class FindResourcesService {
 
     const resource = this.findOneById(resourceId, contains);
     return resource;
+  }
+
+  /**
+   * Find the resource for offline given an id
+   *
+   * @param {string} resourceId resource id
+   * @returns {Promise<ResourceEntity>}
+   */
+  async findOneByIdForOffline(resourceId) {
+    assertUuid(resourceId);
+
+    const contains = {
+      secret: true,
+      ...ResourceLocalStorage.DEFAULT_CONTAIN,
+    };
+
+    return this.findOneById(resourceId, contains);
   }
 
   /**
