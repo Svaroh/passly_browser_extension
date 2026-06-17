@@ -4,6 +4,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [5.13.3] - 2026-06-17
+### Fixed
+Fix version mismatch betwwen tag and package.json
+
+## [5.13.2] - 2026-06-17
+### Fixed
+PB-51699 Fix adding a user to a large group
+
 ## [5.13.1] - 2026-06-15
 ### Fixed
 PB-52478 Remove subscription CTA when edition plugin is not enabled
