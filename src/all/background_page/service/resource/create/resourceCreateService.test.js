@@ -50,7 +50,6 @@ import ResourceSecretsCollection from "../../../model/entity/secret/resource/res
 import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import GetDecryptedUserPrivateKeyService from "../../account/getDecryptedUserPrivateKeyService";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
-import { ownerFolderPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import CanUseOfflineStorageService from "../../offline/canUseOfflineStorageService";
 

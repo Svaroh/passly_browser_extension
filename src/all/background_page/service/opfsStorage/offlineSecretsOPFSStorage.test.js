@@ -231,6 +231,19 @@ describe("OfflineSecretsOPFSStorage", () => {
       );
       expect(OfflineSecretsOPFSStorage._runtimeCachedData[account.id][0].modified).not.toEqual(secretDto.modified);
     });
+
+    it("Should match by resource id so it replaces a rotated secret (different secret id, same resource id)", async () => {
+      expect.assertions(3);
+      const secretDto = readSecret();
+      await storage._setOPFSStorage(storage.storageKey, [secretDto]);
+      // The API regenerates the secret id on update; only the resource id is stable.
+      const rotatedSecret = new SecretEntity({ ...secretDto, id: uuidv4() });
+      await storage.updateSecret(rotatedSecret);
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData).toHaveLength(1);
+      expect(storageData[0].id).toEqual(rotatedSecret.id);
+      expect(storageData[0].id).not.toEqual(secretDto.id);
+    });
   });
 
   describe("::updateSecretsCollection", () => {

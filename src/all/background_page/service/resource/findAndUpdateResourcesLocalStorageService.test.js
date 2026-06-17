@@ -41,13 +41,9 @@ import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
 import GetDecryptedUserPrivateKeyService from "../account/getDecryptedUserPrivateKeyService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import { v4 as uuidv4 } from "uuid";
-import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
-import { readSecret as readSecretDto } from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity.test.data";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
-import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
-import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
 import { readSecret as readSecretDto } from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 

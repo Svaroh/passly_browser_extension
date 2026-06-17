@@ -20,8 +20,10 @@ import {
   defaultResourceDto,
   resourceWithTotpDto,
   resourceStandaloneTotpDto,
+  resourceMetadataEncryptedDto,
 } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
+import { readSecret } from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity.test.data";
 import ResourceEntity from "../../../model/entity/resource/resourceEntity";
 import EncryptMessageService from "../../crypto/encryptMessageService";
 import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
@@ -1093,6 +1095,114 @@ describe("ResourceUpdateService", () => {
       await resourceUpdateService.exec(resourceDto, null, pgpKeys.ada.passphrase);
 
       expect(resourceUpdated.personal).toBe(false);
+    });
+  });
+
+  describe("ResourceUpdateService::updateOfflineStorage", () => {
+    /**
+     * Build a v5 (encrypted metadata) resource carrying an offline association and a secret.
+     * @returns {ResourceEntity}
+     */
+    const buildOfflineResource = () => {
+      const dto = resourceMetadataEncryptedDto({}, { withOffline: true });
+      const secretDto = readSecret({ resource_id: dto.id });
+      return new ResourceEntity({ ...dto, secrets: [secretDto] });
+    };
+
+    it("does nothing when the resource has no offline access", async () => {
+      expect.assertions(2);
+      const entity = new ResourceEntity(resourceMetadataEncryptedDto());
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, true);
+
+      expect(updateResourceSpy).not.toHaveBeenCalled();
+      expect(updateSecretSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not touch the OPFS storage for a v4 resource even when it is tagged offline", async () => {
+      expect.assertions(3);
+      // v4 resources are normalized to decrypted metadata, which the OPFS store rejects.
+      const entity = new ResourceEntity(defaultResourceDto({}, { withOffline: true }));
+      expect(entity.isMetadataDecrypted()).toBe(true);
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, true);
+
+      expect(updateResourceSpy).not.toHaveBeenCalled();
+      expect(updateSecretSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the offline resource but leaves the secret store untouched when the secret was not updated", async () => {
+      expect.assertions(2);
+      const entity = buildOfflineResource();
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, false);
+
+      expect(updateResourceSpy).toHaveBeenCalledWith(entity);
+      expect(updateSecretSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the offline resource and secret when the secret was updated", async () => {
+      expect.assertions(2);
+      const entity = buildOfflineResource();
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, true);
+
+      expect(updateResourceSpy).toHaveBeenCalledWith(entity);
+      expect(updateSecretSpy).toHaveBeenCalledWith(entity.secret);
+    });
+  });
+
+  describe("ResourceUpdateService::update - offline storage wiring", () => {
+    it("refreshes the offline storage flagging the secret as updated, before the metadata is decrypted", async () => {
+      expect.assertions(3);
+      const resourceTypeEntity = new ResourceTypeEntity(resourceTypePasswordAndDescriptionDto());
+      const resourceDto = defaultResourceDto();
+      // A secret is set (via the constructor so it validates), so `data` carries secrets and the
+      // update counts as a secret update.
+      const resourceEntity = new ResourceEntity({
+        ...resourceDto,
+        secrets: [readSecret({ resource_id: resourceDto.id })],
+      });
+      const metadataDecrypted = resourceEntity.metadata;
+
+      jest
+        .spyOn(resourceUpdateService.resourceService, "update")
+        .mockImplementation(() =>
+          new ResourceEntity(defaultResourceDto()).toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN),
+        );
+      const offlineSpy = jest.spyOn(resourceUpdateService, "updateOfflineStorage").mockResolvedValue();
+      jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
+
+      await resourceUpdateService.update(resourceEntity, resourceTypeEntity, metadataDecrypted);
+
+      expect(offlineSpy).toHaveBeenCalledTimes(1);
+      const [passedEntity, secretUpdated] = offlineSpy.mock.calls[0];
+      expect(passedEntity).toBeInstanceOf(ResourceEntity);
+      expect(secretUpdated).toBe(true);
     });
   });
 });

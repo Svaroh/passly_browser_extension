@@ -133,7 +133,12 @@ class OfflineSecretsOPFSStorage {
   }
 
   /**
-   * Update a secret in the OPFS storage.
+   * Update a secret in the OPFS storage, matched by its resource id.
+   *
+   * The store holds a single secret per resource (the current user's), and the API regenerates the
+   * secret id whenever the secret is updated, so the secret is matched by resource id rather than by
+   * its own id.
+   *
    * @param {SecretEntity} secretEntity The offline secret to update
    * @throws {Error} if the secret does not exist in the OPFS storage
    */
@@ -141,7 +146,7 @@ class OfflineSecretsOPFSStorage {
     assertType(secretEntity, SecretEntity, "The `secretEntity` parameter should be of type SecretEntity");
     await navigator.locks.request(this.storageKey, async () => {
       const secrets = (await this.get()) || [];
-      const secretIndex = secrets.findIndex((item) => item.id === secretEntity.id);
+      const secretIndex = secrets.findIndex((item) => item.resource_id === secretEntity.resourceId);
       if (secretIndex === -1) {
         throw new Error("The offline secret could not be found in the OPFS storage");
       }
