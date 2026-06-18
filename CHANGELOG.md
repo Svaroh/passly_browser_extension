@@ -4,9 +4,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [5.13.4] - 2026-06-18
+### Fixed
+PB-52569 Add user to group freezing the page
+
 ## [5.13.3] - 2026-06-17
 ### Fixed
-Fix version mismatch betwwen tag and package.json
+Fix version mismatch between tag and package.json
 
 ## [5.13.2] - 2026-06-17
 ### Fixed
