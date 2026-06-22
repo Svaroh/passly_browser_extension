@@ -496,6 +496,36 @@ describe("FindResourcesService", () => {
     });
   });
 
+  describe("::findAllByIdsForOffline", () => {
+    let service, expectedContains;
+
+    beforeEach(() => {
+      service = new FindResourcesService(account, apiClientOptions);
+      expectedContains = {
+        secret: true,
+      };
+    });
+
+    it("should call the api when the resource with right parameters", async () => {
+      expect.assertions(4);
+
+      const dtos = Array.from({ length: 10 }, () => defaultResourceDto());
+      const ids = dtos.map((dto) => dto.id);
+
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(dtos));
+      jest.spyOn(service, "findAllByIds");
+
+      const result = await service.findAllByIdsForOffline(ids);
+
+      expect(result).toEqual(new ResourcesCollection(dtos));
+      expect(ResourceService.prototype.findAll).toHaveBeenCalledTimes(1);
+      expect(ResourceService.prototype.findAll).toHaveBeenCalledWith(expectedContains, {
+        "has-id": ids,
+      });
+      expect(service.findAllByIds).toHaveBeenCalledWith(ids, expectedContains, true);
+    });
+  });
+
   describe("::findAllPermissionsByIdsForShare", () => {
     let service, expectedContains;
 

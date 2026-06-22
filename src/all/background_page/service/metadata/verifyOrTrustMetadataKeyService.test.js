@@ -28,6 +28,7 @@ import UntrustedMetadataKeyError from "../../error/UntrustedMetadataKeyError";
 import { defaultCeSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
 import GetOrFindSiteSettingsService from "../siteSettings/getOrFindSiteSettingsService";
 import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 
 describe("VerifyOrTrustMetadataKeyService", () => {
   let account, apiClientOptions, service;
@@ -116,6 +117,7 @@ describe("VerifyOrTrustMetadataKeyService", () => {
       jest
         .spyOn(service.getOrFindMetadataKeysService.findAndUpdateMetadataKeysService.findMetadataKeysService, "findAll")
         .mockReturnValue(metadataKeysCollection);
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
       jest.spyOn(service.trustMetadataKeyService, "trust").mockImplementationOnce(jest.fn);
       jest.spyOn(service.confirmMetadataKeyContentCodeService, "requestConfirm").mockImplementationOnce(jest.fn);
 

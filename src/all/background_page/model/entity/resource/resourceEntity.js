@@ -494,6 +494,14 @@ class ResourceEntity extends EntityV2 {
     return destinationFolder === null || !destinationFolder.isReadOnly();
   }
 
+  /**
+   * Return true if offline is set
+   * @returns {(boolean)}
+   */
+  hasOfflineAccess() {
+    return this.offline != null;
+  }
+
   /*
    * ==================================================
    * Meta data relative

@@ -579,4 +579,18 @@ describe("Resource entity", () => {
       });
     });
   });
+
+  describe("::hasOfflineAccess", () => {
+    it("returns true if the resource has offline access", () => {
+      expect.assertions(1);
+      const entity = new ResourceEntity(defaultResourceDto({}, { withOffline: true }));
+      expect(entity.hasOfflineAccess()).toBeTruthy();
+    });
+
+    it("returns false if the resource has no offline access", () => {
+      expect.assertions();
+      const entity = new ResourceEntity(defaultResourceDto());
+      expect(entity.hasOfflineAccess()).toBeFalsy();
+    });
+  });
 });

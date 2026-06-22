@@ -354,6 +354,30 @@ describe("ResourcesCollection", () => {
     });
   });
 
+  describe("::filterByOffline", () => {
+    it("should filter resources by offline item.", () => {
+      expect.assertions(3);
+
+      const resourceDecrypted1 = defaultResourceDto();
+      const resourceDecrypted2 = defaultResourceDto();
+      const resourceOffline1 = defaultResourceDto({}, { withOffline: true });
+      const resourceOffline2 = defaultResourceDto({}, { withOffline: true });
+
+      const resources = new ResourcesCollection([
+        resourceDecrypted1,
+        resourceDecrypted2,
+        resourceOffline1,
+        resourceOffline2,
+      ]);
+
+      const resourcesFiltered = resources.filterByOffline();
+
+      expect(resourcesFiltered).toHaveLength(2);
+      expect(resourcesFiltered.items[0].toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toStrictEqual(resourceOffline1);
+      expect(resourcesFiltered.items[1].toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toStrictEqual(resourceOffline2);
+    });
+  });
+
   describe("::filterOutMetadataEncrypted", () => {
     it("should filter out the resource which metadata are encrypted.", () => {
       expect.assertions(3);

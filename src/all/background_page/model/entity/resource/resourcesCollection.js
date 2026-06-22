@@ -130,6 +130,18 @@ class ResourcesCollection extends EntityV2Collection {
   }
 
   /**
+   * Return a new collection with all resources the current user has offline access
+   *
+   * @returns {ResourcesCollection}
+   */
+  filterByOffline() {
+    return new ResourcesCollection(
+      this._items.filter((r) => r.hasOfflineAccess()),
+      { validate: false },
+    );
+  }
+
+  /**
    * Filter by resource types.
    * @param {ResourceTypesCollection} resourceTypes The resource types to filter by
    * @return {void} The function alters the collection itself.
