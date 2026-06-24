@@ -18,7 +18,7 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import {
   defaultCeOrganizationSettings,
   offlinePluginEnabledOrganizationSettings,
-} from "../../model/entity/organizationSettings/organizationSettingsEntity.test.data";
+} from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import FindAndUpdateOfflineSettingsLocalStorageService from "./findAndUpdateOfflineSettingsLocalStorageService";
