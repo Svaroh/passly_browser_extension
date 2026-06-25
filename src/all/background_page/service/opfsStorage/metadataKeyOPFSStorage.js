@@ -90,7 +90,9 @@ class MetadataKeyOPFSStorage {
       "The `metadataKeysCollection` parameter should be of type MetadataKeysCollection",
     );
     if (metadataKeysCollection.hasDecryptedKeys()) {
-      throw new TypeError("The `metadataKeysCollection` parameter should contain only encrypted metadata private keys.");
+      throw new TypeError(
+        "The `metadataKeysCollection` parameter should contain only encrypted metadata private keys.",
+      );
     }
     await navigator.locks.request(this.storageKey, async () => {
       const metadataKeys = [];
@@ -170,7 +172,9 @@ class MetadataKeyOPFSStorage {
       "The parameter `metadataKeysCollection` should be of type MetadataKeysCollection.",
     );
     if (metadataKeysCollection.hasDecryptedKeys()) {
-      throw new TypeError("The `metadataKeysCollection` parameter should contain only encrypted metadata private keys.");
+      throw new TypeError(
+        "The `metadataKeysCollection` parameter should contain only encrypted metadata private keys.",
+      );
     }
     await navigator.locks.request(this.storageKey, async () => {
       const metadataKeys = (await this.get()) || [];
@@ -246,9 +250,7 @@ class MetadataKeyOPFSStorage {
       );
     }
     if (metadataKeyEntity.metadataPrivateKeys?.hasDecryptedPrivateKeys()) {
-      throw new TypeError(
-        "MetadataKeyOPFSStorage expects MetadataKeyEntity metadata_private_keys to be encrypted",
-      );
+      throw new TypeError("MetadataKeyOPFSStorage expects MetadataKeyEntity metadata_private_keys to be encrypted");
     }
   }
 }

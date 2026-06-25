@@ -282,9 +282,7 @@ describe("MetadataKeyOPFSStorage", () => {
   describe("::delete", () => {
     it("throws if id is not a UUID.", async () => {
       expect.assertions(1);
-      await expect(() => storage.delete("not-a-uuid")).rejects.toThrow(
-        "The parameter metadataKeyId should be a UUID.",
-      );
+      await expect(() => storage.delete("not-a-uuid")).rejects.toThrow("The parameter metadataKeyId should be a UUID.");
     });
 
     it("removes a metadata key from the storage.", async () => {
