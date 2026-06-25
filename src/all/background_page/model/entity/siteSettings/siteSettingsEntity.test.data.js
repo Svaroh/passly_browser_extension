@@ -267,7 +267,7 @@ export const defaultProSiteSettings = (siteSettings) => {
   return Object.assign(defaultData, siteSettings);
 };
 
-export const offlinePluginEnabledOrganizationSettings = (siteSettings) => {
+export const offlinePluginEnabledSiteSettings = (siteSettings) => {
   const defaultData = defaultCeSiteSettings();
   defaultData.passbolt.plugins.offline = {
     version: "1.0.0",

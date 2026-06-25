@@ -17,7 +17,7 @@ import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
-import { offlinePluginEnabledOrganizationSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
+import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import GetOrFindOfflineSettingsService from "./getOrFindOfflineSettingsService";
 
 beforeEach(() => {
@@ -51,7 +51,7 @@ describe("GetOrFindOfflineSettingsService", () => {
             .organizationSettingsService,
           "find",
         )
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       // Control initial storage value.
       const initialStorageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.get();
@@ -100,7 +100,7 @@ describe("GetOrFindOfflineSettingsService", () => {
             .organizationSettingsService,
           "find",
         )
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       const entity = await getOrFindOfflineSettingsService.getOrFind();
 

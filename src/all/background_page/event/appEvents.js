@@ -87,11 +87,11 @@ import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainT
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
 import OpenResourceUriTabController from "../controller/tab/openResourceUriTabController";
 import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
+import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
 import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
 import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
 import MarkItemOfflineUnavailableController from "../controller/offline/markItemOfflineUnavailableController";
-import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*

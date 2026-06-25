@@ -16,8 +16,8 @@ import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import {
-  defaultCeOrganizationSettings,
-  offlinePluginEnabledOrganizationSettings,
+  defaultCeSiteSettings,
+  offlinePluginEnabledSiteSettings,
 } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
@@ -47,7 +47,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
         .mockImplementation(() => ({ body: offlineSettingsDto }));
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       const entity = await service.findAndUpdate();
 
@@ -62,7 +62,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
       jest.spyOn(service.findOfflineSettingsService.offlineSettingsApiService, "find");
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
-        .mockImplementation(() => defaultCeOrganizationSettings());
+        .mockImplementation(() => defaultCeSiteSettings());
 
       const entity = await service.findAndUpdate();
 
@@ -79,7 +79,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
         .mockImplementation(() => ({ body: {} }));
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       const entity = await service.findAndUpdate();
 
@@ -96,7 +96,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
         .mockImplementation(() => ({ body: offlineSettingsDto }));
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
       await service.offlineSettingsLocalStorage.set(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
 
       const entity = await service.findAndUpdate();
@@ -116,7 +116,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
         .mockImplementation(() => promise);
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
       await service.offlineSettingsLocalStorage.set(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
 
       const promiseFirstCall = service.findAndUpdate();

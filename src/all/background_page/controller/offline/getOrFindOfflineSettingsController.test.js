@@ -18,7 +18,7 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import { offlinePluginEnabledOrganizationSettings } from "../../model/entity/organizationSettings/organizationSettingsEntity.test.data";
+import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import { enableFetchMocks } from "jest-fetch-mock";
 
 beforeEach(() => {
@@ -53,7 +53,7 @@ describe("GetOrFindOfflineSettingsController", () => {
             .organisationSettingsModel.organizationSettingsService,
           "find",
         )
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       const result = await controller.exec();
 
@@ -99,7 +99,7 @@ describe("GetOrFindOfflineSettingsController", () => {
             .organisationSettingsModel.organizationSettingsService,
           "find",
         )
-        .mockImplementation(() => offlinePluginEnabledOrganizationSettings());
+        .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       const result = await controller.exec();
 
