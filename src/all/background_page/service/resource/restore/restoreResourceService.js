@@ -17,6 +17,7 @@ import ResourcesCollection from "../../../model/entity/resource/resourcesCollect
 import i18n from "../../../sdk/i18n";
 import { assertArrayUUID } from "../../../utils/assertions";
 import ExecuteConcurrentlyService from "../../execute/executeConcurrentlyService";
+import DecryptMetadataService from "../../metadata/decryptMetadataService";
 
 class RestoreResourceService {
   /**
@@ -29,6 +30,7 @@ class RestoreResourceService {
     this.account = account;
     this.resourceService = new ResourceService(apiClientOptions);
     this.progressService = progressService;
+    this.decryptMetadataService = new DecryptMetadataService(apiClientOptions, account);
   }
 
   /**
@@ -63,9 +65,40 @@ class RestoreResourceService {
     await executeConcurrentlyService.execute(callbacks, 5);
 
     this.progressService.finishStep(i18n.t("Updating resources local storage"), true);
-    await ResourceLocalStorage.addOrReplaceResourcesCollection(new ResourcesCollection(restoredResources));
+    const restoredResourcesCollection = new ResourcesCollection(restoredResources);
+    await this.prepareRestoredResourcesForLocalStorage(restoredResourcesCollection);
+    await ResourceLocalStorage.addOrReplaceResourcesCollection(restoredResourcesCollection);
 
     return restoredResources;
+  }
+
+  /**
+   * Prepare restored resources before storing them locally.
+   *
+   * Restoring a resource changes the modified date but not the encrypted metadata payload. Reuse the decrypted
+   * metadata already cached for the deleted resource before falling back to regular metadata decryption.
+   *
+   * @param {ResourcesCollection} restoredResourcesCollection The restored resources.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async prepareRestoredResourcesForLocalStorage(restoredResourcesCollection) {
+    const localStorageResourcesCollection = new ResourcesCollection((await ResourceLocalStorage.get()) || [], {
+      validate: false,
+    });
+
+    restoredResourcesCollection.setDecryptedMetadataFromCollectionById(localStorageResourcesCollection);
+
+    try {
+      await this.decryptMetadataService.decryptAllFromForeignModels(restoredResourcesCollection, null, {
+        ignoreDecryptionError: true,
+        updateSessionKeys: true,
+      });
+    } catch {
+      // Restore already succeeded remotely. Keep only resources safe for local storage; the next sync can recover.
+    }
+
+    restoredResourcesCollection.filterOutMetadataEncrypted();
   }
 }
 
