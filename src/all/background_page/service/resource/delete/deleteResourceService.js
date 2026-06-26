@@ -32,21 +32,31 @@ class DeleteResourceService {
   /**
    * Delete a bulk of resources
    * @param {Array<string>} resourceIds The resourceIds
+   * @param {object} options The delete options
+   * @param {boolean} [options.recoverable=true] Whether resources should be recoverably deleted.
    * @returns {Promise<void>}
    */
-  async deleteResources(resourceIds) {
+  async deleteResources(resourceIds, options = {}) {
     assertArrayUUID(resourceIds);
+    const recoverable = options.recoverable !== false;
     /**
      * 1. Delete the Resources
      * 2. Update the local storage
      */
     this.progressService.finishStep(i18n.t("Deleting Resource(s)"), true);
     let deleteCounter = 0;
-    const deleteCallBacks = (resourceId) => {
+    const deleteCallBacks = async (resourceId) => {
       this.progressService.updateStepMessage(
         i18n.t("Deleting resource(s) {{counter}}/{{total}}", { counter: ++deleteCounter, total: resourceIds.length }),
       );
-      return this.resourceService.delete(resourceId);
+      try {
+        return await this.resourceService.delete(resourceId, recoverable);
+      } catch (error) {
+        if (this.isPermanentDeleteAlreadyApplied(error, recoverable)) {
+          return;
+        }
+        throw error;
+      }
     };
 
     const callbacks = resourceIds.map((resourceId) => () => deleteCallBacks(resourceId));
@@ -54,7 +64,22 @@ class DeleteResourceService {
     await executeConcurrentlyService.execute(callbacks, 5);
 
     this.progressService.finishStep(i18n.t("Updating resources local storage"), true);
-    await ResourceLocalStorage.deleteResources(resourceIds);
+    if (recoverable) {
+      await ResourceLocalStorage.softDeleteResources(resourceIds);
+    } else {
+      await ResourceLocalStorage.deleteResources(resourceIds);
+    }
+  }
+
+  /**
+   * Treat permanent delete as idempotent when the API reports that the resource
+   * is already unavailable.
+   * @param {Error} error The API error.
+   * @param {boolean} recoverable Whether the delete operation is recoverable.
+   * @returns {boolean}
+   */
+  isPermanentDeleteAlreadyApplied(error, recoverable) {
+    return recoverable === false && error?.name === "PassboltApiFetchError" && Number(error?.data?.code) === 404;
   }
 }
 

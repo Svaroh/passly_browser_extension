@@ -17,6 +17,7 @@ import { ApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/a
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { multipleResourceDtos, singleResourceDtos } from "./findAndUpdateResourcesLocalStorageService.test.data";
@@ -43,6 +44,16 @@ import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import { v4 as uuidv4 } from "uuid";
 
 jest.useFakeTimers();
+
+const TEST_RESOURCE_TYPE_V5_PASSKEY = "a4d27e8d-1e25-44f6-a4df-b7d0f85eae25";
+
+const resourceTypeV5PasskeyDto = () => ({
+  id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+  name: "V5 Passkey",
+  slug: "v5-passkey",
+  description: "A resource with an encrypted passkey credential.",
+  definition: {},
+});
 
 beforeEach(async () => {
   jest.clearAllMocks();
@@ -390,6 +401,77 @@ describe("UpdateResourcesLocalStorage", () => {
       expect(expectLocalStorageResult).toHaveLength(2);
       expect(expectLocalStorageResult[0]).toEqual(ResourceEntity.transformDtoFromV4toV5(resourceDto1));
       expect(expectLocalStorageResult[1]).toEqual(ResourceEntity.transformDtoFromV4toV5(resourceDto2));
+    });
+  });
+
+  describe("::findAndUpdateDeleted", () => {
+    let service;
+
+    beforeEach(() => {
+      service = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
+    });
+
+    it("refreshes resource types before filtering deleted passkey resources", async () => {
+      expect.assertions(5);
+
+      const deletedPasskeyResource = defaultResourceDto({
+        deleted: true,
+        resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+      });
+
+      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest
+        .spyOn(ResourceTypeService.prototype, "findAll")
+        .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [deletedPasskeyResource]);
+
+      const resourcesCollection = await service.findAndUpdateDeleted();
+      const resourcesLSDto = await ResourceLocalStorage.get();
+
+      expect(ResourceTypeService.prototype.findAll).toHaveBeenCalledTimes(1);
+      expect(resourcesCollection).toHaveLength(1);
+      expect(resourcesCollection.getFirstById(deletedPasskeyResource.id)).toBeTruthy();
+      expect(resourcesLSDto).toHaveLength(1);
+      expect(resourcesLSDto[0].id).toStrictEqual(deletedPasskeyResource.id);
+    });
+
+    it("keeps deleted resources when cached decrypted metadata has an older modified date", async () => {
+      expect.assertions(6);
+
+      const resourceId = uuidv4();
+      const localDeletedPasskeyResource = defaultResourceDto({
+        id: resourceId,
+        deleted: true,
+        resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+        modified: "2026-06-08T10:00:00+00:00",
+      });
+      const apiDeletedPasskeyResource = defaultResourceDto({
+        id: resourceId,
+        deleted: true,
+        resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
+        modified: "2026-06-08T10:01:00+00:00",
+        metadata: metadata.withAdaKey.encryptedMetadata[0],
+        metadata_key_id: null,
+        metadata_key_type: "user_key",
+        personal: true,
+      });
+
+      await ResourceLocalStorage.set(new ResourcesCollection([localDeletedPasskeyResource]));
+      jest
+        .spyOn(ResourceTypeService.prototype, "findAll")
+        .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [apiDeletedPasskeyResource]);
+      jest.spyOn(service.decryptMetadataService, "decryptAllFromForeignModels").mockImplementation(() => {});
+
+      const resourcesCollection = await service.findAndUpdateDeleted();
+      const resourcesLSDto = await ResourceLocalStorage.get();
+
+      expect(service.decryptMetadataService.decryptAllFromForeignModels).toHaveBeenCalledTimes(1);
+      expect(resourcesCollection).toHaveLength(1);
+      expect(resourcesCollection.items[0].isMetadataDecrypted()).toStrictEqual(true);
+      expect(resourcesCollection.items[0].metadata.name).toStrictEqual(localDeletedPasskeyResource.metadata.name);
+      expect(resourcesLSDto).toHaveLength(1);
+      expect(resourcesLSDto[0].id).toStrictEqual(resourceId);
     });
   });
 

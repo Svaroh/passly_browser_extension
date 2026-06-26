@@ -64,6 +64,11 @@
   "Private key not found.": "Приватний ключ не знайдено.",
   "Public key can't be found.": "Публічний ключ не знайдено.",
   "Rekeying users' key": "Повторна установка ключа користувача",
+  "Restore {{count}} resource(s)_one": "Відновлення одного ресурсу",
+  "Restore {{count}} resource(s)_other": "Відновлення ресурсів: {{count}}",
+  "Restore Resources": "Відновити ресурси",
+  "Restoring Resource(s)": "Відновлення ресурсів",
+  "Restoring resource(s) {{counter}}/{{total}}": "Відновлення ресурсів {{counter}}/{{total}}",
   "Resume rotating metadata key": "Відновити ротацію ключа метаданих",
   "Retrieving all resources parent folders permissions": "Отримання дозволів батьківських тек для всіх ресурсів",
   "Retrieving destination folder permissions": "Отримання дозволів цільової теки",
@@ -139,5 +144,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Оновлення метаданих ресурсів {{counter}}/{{total}}",
   "Updating users' key...": "Оновлення ключа користувача…",
   "User key not found": "Ключ користувача не знайдено",
-  "You have already started the process on another tab.": "Ви вже запустили процес в іншій вкладці."
+  "You have already started the process on another tab.": "Ви вже запустили процес в іншій вкладці.",
+  "Edit in the vault": "Редагувати в сховищі",
+  "View in the vault": "Переглянути в сховищі",
+  "Trash": "Кошик",
+  "Restore": "Відновити",
+  "The resource has been restored successfully._one": "Ресурс успішно відновлено.",
+  "The resource has been restored successfully._other": "Ресурси успішно відновлено.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Після видалення ресурс буде прибрано зі сховища, доки його не буде відновлено.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Будь ласка, підтвердьте, що ви дійсно хочете видалити ресурси. Після натискання OK ресурси буде прибрано зі сховища, доки їх не буде відновлено.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Після видалення ресурсу його буде видалено назавжди та неможливо відновити.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Будь ласка, підтвердьте, що ви дійсно хочете видалити ресурси. Після натискання \"OK\" ресурси буде видалено назавжди."
 }
