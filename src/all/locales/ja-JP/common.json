@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "リソースのメタデータを更新しています {{counter}}/{{total}}",
   "Updating users' key...": "ユーザーの鍵を更新しています…",
   "User key not found": "ユーザー鍵が見つかりません",
-  "You have already started the process on another tab.": "別のタブで既に処理を開始しています。"
+  "You have already started the process on another tab.": "別のタブで既に処理を開始しています。",
+  "Edit in the vault": "保管庫で編集",
+  "View in the vault": "保管庫で表示",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }

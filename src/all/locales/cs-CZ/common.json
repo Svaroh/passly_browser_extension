@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Aktualizace metadat zdrojů {{counter}}/{{total}}",
   "Updating users' key...": "Aktualizuji klíč uživatele...",
   "User key not found": "Uživatelský klíč nenalezen",
-  "You have already started the process on another tab.": "Tento proces jste již zahájili na jiné kartě."
+  "You have already started the process on another tab.": "Tento proces jste již zahájili na jiné kartě.",
+  "Edit in the vault": "Upravit v trezoru",
+  "View in the vault": "Zobrazit v trezoru",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }

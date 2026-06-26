@@ -705,4 +705,44 @@ describe("ResourceLocalStorage", () => {
       expect(ResourceLocalStorage._cachedData[0]).toEqual(resourceDto3);
     });
   });
+
+  describe("::softDeleteResources", () => {
+    it("Should throw if no data passed as parameter", async () => {
+      expect.assertions(1);
+      const promise = ResourceLocalStorage.softDeleteResources();
+      await expect(promise).rejects.toThrow("The given parameter is not a valid array of uuid");
+    });
+
+    it("Should mark matching resources as deleted", async () => {
+      expect.assertions(4);
+      const resourceDto1 = defaultResourceDto();
+      const resourceDto2 = defaultResourceDto();
+      const resourceDto3 = defaultResourceDto();
+      const resourcesDtos = [resourceDto1, resourceDto2, resourceDto3];
+      await browser.storage.local.set({ [RESOURCES_LOCAL_STORAGE_KEY]: resourcesDtos });
+      await ResourceLocalStorage.softDeleteResources([resourceDto1.id, resourceDto2.id]);
+      const localStorageData = await browser.storage.local.get([RESOURCES_LOCAL_STORAGE_KEY]);
+      expect(localStorageData[RESOURCES_LOCAL_STORAGE_KEY]).toEqual(expect.any(Array));
+      expect(localStorageData[RESOURCES_LOCAL_STORAGE_KEY]).toHaveLength(3);
+      expect(
+        localStorageData[RESOURCES_LOCAL_STORAGE_KEY].find((resource) => resource.id === resourceDto1.id).deleted,
+      ).toBe(true);
+      expect(
+        localStorageData[RESOURCES_LOCAL_STORAGE_KEY].find((resource) => resource.id === resourceDto3.id).deleted,
+      ).toBe(false);
+    });
+
+    it("Should update cache after marking resources as deleted", async () => {
+      expect.assertions(4);
+      const resourceDto1 = defaultResourceDto();
+      const resourceDto2 = defaultResourceDto();
+      const resourcesDtos = [resourceDto1, resourceDto2];
+      await browser.storage.local.set({ [RESOURCES_LOCAL_STORAGE_KEY]: resourcesDtos });
+      expect(ResourceLocalStorage.hasCachedData()).toBeFalsy();
+      await ResourceLocalStorage.softDeleteResources([resourceDto1.id]);
+      expect(ResourceLocalStorage.hasCachedData()).toBeTruthy();
+      expect(ResourceLocalStorage._cachedData).toHaveLength(2);
+      expect(ResourceLocalStorage._cachedData.find((resource) => resource.id === resourceDto1.id).deleted).toBe(true);
+    });
+  });
 });

@@ -17,6 +17,8 @@ import MoveResourcesController from "../controller/move/moveResourcesController"
 import ResetResourceGridUserSettingController from "../controller/resourceGridSetting/resetResourceGridUserSettingController";
 import UpdateResourceLocalStorageByFolderParentIdController from "../controller/resource/updateResourceLocalStorageByFolderParentIdController";
 import ResourceDeleteController from "../controller/resource/resourceDeleteController";
+import ResourceRestoreController from "../controller/resource/resourceRestoreController";
+import FindDeletedResourcesController from "../controller/resource/findDeletedResourcesController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
@@ -72,11 +74,35 @@ const listen = function (worker, apiClientOptions, account) {
    *
    * @listens passbolt.resources.delete-all
    * @param requestId {uuid} The request identifier
-   * @param resourcesIds {array} The resources ids to del ete
+   * @param resourcesIds {array} The resources ids to delete
+   * @param options {object} The delete options
    */
-  worker.port.on("passbolt.resources.delete-all", async (requestId, resourcesIds) => {
+  worker.port.on("passbolt.resources.delete-all", async (requestId, resourcesIds, options = {}) => {
     const controller = new ResourceDeleteController(worker, requestId, apiClientOptions, account);
+    await controller._exec(resourcesIds, options);
+  });
+
+  /*
+   * Restore resources
+   *
+   * @listens passbolt.resources.restore-all
+   * @param requestId {uuid} The request identifier
+   * @param resourcesIds {array} The resources ids to restore
+   */
+  worker.port.on("passbolt.resources.restore-all", async (requestId, resourcesIds) => {
+    const controller = new ResourceRestoreController(worker, requestId, apiClientOptions, account);
     await controller._exec(resourcesIds);
+  });
+
+  /*
+   * Find recoverably deleted resources
+   *
+   * @listens passbolt.resources.find-deleted-for-local-storage
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.resources.find-deleted-for-local-storage", async (requestId) => {
+    const controller = new FindDeletedResourcesController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 
   /*

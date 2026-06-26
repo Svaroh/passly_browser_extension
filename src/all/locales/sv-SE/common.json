@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Uppdaterar resursernas metadata {{counter}}/{{total}}",
   "Updating users' key...": "Uppdaterar användarnas nyckel...",
   "User key not found": "Användarnyckel hittades inte",
-  "You have already started the process on another tab.": "Du har redan startat processen på en annan flik."
+  "You have already started the process on another tab.": "Du har redan startat processen på en annan flik.",
+  "Edit in the vault": "Redigera i valvet",
+  "View in the vault": "Visa i valvet",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }

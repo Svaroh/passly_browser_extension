@@ -57,11 +57,24 @@ describe("ResourceDeleteController", () => {
       expect(controller.progressService.finishStep).toHaveBeenCalledTimes(1);
 
       expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledTimes(1);
-      expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledWith([
-        resourceId1,
-        resourceId2,
-        resourceId3,
-      ]);
+      expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledWith(
+        [resourceId1, resourceId2, resourceId3],
+        {},
+      );
+    });
+
+    it("should pass delete options to the service", async () => {
+      expect.assertions(1);
+      const account = new AccountEntity(defaultAccountDto());
+      const apiClientOptions = defaultApiClientOptions();
+      controller = new ResourceDeleteController(worker, null, apiClientOptions, account);
+      const resourceId = uuidv4();
+      const options = { recoverable: false };
+      jest.spyOn(controller.resourceDeleteService, "deleteResources").mockImplementation(() => {});
+
+      await controller.exec([resourceId], options);
+
+      expect(controller.resourceDeleteService.deleteResources).toHaveBeenCalledWith([resourceId], options);
     });
 
     it("Should close progressService when delete succeeds", async () => {

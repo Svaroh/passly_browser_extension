@@ -139,5 +139,15 @@
   "Updating resources metadata {{counter}}/{{total}}": "Actualizando metadatos de recursos {{counter}}/{{total}}",
   "Updating users' key...": "Actualizando la clave de usuarios...",
   "User key not found": "No se ha encontrado la clave de usuario",
-  "You have already started the process on another tab.": "Ya ha iniciado el proceso en otra pestaña."
+  "You have already started the process on another tab.": "Ya ha iniciado el proceso en otra pestaña.",
+  "Edit in the vault": "Editar en la bóveda",
+  "View in the vault": "Ver en la bóveda",
+  "Trash": "Trash",
+  "Restore": "Restore",
+  "The resource has been restored successfully._one": "The resource has been restored successfully.",
+  "The resource has been restored successfully._other": "The resources have been restored successfully.",
+  "Once the resource is deleted, it will be removed from the vault until it is restored.": "Once the resource is deleted, it will be removed from the vault until it is restored.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be removed from the vault until they are restored.",
+  "Once the resource is deleted, it will be removed permanently and will not be recoverable.": "Once the resource is deleted, it will be removed permanently and will not be recoverable.",
+  "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently.": "Please confirm you really want to delete the resources. After clicking ok, the resources will be deleted permanently."
 }

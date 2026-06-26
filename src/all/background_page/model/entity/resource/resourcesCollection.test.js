@@ -471,6 +471,36 @@ describe("ResourcesCollection", () => {
     });
   });
 
+  describe("::setDecryptedMetadataFromCollectionById", () => {
+    it("should set the decrypted data from the given collection to the current one even if modified dates differ.", () => {
+      expect.assertions(2);
+
+      const decryptedCollectionDto = defaultResourceDtosCollection();
+      const encryptedCollectionDto = JSON.parse(JSON.stringify(decryptedCollectionDto));
+
+      encryptedCollectionDto[0].metadata = metadata.withSharedKey.encryptedMetadata[0];
+      encryptedCollectionDto[0].modified = new Date().toISOString();
+      encryptedCollectionDto[1].metadata = metadata.withSharedKey.encryptedMetadata[1];
+      encryptedCollectionDto[1].modified = new Date().toISOString();
+
+      const decryptedCollection = new ResourcesCollection(decryptedCollectionDto);
+      const collection = new ResourcesCollection(encryptedCollectionDto);
+      collection.setDecryptedMetadataFromCollectionById(decryptedCollection);
+
+      expect(collection.items[0].isMetadataDecrypted()).toStrictEqual(true);
+      expect(collection.items[1].isMetadataDecrypted()).toStrictEqual(true);
+    });
+
+    it("should assert its parameter", () => {
+      expect.assertions(1);
+
+      const collection = new ResourcesCollection([]);
+      expect(() => collection.setDecryptedMetadataFromCollectionById("test")).toThrow(
+        "The `resourcesCollection` parameter should be a ResourcesCollection.",
+      );
+    });
+  });
+
   describe("::updateWithCollection", () => {
     it("should update the existing resources and add the new ones", () => {
       expect.assertions(5);

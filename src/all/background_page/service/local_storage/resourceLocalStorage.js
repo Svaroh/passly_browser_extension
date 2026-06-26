@@ -305,6 +305,37 @@ class ResourceLocalStorage {
     }
   }
 
+  /**
+   * Mark multiple resources as deleted in local storage by id.
+   * @param {Array<string>} resourceIds
+   */
+  static async softDeleteResources(resourceIds) {
+    assertArrayUUID(resourceIds);
+    await lock.acquire();
+    try {
+      const resources = (await ResourceLocalStorage.get()) || [];
+
+      if (resources.length > 0 && resourceIds.length > 0) {
+        const setOfResourceIds = new Set(resourceIds);
+        let hasChanged = false;
+
+        for (const resource of resources) {
+          if (setOfResourceIds.has(resource.id) && resource.deleted !== true) {
+            resource.deleted = true;
+            hasChanged = true;
+          }
+        }
+
+        if (hasChanged) {
+          await browser.storage.local.set({ resources: resources });
+          ResourceLocalStorage._cachedData = resources;
+        }
+      }
+    } finally {
+      lock.release();
+    }
+  }
+
   /*
    * =================================================
    * Static methods

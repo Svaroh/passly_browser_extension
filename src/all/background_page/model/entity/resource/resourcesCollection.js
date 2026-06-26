@@ -219,6 +219,36 @@ class ResourcesCollection extends EntityV2Collection {
     });
   }
 
+  /**
+   * Update the current collection resource metadata with the given one, matching resources by id only.
+   *
+   * This is useful for server-side state transitions that update the resource modified date without changing the
+   * encrypted metadata payload, for example recoverable delete or restore.
+   *
+   * @param {ResourcesCollection} resourcesCollection
+   */
+  setDecryptedMetadataFromCollectionById(resourcesCollection) {
+    assertType(
+      resourcesCollection,
+      ResourcesCollection,
+      "The `resourcesCollection` parameter should be a ResourcesCollection.",
+    );
+
+    const decryptedResourcesById = {};
+    resourcesCollection.items.forEach((resource) => {
+      if (resource.isMetadataDecrypted()) {
+        decryptedResourcesById[resource.id] = resource;
+      }
+    });
+
+    this.items.forEach((resource) => {
+      const decryptedResource = decryptedResourcesById[resource.id];
+      if (decryptedResource) {
+        resource.metadata = decryptedResource.metadata;
+      }
+    });
+  }
+
   /*
    * ==================================================
    * Setters

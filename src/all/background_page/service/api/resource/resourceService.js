@@ -71,6 +71,7 @@ class ResourceService extends AbstractService {
       "is-owned-by-me",
       "is-shared-with-me",
       "has-id",
+      "is-deleted",
       // if tag plugin
       "has-tag",
       "has-parent",
@@ -162,12 +163,28 @@ class ResourceService extends AbstractService {
    * Delete a resource using Passbolt API
    *
    * @param {string} resourceId uuid
+   * @param {boolean} [recoverable=false] Whether the API should keep recoverable associated data.
    * @returns {Promise<*>} Response body
    * @public
    */
-  async delete(resourceId) {
+  async delete(resourceId, recoverable = false) {
     this.assertValidId(resourceId);
-    const response = await this.apiClient.delete(resourceId);
+    const options = recoverable ? { recoverable: "1" } : null;
+    const response = await this.apiClient.delete(resourceId, null, options);
+    return response.body;
+  }
+
+  /**
+   * Restore a recoverably deleted resource using Passbolt API
+   *
+   * @param {string} resourceId uuid
+   * @returns {Promise<*>} Response body
+   * @public
+   */
+  async restore(resourceId) {
+    this.assertValidId(resourceId);
+    const url = this.apiClient.buildUrl(`${this.apiClient.baseUrl}/${resourceId}/restore`, {});
+    const response = await this.apiClient.fetchAndHandleResponse("POST", url);
     return response.body;
   }
 }
