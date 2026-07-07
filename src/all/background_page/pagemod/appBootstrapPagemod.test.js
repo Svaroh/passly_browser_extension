@@ -19,11 +19,11 @@ import ScriptExecution from "../sdk/scriptExecution";
 import Pagemod from "./pagemod";
 import { PortEvents } from "../event/portEvents";
 import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
-import { userLoggedInAuthStatus, userLoggedOutAuthStatus } from "../controller/auth/authCheckStatus.test.data";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import AccountEntity from "../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../model/entity/account/accountEntity.test.data";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import PassboltBadResponseError from "../error/passboltBadResponseError";
 
 const spyAddWorker = jest.spyOn(WorkersSessionStorage, "addWorker");
@@ -69,7 +69,7 @@ describe("AppBootstrap", () => {
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => new AccountEntity(defaultAccountDto()));
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(async () => new OnlineSessionEntity(userLoggedInAuthStatus()));
+        .mockImplementation(async () => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       const result = await AppBootstrap.canBeAttachedTo({
         frameId: Pagemod.TOP_FRAME_ID,
@@ -107,7 +107,9 @@ describe("AppBootstrap", () => {
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(async () => userLoggedOutAuthStatus());
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
+        );
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt");
       // process
       const constraint = await AppBootstrap.canBeAttachedTo({ frameId: 0 });

@@ -15,7 +15,7 @@
 import MfaAuthenticationRequiredError from "../../error/mfaAuthenticationRequiredError";
 import AuthenticationStatusService from "../authenticationStatusService";
 import ActiveSessionLocalStorage from "../local_storage/activeSessionLocalStorage";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 
 class CheckAuthStatusService {
   /**
@@ -35,30 +35,32 @@ class CheckAuthStatusService {
    * Returns the authentication status of the current user.
    * It first interrogates the local storage and if necessary the API afterward.
    * @param {boolean} [flushCache] should the cache be flushed before or not.
-   * @return {Promise<OnlineSessionEntity>}
+   * @return {Promise<UserActiveSessionEntity>}
    * @throws {Error} if something wrong happened on the API
    */
   async checkAuthStatus(flushCache = false) {
     const storedSession = await this.activeSessionLocalStorage.get();
     if (!flushCache && storedSession) {
-      return new OnlineSessionEntity(storedSession);
+      return new UserActiveSessionEntity(storedSession);
     }
 
     const session = { ...storedSession };
     try {
       session.is_authenticated = await this.authenticationStatusService.isAuthenticated();
       session.is_mfa_authenticated = true;
+      session.type = "online";
     } catch (error) {
       if (!(error instanceof MfaAuthenticationRequiredError)) {
         throw error;
       }
       session.is_authenticated = true;
+      session.type = "online";
       session.is_mfa_authenticated = false;
     }
 
-    const onlineSessionEntity = new OnlineSessionEntity(session);
-    await this.activeSessionLocalStorage.set(onlineSessionEntity);
-    return onlineSessionEntity;
+    const userActiveSessionEntity = new UserActiveSessionEntity(session);
+    await this.activeSessionLocalStorage.set(userActiveSessionEntity);
+    return userActiveSessionEntity;
   }
 }
 

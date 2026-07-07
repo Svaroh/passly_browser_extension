@@ -46,7 +46,7 @@ class AuthCheckStatusController {
   /**
    * Controller executor.
    * @param {boolean} flushCache should the cache be flushed before
-   * @returns {Promise<OnlineSessionEntity>}
+   * @returns {Promise<UserActiveSessionEntity>}
    */
   async exec(flushCache) {
     return await this.checkAuthStatusService.checkAuthStatus(flushCache);

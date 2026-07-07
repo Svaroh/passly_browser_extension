@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         6.0.0
  */
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import Log from "../../model/log";
 import { assertType } from "../../utils/assertions";
 import AbstractAccountEntity from "../../model/entity/account/abstractAccountEntity";
@@ -76,12 +76,16 @@ class ActiveSessionLocalStorage {
 
   /**
    * Set the active session in the local storage.
-   * @param {OnlineSessionEntity} activeSession The active session to insert in the local storage.
+   * @param {UserActiveSessionEntity} activeSession The active session to insert in the local storage.
    * @return {Promise<void>}
-   * @throws {TypeError} If parameter settings is not of type OnlineSessionEntity.
+   * @throws {TypeError} If parameter settings is not of type UserActiveSessionEntity.
    */
   async set(activeSession) {
-    assertType(activeSession, OnlineSessionEntity, "Parameter `activeSession` should be of type OnlineSessionEntity");
+    assertType(
+      activeSession,
+      UserActiveSessionEntity,
+      "Parameter `activeSession` should be of type UserActiveSessionEntity",
+    );
     await navigator.locks.request(this.storageKey, async () => {
       const activeSessionDto = activeSession.toDto();
       await this._setBrowserStorage({ [this.storageKey]: activeSessionDto });

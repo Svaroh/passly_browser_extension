@@ -17,7 +17,9 @@ import StartLoopAuthSessionCheckService from "./startLoopAuthSessionCheckService
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import GetActiveAccountService from "../account/getActiveAccountService";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_ONLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
 
 jest.useFakeTimers();
@@ -37,7 +39,11 @@ describe("StartLoopAuthSessionCheckService", () => {
     expect.assertions(7);
     // Function mocked
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
-    const sessionEntity = new OnlineSessionEntity({ is_authenticated: true, is_mfa_authenticated: true });
+    const sessionEntity = new UserActiveSessionEntity({
+      is_authenticated: true,
+      is_mfa_authenticated: true,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    });
     const spyIsAuthenticated = jest
       .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
@@ -69,7 +75,11 @@ describe("StartLoopAuthSessionCheckService", () => {
     expect.assertions(4);
     // Function mocked
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
-    const sessionEntity = new OnlineSessionEntity({ is_authenticated: false, is_mfa_authenticated: true });
+    const sessionEntity = new UserActiveSessionEntity({
+      is_authenticated: false,
+      is_mfa_authenticated: true,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    });
     const spyIsAuthenticated = jest
       .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));

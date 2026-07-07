@@ -19,7 +19,9 @@ import { defaultProSiteSettings } from "passbolt-styleguide/src/shared/models/en
 import SiteSettingsLocalStorage from "../../service/local_storage/siteSettingsLocalStorage";
 import SiteSettingsRuntimeCache from "../../service/siteSettings/siteSettingsRuntimeCache";
 import GetOrFindSiteSettingsController from "./getOrFindSiteSettingsController";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_ONLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
 
 beforeEach(() => {
@@ -42,9 +44,13 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: true, is_mfa_authenticated: true }));
+      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockResolvedValue(
+        new UserActiveSessionEntity({
+          is_authenticated: true,
+          is_mfa_authenticated: true,
+          type: USER_ACTIVE_SESSION_ONLINE,
+        }),
+      );
       jest
         .spyOn(
           controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
@@ -66,9 +72,13 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: false, is_mfa_authenticated: true }));
+      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockResolvedValue(
+        new UserActiveSessionEntity({
+          is_authenticated: false,
+          is_mfa_authenticated: true,
+          type: USER_ACTIVE_SESSION_ONLINE,
+        }),
+      );
       jest
         .spyOn(
           controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
@@ -108,9 +118,13 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: true, is_mfa_authenticated: true }));
+      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockResolvedValue(
+        new UserActiveSessionEntity({
+          is_authenticated: true,
+          is_mfa_authenticated: true,
+          type: USER_ACTIVE_SESSION_ONLINE,
+        }),
+      );
       await controller.getOrFindSiteSettingsService.siteSettingsLocalStorage.set(new SiteSettingsEntity(dto));
       const apiSpy = jest.spyOn(
         controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,

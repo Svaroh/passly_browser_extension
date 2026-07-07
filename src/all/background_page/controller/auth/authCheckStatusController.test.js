@@ -14,10 +14,14 @@
 
 import MfaAuthenticationRequiredError from "../../error/mfaAuthenticationRequiredError";
 import AuthCheckStatusController from "./authCheckStatusController";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import {
+  defaultUserActiveSessionDto,
+  minimalUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -41,10 +45,12 @@ describe("AuthCheckStatusController", () => {
     expect(controller.checkAuthStatusService.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(controller.checkAuthStatusService.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: false,
-        is_mfa_authenticated: true,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: false,
+          is_mfa_authenticated: true,
+        }),
+      ),
     );
   });
 
@@ -65,10 +71,12 @@ describe("AuthCheckStatusController", () => {
     expect(controller.checkAuthStatusService.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(controller.checkAuthStatusService.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: true,
-        is_mfa_authenticated: true,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: true,
+          is_mfa_authenticated: true,
+        }),
+      ),
     );
   });
 
@@ -91,19 +99,21 @@ describe("AuthCheckStatusController", () => {
     expect(controller.checkAuthStatusService.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(controller.checkAuthStatusService.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: true,
-        is_mfa_authenticated: false,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: true,
+          is_mfa_authenticated: false,
+        }),
+      ),
     );
   });
 
   it("should return the auth status from the local storage", async () => {
     expect.assertions(4);
-    const expectedAuthStatus = {
+    const expectedAuthStatus = defaultUserActiveSessionDto({
       is_authenticated: false,
       is_mfa_authenticated: true,
-    };
+    });
     const account = new AccountEntity(defaultAccountDto());
 
     const controller = new AuthCheckStatusController(null, null, defaultApiClientOptions(), account);

@@ -24,7 +24,8 @@ import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage"
 import CheckAuthStatusService from "../auth/checkAuthStatusService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.useFakeTimers();
 
@@ -101,7 +102,7 @@ describe("ToolbarService", () => {
       jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: true }));
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       await toolbarService.handleUserLoggedOut();
@@ -122,7 +123,7 @@ describe("ToolbarService", () => {
       jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: true }));
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
 
@@ -145,7 +146,7 @@ describe("ToolbarService", () => {
       jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: true }));
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenLastCalledWith(0);
@@ -167,7 +168,7 @@ describe("ToolbarService", () => {
       jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: true }));
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenLastCalledWith(0);
@@ -187,7 +188,7 @@ describe("ToolbarService", () => {
       jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: true }));
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenLastCalledWith(4);
@@ -202,7 +203,9 @@ describe("ToolbarService", () => {
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest
         .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: false }));
+        .mockImplementation(
+          () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
+        );
 
       await toolbarService.handleSuggestedResourcesOnFocusedWindow(42);
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenCalledTimes(0);

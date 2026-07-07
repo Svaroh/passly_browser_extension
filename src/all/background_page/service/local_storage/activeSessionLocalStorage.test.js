@@ -14,9 +14,9 @@
 
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import { defaultOnlineSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity.test.data";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import ActiveSessionLocalStorage from "./activeSessionLocalStorage";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -51,7 +51,7 @@ describe("ActiveSessionLocalStorage", () => {
     });
 
     it("returns content stored in the local storage.", async () => {
-      const activeSessionDto = defaultOnlineSessionDto();
+      const activeSessionDto = defaultUserActiveSessionDto();
       expect.assertions(1);
       browser.storage.local.set({ [storage.storageKey]: activeSessionDto });
       const result = await storage.get();
@@ -59,7 +59,7 @@ describe("ActiveSessionLocalStorage", () => {
     });
 
     it("returns content stored in the runtime cache.", async () => {
-      const activeSessionDto = defaultOnlineSessionDto();
+      const activeSessionDto = defaultUserActiveSessionDto();
       expect.assertions(2);
       // Force the runtime cache, to ensure it is hit even if the local storage is empty.
       ActiveSessionLocalStorage._runtimeCachedData[account.id] = activeSessionDto;
@@ -73,7 +73,7 @@ describe("ActiveSessionLocalStorage", () => {
   describe("::set", () => {
     it("stores content in the local storage.", async () => {
       expect.assertions(3);
-      const activeSessionDto = new OnlineSessionEntity(defaultOnlineSessionDto());
+      const activeSessionDto = new UserActiveSessionEntity(defaultUserActiveSessionDto());
       await storage.set(activeSessionDto);
       // Expect the local storage (mocked here) to be set.
       expect(browser.storage.local.store[storage.storageKey]).toEqual(activeSessionDto.toDto());
@@ -113,13 +113,13 @@ describe("ActiveSessionLocalStorage", () => {
         return promise;
       });
 
-      const resultPromise1 = storage.set(new OnlineSessionEntity(defaultOnlineSessionDto()));
-      const onlineSessionUpdated = defaultOnlineSessionDto({
+      const resultPromise1 = storage.set(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      const onlineSessionUpdated = defaultUserActiveSessionDto({
         is_mfa_authenticated: false,
-        last_online_logged_in: "2022-05-05T12:41:45.000Z",
+        last_logged_in: "2022-05-05T12:41:45.000Z",
       });
-      const resultPromise2 = storage.set(new OnlineSessionEntity(onlineSessionUpdated));
-      expect(storage._setBrowserStorage).toHaveBeenCalledWith({ [storage.storageKey]: defaultOnlineSessionDto() });
+      const resultPromise2 = storage.set(new UserActiveSessionEntity(onlineSessionUpdated));
+      expect(storage._setBrowserStorage).toHaveBeenCalledWith({ [storage.storageKey]: defaultUserActiveSessionDto() });
       expect(storage._setBrowserStorage).not.toHaveBeenCalledWith({ [storage.storageKey]: onlineSessionUpdated });
       promisesResolvers[0]();
       await resultPromise1;
@@ -141,7 +141,7 @@ describe("ActiveSessionLocalStorage", () => {
 
     it("flushes content of the local storage.", async () => {
       expect.assertions(2);
-      const activeSessionDto = new OnlineSessionEntity(defaultOnlineSessionDto());
+      const activeSessionDto = new UserActiveSessionEntity(defaultUserActiveSessionDto());
       await storage.set(activeSessionDto);
       await storage.flush();
       // Expect the local storage (mocked here) to not be set.

@@ -17,7 +17,8 @@ import CheckAuthStatusService from "./checkAuthStatusService";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { minimalUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -37,10 +38,12 @@ describe("CheckAuthStatusService", () => {
     expect(service.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(service.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: false,
-        is_mfa_authenticated: true,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: false,
+          is_mfa_authenticated: true,
+        }),
+      ),
     );
   });
 
@@ -57,10 +60,12 @@ describe("CheckAuthStatusService", () => {
     expect(service.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(service.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: true,
-        is_mfa_authenticated: true,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: true,
+          is_mfa_authenticated: true,
+        }),
+      ),
     );
   });
 
@@ -79,10 +84,12 @@ describe("CheckAuthStatusService", () => {
     expect(service.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(service.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: true,
-        is_mfa_authenticated: false,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: true,
+          is_mfa_authenticated: false,
+        }),
+      ),
     );
   });
 
@@ -101,19 +108,23 @@ describe("CheckAuthStatusService", () => {
     expect(service.activeSessionLocalStorage.set).toHaveBeenCalled();
     expect(service.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
     expect(authStatus).toStrictEqual(
-      new OnlineSessionEntity({
-        is_authenticated: true,
-        is_mfa_authenticated: true,
-      }),
+      new UserActiveSessionEntity(
+        minimalUserActiveSessionDto({
+          is_authenticated: true,
+          is_mfa_authenticated: true,
+        }),
+      ),
     );
   });
 
   it("should return the authentication status from the cache", async () => {
     expect.assertions(3);
-    const localStorageData = new OnlineSessionEntity({
-      is_authenticated: false,
-      is_mfa_authenticated: true,
-    });
+    const localStorageData = new UserActiveSessionEntity(
+      minimalUserActiveSessionDto({
+        is_authenticated: false,
+        is_mfa_authenticated: true,
+      }),
+    );
 
     const account = new AccountEntity(defaultAccountDto());
     const service = new CheckAuthStatusService(account, defaultApiClientOptions());
@@ -138,6 +149,8 @@ describe("CheckAuthStatusService", () => {
 
     expect(service.activeSessionLocalStorage.get).toHaveBeenCalledTimes(1);
     expect(service.activeSessionLocalStorage.flush).not.toHaveBeenCalled();
-    expect(authStatus).toStrictEqual(new OnlineSessionEntity({ is_authenticated: false, is_mfa_authenticated: true }));
+    expect(authStatus).toStrictEqual(
+      new UserActiveSessionEntity(minimalUserActiveSessionDto({ is_authenticated: false, is_mfa_authenticated: true })),
+    );
   });
 });
