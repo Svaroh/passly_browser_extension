@@ -269,7 +269,7 @@ export const defaultProSiteSettings = (siteSettings) => {
 
 export const offlinePluginEnabledSiteSettings = (siteSettings) => {
   const defaultData = defaultCeSiteSettings();
-  defaultData.passbolt.plugins.offline = {
+  defaultData.passbolt.plugins.offlineMode = {
     version: "1.0.0",
     enabled: true,
   };

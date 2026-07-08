@@ -40,7 +40,7 @@ export default class CanUseOfflineStorageService {
    */
   async canUseOfflineStorage() {
     const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
-    if (!siteSettings.isPluginEnabled("offline")) {
+    if (!siteSettings.isPluginEnabled("offlineMode")) {
       return false;
     }
     const rbacs = await this.getOrFindRbacService.getOrFindMe();

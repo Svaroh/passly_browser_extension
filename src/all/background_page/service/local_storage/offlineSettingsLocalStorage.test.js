@@ -115,8 +115,8 @@ describe("OfflineSettingsLocalStorage", () => {
 
       const offlineSettingsDto = defaultOfflineSettingsDto();
       const offlineSettingsDto2 = defaultOfflineSettingsDto({
-        maximum_retention_period: 172800,
-        session_duration: 7200,
+        data_retention_period: 172800,
+        max_session_duration: 7200,
       });
       const resultPromise1 = storage.set(new OfflineSettingsEntity(offlineSettingsDto));
       const resultPromise2 = storage.set(new OfflineSettingsEntity(offlineSettingsDto2));

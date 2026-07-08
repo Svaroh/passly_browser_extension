@@ -55,7 +55,7 @@ export default class FindAndUpdateOfflineSettingsLocalStorageService {
 
       // Lock is granted. Skip the API call if the offline plugin is not enabled.
       const organizationSettings = await this.organisationSettingsModel.getOrFind();
-      if (!organizationSettings.isPluginEnabled("offline")) {
+      if (!organizationSettings.isPluginEnabled("offlineMode")) {
         return null;
       }
 
