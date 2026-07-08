@@ -1,0 +1,491 @@
+/**
+ * Passbolt ~ Open source password manager for teams
+ * Copyright (c) Passbolt SA (https://www.passbolt.com)
+ *
+ * Licensed under GNU Affero General Public License version 3 of the or any later version.
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
+ * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
+ * @link          https://www.passbolt.com Passbolt(tm)
+ * @since         6.0.0
+ */
+
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
+import FindAndUpdateActiveSessionLocalStorageService from "./findAndUpdateActiveSessionLocalStorageService";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_OFFLINE,
+  USER_ACTIVE_SESSION_ONLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import MfaAuthenticationRequiredError from "../../error/mfaAuthenticationRequiredError";
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe("FindAndUpdateActiveSessionLocalStorageService", () => {
+  let findAndUpdateActiveSessionLocalStorageService, account, apiClientOptions;
+
+  beforeEach(async () => {
+    account = new AccountEntity(defaultAccountDto());
+    apiClientOptions = defaultApiClientOptions();
+    findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
+    // flush account related storage before each.
+    await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.flush();
+  });
+
+  describe("::findAndUpdateAll", () => {
+    it("If no active session create a new one and store it into the local storage.", async () => {
+      expect.assertions(3);
+      const userActiveSession = {
+        is_authenticated: false,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      expect(entity.toDto()).toEqual(userActiveSession);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(userActiveSession);
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("User having an online authenticated active session and server become not reachable, update is_server_reachable to false and store it into the local storage.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => false);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expectedEntity.isServerReachable = false;
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having online authenticated active session, update is mfa authenticated to true and store it into the local storage.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+        .mockImplementationOnce(() => true);
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expectedEntity.isMfaAuthenticated = true;
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).toHaveBeenCalledTimes(1);
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having online authenticated active session, update is authenticated to false and store it into the local storage.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_mfa_authenticated: true,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+        .mockImplementationOnce(() => false);
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expectedEntity.isAuthenticated = false;
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).toHaveBeenCalledTimes(1);
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having online authenticated active session, update is mfa authenticated to false and store it into the local storage.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_mfa_authenticated: true,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+        .mockImplementationOnce(() => {
+          throw new MfaAuthenticationRequiredError();
+        });
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expectedEntity.isMfaAuthenticated = false;
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).toHaveBeenCalledTimes(1);
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having offline authenticated active session and server become reachable, update is_server_reachable to true and store it into the local storage.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_server_reachable: false,
+        type: USER_ACTIVE_SESSION_OFFLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expectedEntity.isServerReachable = true;
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having offline authenticated active session and server is still not reachable, update the local storage with same values.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_server_reachable: false,
+        type: USER_ACTIVE_SESSION_OFFLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => false);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having online not authenticated active session and server become not reachable, active session become offline and store it into the local storage.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: false,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => false);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expectedEntity.isServerReachable = false;
+      expectedEntity.type = USER_ACTIVE_SESSION_OFFLINE;
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+
+    it("User having online not authenticated active session and server is still reachable, update the local storage with same values.", async () => {
+      expect.assertions(4);
+      const userActiveSession = {
+        is_authenticated: false,
+        is_server_reachable: true,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+      const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+      expect(entity).toEqual(expectedEntity);
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue).toEqual(expectedEntity.toDto());
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+      expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+        expectedEntity,
+      );
+    });
+  });
+
+  it("User having offline not authenticated active session and server become reachable, active session become online and store it into the local storage.", async () => {
+    expect.assertions(4);
+    const userActiveSession = {
+      is_authenticated: false,
+      is_server_reachable: false,
+      type: USER_ACTIVE_SESSION_OFFLINE,
+    };
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+      .mockImplementation(() => true);
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+      .mockImplementationOnce(() => userActiveSession);
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+    const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+    expectedEntity.isServerReachable = true;
+    expectedEntity.type = USER_ACTIVE_SESSION_ONLINE;
+    expect(entity).toEqual(expectedEntity);
+    const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+    expect(storageValue).toEqual(expectedEntity.toDto());
+    expect(
+      findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+    ).not.toHaveBeenCalled();
+    expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+      expectedEntity,
+    );
+  });
+
+  it("User having offline not authenticated active session and server is still not reachable, update the local storage with same values.", async () => {
+    expect.assertions(4);
+    const userActiveSession = {
+      is_authenticated: false,
+      is_server_reachable: false,
+      type: USER_ACTIVE_SESSION_OFFLINE,
+    };
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+      .mockImplementation(() => false);
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+      .mockImplementationOnce(() => userActiveSession);
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+    const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+    expect(entity).toEqual(expectedEntity);
+    const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+    expect(storageValue).toEqual(expectedEntity.toDto());
+    expect(
+      findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+    ).not.toHaveBeenCalled();
+    expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+      expectedEntity,
+    );
+  });
+
+  it("If active session is not valid and server is still not reachable, create offline active session and store it into the local storage.", async () => {
+    expect.assertions(4);
+    const userActiveSession = {
+      is_authenticated: "false",
+      is_server_reachable: true,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    };
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+      .mockImplementation(() => false);
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+      .mockImplementationOnce(() => userActiveSession);
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+    const expectedEntity = new UserActiveSessionEntity({
+      is_authenticated: false,
+      is_server_reachable: false,
+      type: USER_ACTIVE_SESSION_OFFLINE,
+    });
+    expect(entity).toEqual(expectedEntity);
+    const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+    expect(storageValue).toEqual(expectedEntity.toDto());
+    expect(
+      findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+    ).not.toHaveBeenCalled();
+    expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+      expectedEntity,
+    );
+  });
+
+  it("If active session is not valid and server is reachable, create online active session and store it into the local storage.", async () => {
+    expect.assertions(4);
+    const userActiveSession = {
+      is_authenticated: "false",
+      is_server_reachable: true,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    };
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+      .mockImplementation(() => true);
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+      .mockImplementationOnce(() => userActiveSession);
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+      .mockImplementationOnce(() => true);
+
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+    const expectedEntity = new UserActiveSessionEntity({
+      is_authenticated: true,
+      is_mfa_authenticated: true,
+      is_server_reachable: true,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    });
+    expect(entity).toEqual(expectedEntity);
+    const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+    expect(storageValue).toEqual(expectedEntity.toDto());
+    expect(
+      findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+    ).toHaveBeenCalledTimes(1);
+    expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+      expectedEntity,
+    );
+  });
+
+  it("User having online authenticated active session, server is reachable with an error when isAuthenticated is fetched, update is_server_reachable to false and store it into the local storage.", async () => {
+    expect.assertions(4);
+    const userActiveSession = {
+      is_authenticated: true,
+      is_server_reachable: true,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    };
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+      .mockImplementation(() => true);
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+      .mockImplementationOnce(() => userActiveSession);
+    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+      .mockImplementationOnce(() => {
+        throw new Error();
+      });
+
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+
+    const expectedEntity = new UserActiveSessionEntity(userActiveSession);
+    expectedEntity.isServerReachable = false;
+    expect(entity).toEqual(expectedEntity);
+    const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+    expect(storageValue).toEqual(expectedEntity.toDto());
+    expect(
+      findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+    ).toHaveBeenCalledTimes(1);
+    expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
+      expectedEntity,
+    );
+  });
+});
