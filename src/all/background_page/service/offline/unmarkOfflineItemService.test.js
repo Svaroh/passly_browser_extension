@@ -23,11 +23,15 @@ import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
+import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
+import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
 
 describe("UnmarkOfflineItemService", () => {
   let apiClientOptions, account;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     enableFetchMocks();
     fetch.resetMocks();
     apiClientOptions = defaultApiClientOptions();
@@ -35,21 +39,48 @@ describe("UnmarkOfflineItemService", () => {
     // Keep the OPFS-side cleanup inert across this suite.
     jest.spyOn(OfflineResourcesOPFSStorage.prototype, "delete").mockResolvedValue();
     jest.spyOn(OfflineSecretsOPFSStorage.prototype, "deleteByResourceId").mockResolvedValue();
+    jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
   });
 
-  describe("::create", () => {
+  describe("::delete", () => {
     it("successfully unmark a resource available offline", async () => {
-      expect.assertions(1);
-      const offlineItemId = uuidv4();
-      fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () => mockApiResponse(null));
+      expect.assertions(5);
+      const resourceId = uuidv4();
+      const resourceDto = defaultResourceDto({
+        id: resourceId,
+        offline: defaultOfflineItemDto({ foreign_key: resourceId }),
+      });
+      const offlineItemId = resourceDto.offline.id;
+      jest.spyOn(ResourceLocalStorage, "getResourceByOfflineItemId").mockResolvedValue(resourceDto);
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () => mockApiResponse(null));
 
       const service = new UnmarkOfflineItemService(account, apiClientOptions);
       const result = await service.delete(offlineItemId);
 
       expect(result).toEqual(null);
+      // The offline property is cleared from the resource in local storage so the UI stops showing it as offline.
+      expect(ResourceLocalStorage.updateResource).toHaveBeenCalledTimes(1);
+      expect(ResourceLocalStorage.updateResource.mock.calls[0][0].offline).toBeNull();
+      // OPFS cleanup is keyed by the resource id, not the offline item id.
+      expect(OfflineResourcesOPFSStorage.prototype.delete).toHaveBeenCalledWith(resourceId);
+      expect(OfflineSecretsOPFSStorage.prototype.deleteByResourceId).toHaveBeenCalledWith(resourceId);
     });
 
-    it("throws an Error if the parameter is not a valid uuid", async () => {
+    it("does not touch local storage nor OPFS if the resource is not in local storage", async () => {
+      expect.assertions(3);
+      const offlineItemId = uuidv4();
+      jest.spyOn(ResourceLocalStorage, "getResourceByOfflineItemId").mockResolvedValue(undefined);
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () => mockApiResponse(null));
+
+      const service = new UnmarkOfflineItemService(account, apiClientOptions);
+      const result = await service.delete(offlineItemId);
+
+      expect(result).toEqual(null);
+      expect(ResourceLocalStorage.updateResource).not.toHaveBeenCalled();
+      expect(OfflineResourcesOPFSStorage.prototype.delete).not.toHaveBeenCalled();
+    });
+
+    it("throws an Error if the offline item id is not a valid uuid", async () => {
       expect.assertions(1);
       const service = new UnmarkOfflineItemService(account, apiClientOptions);
 
@@ -59,7 +90,7 @@ describe("UnmarkOfflineItemService", () => {
     it("throws service unavailable error if an error occurred but not from the API", async () => {
       expect.assertions(1);
       const offlineItemId = uuidv4();
-      fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () => {
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () => {
         throw new Error("Service unavailable");
       });
 
@@ -71,7 +102,7 @@ describe("UnmarkOfflineItemService", () => {
     it("throws API error if the API encountered an issue", async () => {
       expect.assertions(1);
       const offlineItemId = uuidv4();
-      fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () =>
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () =>
         mockApiResponseError(500, "Something wrong happened!"),
       );
 

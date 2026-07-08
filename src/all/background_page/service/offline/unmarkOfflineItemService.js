@@ -16,6 +16,8 @@ import { assertUuid } from "../../utils/assertions";
 import UnmarkOfflineItemApiService from "../api/offline/unmarkOfflineItemApiService";
 import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
+import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import ResourceEntity from "../../model/entity/resource/resourceEntity";
 
 class UnmarkOfflineItemService {
   /**
@@ -31,14 +33,22 @@ class UnmarkOfflineItemService {
 
   /**
    * Unmark an offline item available offline and drop its OPFS entries.
-   * @param {string} offlineItemId The offline item id (same value as the resource id used by the styleguide UI).
+   * @param {string} offlineItemId The offline item id (offline_items row id) to delete on the API.
    * @returns {Promise<null>} A null response
    */
   async delete(offlineItemId) {
     assertUuid(offlineItemId);
     const result = await this.unmarkOfflineItemApiService.delete(offlineItemId);
-    await this.offlineResourcesOPFSStorage.delete(offlineItemId);
-    await this.offlineSecretsOPFSStorage.deleteByResourceId(offlineItemId);
+    const resourceDto = await ResourceLocalStorage.getResourceByOfflineItemId(offlineItemId);
+    if (resourceDto) {
+      const resourceEntity = new ResourceEntity(resourceDto);
+      const resourceId = resourceEntity.id;
+      // Clear the offline item from the resource and update it in the local storage.
+      resourceEntity.offline = null;
+      await ResourceLocalStorage.updateResource(resourceEntity);
+      await this.offlineResourcesOPFSStorage.delete(resourceId);
+      await this.offlineSecretsOPFSStorage.deleteByResourceId(resourceId);
+    }
     return result.body;
   }
 }

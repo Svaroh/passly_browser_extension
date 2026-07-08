@@ -91,7 +91,7 @@ import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindO
 import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
 import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
 import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
-import MarkItemOfflineUnavailableController from "../controller/offline/markItemOfflineUnavailableController";
+import UnmarkItemOfflineAvailableController from "../controller/offline/unmarkItemOfflineAvailableController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
@@ -979,7 +979,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param id {uuid} resourceId
    */
   worker.port.on("passbolt.offline.unmark-item-offline", async (requestId, id) => {
-    const controller = new MarkItemOfflineUnavailableController(worker, requestId, apiClientOptions, account);
+    const controller = new UnmarkItemOfflineAvailableController(worker, requestId, apiClientOptions, account);
     await controller._exec(id);
   });
 };

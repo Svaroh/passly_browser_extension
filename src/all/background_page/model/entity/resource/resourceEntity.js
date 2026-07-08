@@ -200,7 +200,10 @@ class ResourceEntity extends EntityV2 {
         tags: TagsCollection.getSchema(),
         creator: userSchema,
         modifier: userSchema,
-        offline: OfflineItemEntity.getSchema(),
+        offline: {
+          ...OfflineItemEntity.getSchema(),
+          nullable: true,
+        },
       },
     };
   }
@@ -722,10 +725,12 @@ class ResourceEntity extends EntityV2 {
 
   /**
    * Set resource offline
-   * @param {OfflineItemEntity} offline
+   * @param {OfflineItemEntity|null} offline
    */
   set offline(offline) {
-    assertType(offline, OfflineItemEntity, "The parameter 'offline' should be an OfflineItemEntity.");
+    if (offline !== null) {
+      assertType(offline, OfflineItemEntity, "The parameter 'offline' should be an OfflineItemEntity.");
+    }
     this._offline = offline;
   }
 

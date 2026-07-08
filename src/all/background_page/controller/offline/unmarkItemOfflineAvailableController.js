@@ -15,7 +15,7 @@
 import { assertUuid } from "../../utils/assertions";
 import UnmarkOfflineItemService from "../../service/offline/unmarkOfflineItemService";
 
-class MarkItemOfflineUnavailableController {
+class UnmarkItemOfflineAvailableController {
   /**
    * @constructor
    * @param {Worker} worker
@@ -44,7 +44,7 @@ class MarkItemOfflineUnavailableController {
   }
 
   /**
-   * Mark an offline item unavailable offline.
+   * Unmark an offline item available offline.
    * @param {string} offlineItemId The offline item id to mark
    * @returns {Promise<null>} The response null
    */
@@ -54,4 +54,4 @@ class MarkItemOfflineUnavailableController {
   }
 }
 
-export default MarkItemOfflineUnavailableController;
+export default UnmarkItemOfflineAvailableController;

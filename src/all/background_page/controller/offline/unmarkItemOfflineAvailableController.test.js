@@ -14,21 +14,21 @@
 
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { v4 as uuidv4 } from "uuid";
-import MarkItemOfflineUnavailableController from "./markItemOfflineUnavailableController";
+import UnmarkItemOfflineAvailableController from "./unmarkItemOfflineAvailableController";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
-describe("MarkResourceOfflineAvailableController", () => {
+describe("UnmarkItemOfflineAvailableController", () => {
   let apiClientOptions, account, controller;
 
   beforeEach(() => {
     apiClientOptions = defaultApiClientOptions();
     account = new AccountEntity(defaultAccountDto());
-    controller = new MarkItemOfflineUnavailableController(null, null, apiClientOptions, account);
+    controller = new UnmarkItemOfflineAvailableController(null, null, apiClientOptions, account);
   });
 
   describe("::exec", () => {
-    it("should mark the given item unavailable offline onto the API through the dedicated service", async () => {
+    it("should unmark the given item available offline onto the API through the dedicated service", async () => {
       expect.assertions(3);
       const offlineItemId = uuidv4();
       jest.spyOn(controller.unmarkOfflineItemService, "delete").mockResolvedValue(null);

@@ -14,7 +14,7 @@
 import AbstractService from "../abstract/abstractService";
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 import { assertUuid } from "../../../utils/assertions";
-const OFFLINE_API_SERVICE_RESOURCE_NAME = `offline`;
+const OFFLINE_API_SERVICE_RESOURCE_NAME = `offline/item`;
 
 class UnmarkOfflineItemApiService extends AbstractService {
   /**

@@ -34,7 +34,7 @@ describe("UnmarkOfflineItemApiService", () => {
     it("delete the offline item on the API", async () => {
       expect.assertions(2);
       const offlineItemId = uuidv4();
-      fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () => mockApiResponse(null));
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () => mockApiResponse(null));
 
       const service = new UnmarkOfflineItemApiService(apiClientOptions);
       const result = await service.delete(offlineItemId);
@@ -53,7 +53,7 @@ describe("UnmarkOfflineItemApiService", () => {
     it("throws an API error if the API returns an error response", async () => {
       expect.assertions(1);
       const offlineItemId = uuidv4();
-      fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () =>
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () =>
         mockApiResponseError(500, "Something went wrong!"),
       );
 
@@ -65,7 +65,7 @@ describe("UnmarkOfflineItemApiService", () => {
     it("throws a service unavailable error if an error occurred but not from the API", async () => {
       expect.assertions(1);
       const offlineItemId = uuidv4();
-      fetch.doMockOnceIf(new RegExp(`/offline/${offlineItemId}`), () => {
+      fetch.doMockOnceIf(new RegExp(`/offline/item/${offlineItemId}`), () => {
         throw new Error("Service unavailable");
       });
 
