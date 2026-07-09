@@ -49,6 +49,14 @@ class ActiveSessionLocalStorage {
   }
 
   /**
+   * Check if there is cached data.
+   * @returns {boolean}
+   */
+  hasCachedData() {
+    return Boolean(ActiveSessionLocalStorage._runtimeCachedData[this.account.id]);
+  }
+
+  /**
    * Flush the active session from local storage and runtime cached data.
    * @return {Promise<void>}
    */
