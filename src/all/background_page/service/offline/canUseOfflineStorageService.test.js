@@ -30,10 +30,10 @@ import {
 import CanUseOfflineStorageService from "./canUseOfflineStorageService";
 
 const allowOfflineAccessRbac = () =>
-  defaultRbacWithActionData({ action: defaultActionData({ name: actions.ALLOW_OFFLINE_RESOURCES_ACCESS }) });
+  defaultRbacWithActionData({ action: defaultActionData({ name: actions.OFFLINE_ITEMS_VIEW }) });
 
 const denyOfflineAccessRbac = () =>
-  denyRbacWithActionData({ action: defaultActionData({ name: actions.ALLOW_OFFLINE_RESOURCES_ACCESS }) });
+  denyRbacWithActionData({ action: defaultActionData({ name: actions.OFFLINE_ITEMS_VIEW }) });
 
 const otherActionRbac = () => defaultRbacWithActionData({ action: defaultActionData({ name: "Resources.add" }) });
 

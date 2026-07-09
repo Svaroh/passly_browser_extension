@@ -21,7 +21,7 @@ import { controlFunctions } from "passbolt-styleguide/src/shared/services/rbacs/
  *
  * The check combines two gates:
  *  - The offline plugin is enabled at the org level.
- *  - The current user is granted the `OfflineMode.accessOffline` RBAC action.
+ *  - The current user is granted the access to view offline items.
  */
 export default class CanUseOfflineStorageService {
   /**
@@ -44,7 +44,8 @@ export default class CanUseOfflineStorageService {
       return false;
     }
     const rbacs = await this.getOrFindRbacService.getOrFindMe();
-    const rbac = rbacs?.findRbacByActionName(actions.ALLOW_OFFLINE_RESOURCES_ACCESS);
+    // To check if the user has permission to view resources offline
+    const rbac = rbacs?.findRbacByActionName(actions.OFFLINE_ITEMS_VIEW);
     if (!rbac) {
       return false;
     }
