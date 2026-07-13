@@ -59,14 +59,14 @@ describe("GetOrFindOfflineSettingsController", () => {
 
       expect(result).toBeInstanceOf(OfflineSettingsEntity);
       expect(result.toDto()).toEqual(offlineSettingsDto);
-      const storageValue = await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.get();
+      const storageValue = await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
       expect(storageValue).toEqual(offlineSettingsDto);
     });
 
     it("with populated storage, retrieves the offline settings from the local storage.", async () => {
       expect.assertions(2);
       const offlineSettingsDto = defaultOfflineSettingsDto();
-      await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.set(
+      await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
         new OfflineSettingsEntity(offlineSettingsDto),
       );
       jest.spyOn(
@@ -104,7 +104,7 @@ describe("GetOrFindOfflineSettingsController", () => {
       const result = await controller.exec();
 
       expect(result).toBeNull();
-      const storageValue = await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.get();
+      const storageValue = await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
       expect(storageValue).toBeUndefined();
     });
 

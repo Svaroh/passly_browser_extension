@@ -48,7 +48,7 @@ export default class FindAndUpdateOfflineSettingsLocalStorageService {
       // Lock not granted, an update is already in progress. Wait for its completion and return the value of the local storage.
       if (!lock) {
         return await navigator.locks.request(lockKey, { mode: "shared" }, async () => {
-          const offlineSettingsDto = await this.offlineSettingsLocalStorage.get();
+          const offlineSettingsDto = await this.offlineSettingsLocalStorage.getData();
           return offlineSettingsDto ? new OfflineSettingsEntity(offlineSettingsDto) : null;
         });
       }
@@ -65,7 +65,7 @@ export default class FindAndUpdateOfflineSettingsLocalStorageService {
         return null;
       }
 
-      await this.offlineSettingsLocalStorage.set(offlineSettings);
+      await this.offlineSettingsLocalStorage.setData(offlineSettings);
       return offlineSettings;
     });
   }

@@ -38,7 +38,7 @@ export default class GetOrFindOfflineSettingsService {
    * @returns {Promise<OfflineSettingsEntity|null>}
    */
   async getOrFind() {
-    const offlineSettingsDto = await this.offlineSettingsLocalStorage.get();
+    const offlineSettingsDto = await this.offlineSettingsLocalStorage.getData();
     if (offlineSettingsDto) {
       return new OfflineSettingsEntity(offlineSettingsDto);
     }

@@ -53,7 +53,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
 
       expect(entity).toBeInstanceOf(OfflineSettingsEntity);
       expect(entity.toDto()).toEqual(offlineSettingsDto);
-      const storageValue = await service.offlineSettingsLocalStorage.get();
+      const storageValue = await service.offlineSettingsLocalStorage.getData();
       expect(storageValue).toEqual(offlineSettingsDto);
     });
 
@@ -68,7 +68,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
 
       expect(entity).toBeNull();
       expect(service.findOfflineSettingsService.offlineSettingsApiService.find).not.toHaveBeenCalled();
-      const storageValue = await service.offlineSettingsLocalStorage.get();
+      const storageValue = await service.offlineSettingsLocalStorage.getData();
       expect(storageValue).toBeUndefined();
     });
 
@@ -84,7 +84,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
       const entity = await service.findAndUpdate();
 
       expect(entity).toBeNull();
-      const storageValue = await service.offlineSettingsLocalStorage.get();
+      const storageValue = await service.offlineSettingsLocalStorage.getData();
       expect(storageValue).toBeUndefined();
     });
 
@@ -97,12 +97,12 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
         .mockImplementation(() => offlinePluginEnabledSiteSettings());
-      await service.offlineSettingsLocalStorage.set(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
+      await service.offlineSettingsLocalStorage.setData(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
 
       const entity = await service.findAndUpdate();
 
       expect(entity.toDto()).toEqual(offlineSettingsDto);
-      const storageValue = await service.offlineSettingsLocalStorage.get();
+      const storageValue = await service.offlineSettingsLocalStorage.getData();
       expect(storageValue).toEqual(offlineSettingsDto);
     });
 
@@ -117,7 +117,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
       jest
         .spyOn(service.organisationSettingsModel.organizationSettingsService, "find")
         .mockImplementation(() => offlinePluginEnabledSiteSettings());
-      await service.offlineSettingsLocalStorage.set(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
+      await service.offlineSettingsLocalStorage.setData(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
 
       const promiseFirstCall = service.findAndUpdate();
       const promiseSecondCall = service.findAndUpdate();
@@ -128,7 +128,7 @@ describe("FindAndUpdateOfflineSettingsLocalStorageService", () => {
       expect(service.findOfflineSettingsService.offlineSettingsApiService.find).toHaveBeenCalledTimes(1);
       expect(resultFirstCall.toDto()).toEqual(offlineSettingsDto);
       expect(resultSecondCall.toDto()).toEqual(offlineSettingsDto);
-      const storageValue = await service.offlineSettingsLocalStorage.get();
+      const storageValue = await service.offlineSettingsLocalStorage.getData();
       expect(storageValue).toEqual(offlineSettingsDto);
     });
   });

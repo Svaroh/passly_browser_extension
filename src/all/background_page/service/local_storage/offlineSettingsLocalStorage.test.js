@@ -15,7 +15,7 @@
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
-import OfflineSettingsLocalStorage from "./offlineSettingsLocalStorage";
+import OfflineSettingsLocalStorage, { OFFLINE_SETTINGS } from "./offlineSettingsLocalStorage";
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 
 beforeEach(() => {
@@ -24,11 +24,11 @@ beforeEach(() => {
 
 describe("OfflineSettingsLocalStorage", () => {
   let account, storage;
-  beforeEach(() => {
+  beforeEach(async () => {
     account = new AccountEntity(defaultAccountDto());
     storage = new OfflineSettingsLocalStorage(account);
     // flush account related storage before each.
-    storage.flush();
+    await storage.flush();
   });
 
   describe("::constructor", () => {
@@ -43,118 +43,70 @@ describe("OfflineSettingsLocalStorage", () => {
     });
   });
 
-  describe("::get", () => {
+  describe("::key & entityClass", () => {
+    it("exposes the expected storage key.", () => {
+      expect.assertions(2);
+      expect(storage.key).toEqual(OFFLINE_SETTINGS);
+      expect(storage.storageDataKey).toEqual(`${OFFLINE_SETTINGS}-${account.id}`);
+    });
+
+    it("exposes the expected entity class.", () => {
+      expect.assertions(1);
+      expect(storage.entityClass).toEqual(OfflineSettingsEntity);
+    });
+  });
+
+  describe("::getData", () => {
     it("returns undefined if nothing is stored in the local storage.", async () => {
       expect.assertions(1);
-      const result = await storage.get();
+      const result = await storage.getData();
       expect(result).toBeUndefined();
     });
 
     it("returns content stored in the local storage.", async () => {
       const settingsDto = defaultOfflineSettingsDto();
       expect.assertions(1);
-      browser.storage.local.set({ [storage.storageKey]: settingsDto });
-      const result = await storage.get();
+      browser.storage.local.set({ [storage.storageDataKey]: settingsDto });
+      const result = await storage.getData();
       expect(result).toEqual(settingsDto);
-    });
-
-    it("returns content stored in the runtime cache.", async () => {
-      const settingsDto = defaultOfflineSettingsDto();
-      expect.assertions(2);
-      // Force the runtime cache, to ensure it is hit even if the local storage is empty.
-      OfflineSettingsLocalStorage._runtimeCachedData[account.id] = settingsDto;
-      const result = await storage.get();
-      expect(result).toEqual(settingsDto);
-      // Control the local storage was well empty.
-      expect(browser.storage.local.store[storage.storageKey]).toBeUndefined();
     });
   });
 
-  describe("::set", () => {
+  describe("::setData", () => {
     it("stores content in the local storage.", async () => {
-      expect.assertions(3);
+      expect.assertions(2);
       const settings = new OfflineSettingsEntity(defaultOfflineSettingsDto());
-      await storage.set(settings);
+      await storage.setData(settings);
       // Expect the local storage (mocked here) to be set.
-      expect(browser.storage.local.store[storage.storageKey]).toEqual(settings.toDto());
-      // Expect the runtime cache to be set.
-      expect(OfflineSettingsLocalStorage._runtimeCachedData[account.id]).toEqual(settings.toDto());
+      expect(browser.storage.local.store[storage.storageDataKey]).toEqual(settings.toDto());
       // Expect the get to retrieve the set data.
-      const resultGet = await storage.get();
+      const resultGet = await storage.getData();
       expect(resultGet).toEqual(settings.toDto());
     });
 
     it("throws if no data is given to store.", async () => {
-      expect.assertions(3);
-      await expect(() => storage.set()).rejects.toThrow(TypeError);
+      expect.assertions(2);
+      await expect(() => storage.setData()).rejects.toThrow(TypeError);
       // Expect the local storage (mocked here) to not be set.
-      expect(browser.storage.local.store[storage.storageKey]).toBeUndefined();
-      // Expect the runtime cache to not be set.
-      expect(OfflineSettingsLocalStorage._runtimeCachedData[account.id]).toBeUndefined();
+      expect(browser.storage.local.store[storage.storageDataKey]).toBeUndefined();
     });
 
     it("throws if invalid data is given to store.", async () => {
-      expect.assertions(3);
-      await expect(() => storage.set({})).rejects.toThrow(TypeError);
+      expect.assertions(2);
+      await expect(() => storage.setData({})).rejects.toThrow(TypeError);
       // Expect the local storage (mocked here) to not be set.
-      expect(browser.storage.local.store[storage.storageKey]).toBeUndefined();
-      // Expect the runtime cache to not be set.
-      expect(OfflineSettingsLocalStorage._runtimeCachedData[account.id]).toBeUndefined();
-    });
-
-    it("waits any on-going call to set to perform another set.", async () => {
-      expect.assertions(3);
-      const promisesResolvers = [];
-
-      jest.spyOn(storage, "_setBrowserStorage").mockImplementation(() => {
-        let resolve;
-        const promise = new Promise((_resolve) => (resolve = _resolve));
-        promisesResolvers.push(resolve);
-        return promise;
-      });
-
-      const offlineSettingsDto = defaultOfflineSettingsDto();
-      const offlineSettingsDto2 = defaultOfflineSettingsDto({
-        data_retention_period: 172800,
-        max_session_duration: 7200,
-      });
-      const resultPromise1 = storage.set(new OfflineSettingsEntity(offlineSettingsDto));
-      const resultPromise2 = storage.set(new OfflineSettingsEntity(offlineSettingsDto2));
-      expect(storage._setBrowserStorage).toHaveBeenCalledWith({
-        [storage.storageKey]: offlineSettingsDto,
-      });
-      expect(storage._setBrowserStorage).not.toHaveBeenCalledWith({
-        [storage.storageKey]: offlineSettingsDto2,
-      });
-      promisesResolvers[0]();
-      await resultPromise1;
-      expect(storage._setBrowserStorage).toHaveBeenCalledWith({
-        [storage.storageKey]: offlineSettingsDto,
-      });
-      promisesResolvers[1]();
-      await resultPromise2;
+      expect(browser.storage.local.store[storage.storageDataKey]).toBeUndefined();
     });
   });
 
   describe("::flush", () => {
-    it("flushes works with not initialized local storage.", async () => {
-      expect.assertions(2);
-      await storage.flush();
-      // Expect the local storage (mocked here) to not be set.
-      expect(browser.storage.local.store[storage.storageKey]).toBeUndefined();
-      // Expect the runtime cache to not be set.
-      expect(OfflineSettingsLocalStorage._runtimeCachedData[account.id]).toBeUndefined();
-    });
-
     it("flushes content of the local storage.", async () => {
-      expect.assertions(2);
+      expect.assertions(1);
       const settings = new OfflineSettingsEntity(defaultOfflineSettingsDto());
-      await storage.set(settings);
+      await storage.setData(settings);
       await storage.flush();
       // Expect the local storage (mocked here) to not be set.
-      expect(browser.storage.local.store[storage.storageKey]).toBeUndefined();
-      // Expect the runtime cache to not be set.
-      expect(OfflineSettingsLocalStorage._runtimeCachedData[account.id]).toBeUndefined();
+      expect(browser.storage.local.store[storage.storageDataKey]).toBeUndefined();
     });
   });
 });

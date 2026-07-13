@@ -54,20 +54,20 @@ describe("GetOrFindOfflineSettingsService", () => {
         .mockImplementation(() => offlinePluginEnabledSiteSettings());
 
       // Control initial storage value.
-      const initialStorageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.get();
+      const initialStorageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
       expect(initialStorageValue).toBeUndefined();
 
       const entity = await getOrFindOfflineSettingsService.getOrFind();
 
       expect(entity.toDto()).toEqual(offlineSettingsDto);
-      const storageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.get();
+      const storageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
       expect(storageValue).toEqual(offlineSettingsDto);
     });
 
     it("with populated storage, retrieves the offline settings from the local storage.", async () => {
       expect.assertions(2);
       const offlineSettingsDto = defaultOfflineSettingsDto();
-      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.set(
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
         new OfflineSettingsEntity(offlineSettingsDto),
       );
       jest.spyOn(
@@ -109,7 +109,7 @@ describe("GetOrFindOfflineSettingsService", () => {
         getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findOfflineSettingsService
           .offlineSettingsApiService.find,
       ).toHaveBeenCalledTimes(1);
-      const storageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.get();
+      const storageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
       expect(storageValue).toBeUndefined();
     });
   });
