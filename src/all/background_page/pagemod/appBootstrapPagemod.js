@@ -14,9 +14,9 @@
 import Pagemod from "./pagemod";
 import ParseAppUrlService from "../service/app/parseAppUrlService";
 import { PortEvents } from "../event/portEvents";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
+import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 class AppBootstrap extends Pagemod {
   /**
@@ -95,21 +95,14 @@ class AppBootstrap extends Pagemod {
    * @returns {Promise<boolean>}
    */
   async assertUserAuthenticated() {
-    let isAuthenticated = false;
-
-    try {
-      const account = await GetActiveAccountService.get();
-      const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-      const checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
-
-      const authStatus = await checkAuthStatusService.checkAuthStatus(true);
-      isAuthenticated = authStatus.isAuthenticated;
-    } catch (error) {
-      // An error occured while checking the auth status
-      console.error(error);
-    }
-
-    return isAuthenticated;
+    const account = await GetActiveAccountService.get();
+    const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+    const findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
+    const activeSessionEntity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
+    return activeSessionEntity.isAuthenticated;
   }
 }
 

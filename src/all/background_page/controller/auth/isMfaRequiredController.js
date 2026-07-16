@@ -11,11 +11,11 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.11.0
  */
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
-class AuthIsMfaRequiredController {
+class IsMfaRequiredController {
   /**
-   * AuthCheckStatusController Constructor
+   * FindAndUpdateActiveSessionLocalStorageController Constructor
    *
    * @param {Worker} worker
    * @param {string} requestId
@@ -25,7 +25,10 @@ class AuthIsMfaRequiredController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+    this.findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
   }
 
   /**
@@ -41,13 +44,13 @@ class AuthIsMfaRequiredController {
   }
 
   /**
-   * Returns true if the current user needs to answer the MFA challenge to finish sign in
+   * Returns user active session
    * @returns {Promise<boolean>}
    */
   async exec() {
-    const authStatus = await this.checkAuthStatusService.checkAuthStatus(true);
-    return !authStatus.isMfaAuthenticated;
+    const activeSession = await this.findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
+    return activeSession.isMfaRequired;
   }
 }
 
-export default AuthIsMfaRequiredController;
+export default IsMfaRequiredController;

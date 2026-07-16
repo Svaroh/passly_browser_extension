@@ -20,12 +20,12 @@ import UserSettings from "../model/userSettings/userSettings";
 import AppBootstrapPagemod from "./appBootstrapPagemod";
 import WebIntegrationPagemod from "./webIntegrationPagemod";
 import PublicWebsiteSignInPagemod from "./publicWebsiteSignInPagemod";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import AccountEntity from "../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../model/entity/account/accountEntity.test.data";
 import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 jest.spyOn(pagemod.prototype, "injectFiles").mockImplementation(jest.fn());
 jest.spyOn(pagemod.prototype, "attachEvents").mockImplementation(jest.fn());
@@ -96,7 +96,7 @@ describe("PagemodManager", () => {
       // mock functions
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => new AccountEntity(defaultAccountDto()));
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
         .mockImplementation(async () => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       // process

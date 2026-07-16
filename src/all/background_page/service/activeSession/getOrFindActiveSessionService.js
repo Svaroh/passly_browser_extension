@@ -48,12 +48,12 @@ export default class GetOrFindActiveSessionService {
         return new UserActiveSessionEntity(userActiveSessionDto, { validate: !hasRuntimeCache });
       } catch (error) {
         console.error(error);
-        // If any validation error, retrieve the user active session and update the local storage.
-        return await this.findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+        // If any validation error, retrieve or create a default user active session and update the local storage.
+        return await this.findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
       }
     }
 
     // Otherwise retrieve the user active session and update the local storage.
-    return await this.findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+    return await this.findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
   }
 }

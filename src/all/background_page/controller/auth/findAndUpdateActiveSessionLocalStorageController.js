@@ -9,13 +9,13 @@
  * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
  * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
  * @link          https://www.passbolt.com Passbolt(tm)
- * @since         2.11.0
+ * @since         6.0.0
  */
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
-class AuthCheckStatusController {
+class FindAndUpdateActiveSessionLocalStorageController {
   /**
-   * AuthCheckStatusController Constructor
+   * FindAndUpdateActiveSessionLocalStorageController Constructor
    *
    * @param {Worker} worker
    * @param {string} requestId
@@ -25,18 +25,20 @@ class AuthCheckStatusController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+    this.findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
   }
 
   /**
    * Controller executor.
-   * @param {boolean} [flushCache = true] should the cache be flushed before
    * @returns {Promise<void>}
    */
-  async _exec(flushCache = true) {
+  async _exec() {
     try {
-      const authStatus = await this.exec(flushCache);
-      this.worker.port.emit(this.requestId, "SUCCESS", authStatus);
+      const activeSessionEntity = await this.exec();
+      this.worker.port.emit(this.requestId, "SUCCESS", activeSessionEntity);
     } catch (error) {
       console.error(error);
       this.worker.port.emit(this.requestId, "ERROR", error);
@@ -45,12 +47,11 @@ class AuthCheckStatusController {
 
   /**
    * Controller executor.
-   * @param {boolean} flushCache should the cache be flushed before
    * @returns {Promise<UserActiveSessionEntity>}
    */
-  async exec(flushCache) {
-    return await this.checkAuthStatusService.checkAuthStatus(flushCache);
+  async exec() {
+    return await this.findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
   }
 }
 
-export default AuthCheckStatusController;
+export default FindAndUpdateActiveSessionLocalStorageController;

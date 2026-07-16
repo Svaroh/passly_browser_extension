@@ -38,7 +38,6 @@ import { MfaEvents } from "../event/mfaEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { enableFetchMocks } from "jest-fetch-mock";
 import { RememberMeEvents } from "../event/rememberMeEvents";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import { PermissionEvents } from "../event/permissionEvents";
 import { AccountEvents } from "../event/accountEvents";
@@ -49,6 +48,7 @@ import UserApiService from "passbolt-styleguide/src/shared/services/api/user/use
 import { defaultAdminUserDto } from "passbolt-styleguide/src/shared/models/entity/user/userEntity.test.data";
 import AccountEntity from "../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../model/entity/account/accountEntity.test.data";
+import GetOrFindActiveSessionService from "../service/activeSession/getOrFindActiveSessionService";
 
 jest.spyOn(ConfigEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(AppEvents, "listen").mockImplementation(jest.fn());
@@ -77,7 +77,6 @@ jest.spyOn(RememberMeEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(PermissionEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(AccountEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(AppSignOutEvents, "listen").mockImplementation(jest.fn());
-jest.mock("../service/auth/checkAuthStatusService");
 
 describe("App", () => {
   beforeEach(() => {
@@ -102,7 +101,7 @@ describe("App", () => {
       // mock functions
       jest.spyOn(browser.cookies, "get").mockImplementation(() => ({ value: "csrf-token" }));
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
         .mockImplementation(async () => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
       const mockedAccount = new AccountEntity(defaultAccountDto());
       const mockApiClient = BuildApiClientOptionsService.buildFromAccount(mockedAccount);
@@ -196,7 +195,7 @@ describe("App", () => {
       // mock functions
       jest.spyOn(browser.cookies, "get").mockImplementation(() => ({ value: "csrf-token" }));
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
         .mockImplementation(
           async () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
         );

@@ -7,8 +7,8 @@
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 import AuthVerifyServerKeyController from "../controller/auth/authVerifyServerKeyController";
-import AuthCheckStatusController from "../controller/auth/authCheckStatusController";
-import AuthIsMfaRequiredController from "../controller/auth/authIsMfaRequiredController";
+import FindAndUpdateActiveSessionLocalStorageController from "../controller/auth/findAndUpdateActiveSessionLocalStorageController";
+import IsMfaRequiredController from "../controller/auth/isMfaRequiredController";
 import CheckPassphraseController from "../controller/crypto/checkPassphraseController";
 import RequestHelpCredentialsLostController from "../controller/auth/requestHelpCredentialsLostController";
 import AuthLoginController from "../controller/auth/authLoginController";
@@ -35,23 +35,28 @@ const listen = function (worker, apiClientOptions, account) {
   /*
    * Check if the user requires to complete the mfa.
    *
-   * @listens passbolt.auth.is-mfa-required
+   * @listens passbolt.auth.get-or-find-active-session
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.auth.is-mfa-required", async (requestId) => {
-    const controller = new AuthIsMfaRequiredController(worker, requestId, apiClientOptions, account);
-    controller._exec();
+    const controller = new IsMfaRequiredController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 
   /*
    * Check the user auth status.
    *
-   * @listens passbolt.auth.check-status
+   * @listens passbolt.auth.find-and-update-active-session
    * @param requestId {uuid} The request identifier
    */
-  worker.port.on("passbolt.auth.check-status", async (requestId) => {
-    const controller = new AuthCheckStatusController(worker, requestId, apiClientOptions, account);
-    controller._exec();
+  worker.port.on("passbolt.auth.find-and-update-active-session", async (requestId) => {
+    const controller = new FindAndUpdateActiveSessionLocalStorageController(
+      worker,
+      requestId,
+      apiClientOptions,
+      account,
+    );
+    await controller._exec();
   });
 
   /*

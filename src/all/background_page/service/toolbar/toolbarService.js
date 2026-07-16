@@ -14,12 +14,12 @@
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import GetActiveAccountService from "../account/getActiveAccountService";
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
 import Log from "../../model/log";
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
 import OpenTrustedDomainTabService from "../ui/openTrustedDomainTabService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 export const QUICKACCESS_POPUP_URL = "webAccessibleResources/quickaccess.html?passbolt=quickaccess";
 
@@ -229,10 +229,10 @@ class ToolbarService {
    */
   async isUserAuthenticated(account, apiClientOptions) {
     try {
-      const checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
       // use the cached data as the worker could wake up every 30 secondes.
-      const authStatus = await checkAuthStatusService.checkAuthStatus(false);
-      return authStatus.isAuthenticated;
+      const activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
+      return activeSessionEntity.isAuthenticated;
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...

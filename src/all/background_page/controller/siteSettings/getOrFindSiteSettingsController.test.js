@@ -22,7 +22,7 @@ import GetOrFindSiteSettingsController from "./getOrFindSiteSettingsController";
 import UserActiveSessionEntity, {
   USER_ACTIVE_SESSION_ONLINE,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -44,10 +44,10 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockResolvedValue(
+      jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
         new UserActiveSessionEntity({
           is_authenticated: true,
-          is_mfa_authenticated: true,
+          is_mfa_required: false,
           type: USER_ACTIVE_SESSION_ONLINE,
         }),
       );
@@ -72,10 +72,10 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockResolvedValue(
+      jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
         new UserActiveSessionEntity({
           is_authenticated: false,
-          is_mfa_authenticated: true,
+          is_mfa_required: false,
           type: USER_ACTIVE_SESSION_ONLINE,
         }),
       );
@@ -118,10 +118,10 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockResolvedValue(
+      jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
         new UserActiveSessionEntity({
           is_authenticated: true,
-          is_mfa_authenticated: true,
+          is_mfa_required: false,
           type: USER_ACTIVE_SESSION_ONLINE,
         }),
       );

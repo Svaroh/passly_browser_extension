@@ -12,8 +12,7 @@
  * @since         4.7.0
  */
 
-import { userLoggedInAuthStatus, userLoggedOutAuthStatus, userRequireMfaAuthStatus } from "./authCheckStatus.test.data";
-import AuthIsMfaRequiredController from "./authIsMfaRequiredController";
+import IsMfaRequiredController from "./isMfaRequiredController";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
@@ -24,16 +23,22 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("AuthIsMfaRequiredController", () => {
+describe("IsMfaRequiredController", () => {
   it("should return true if the user needs to authenticate with MFA", async () => {
     expect.assertions(1);
 
     const account = new AccountEntity(defaultAccountDto());
-    const controller = new AuthIsMfaRequiredController(null, null, defaultApiClientOptions(), account);
+    const controller = new IsMfaRequiredController(null, null, defaultApiClientOptions(), account);
     jest
-      .spyOn(controller.checkAuthStatusService, "checkAuthStatus")
+      .spyOn(controller.findAndUpdateActiveSessionLocalStorageService, "findAndUpdateAuthenticationStatus")
       .mockImplementation(
-        async () => new UserActiveSessionEntity(defaultUserActiveSessionDto(userRequireMfaAuthStatus())),
+        async () =>
+          new UserActiveSessionEntity(
+            defaultUserActiveSessionDto({
+              is_authenticated: true,
+              is_mfa_required: true,
+            }),
+          ),
       );
 
     const isMfaRequired = await controller.exec();
@@ -44,11 +49,12 @@ describe("AuthIsMfaRequiredController", () => {
     expect.assertions(1);
 
     const account = new AccountEntity(defaultAccountDto());
-    const controller = new AuthIsMfaRequiredController(null, null, defaultApiClientOptions(), account);
+    const controller = new IsMfaRequiredController(null, null, defaultApiClientOptions(), account);
     jest
-      .spyOn(controller.checkAuthStatusService, "checkAuthStatus")
+      .spyOn(controller.findAndUpdateActiveSessionLocalStorageService, "findAndUpdateAuthenticationStatus")
       .mockImplementation(
-        async () => new UserActiveSessionEntity(defaultUserActiveSessionDto(userLoggedInAuthStatus())),
+        async () =>
+          new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true, is_mfa_required: false })),
       );
 
     const isMfaRequired = await controller.exec();
@@ -59,14 +65,14 @@ describe("AuthIsMfaRequiredController", () => {
     expect.assertions(1);
 
     const account = new AccountEntity(defaultAccountDto());
-    const controller = new AuthIsMfaRequiredController(null, null, defaultApiClientOptions(), account);
+    const controller = new IsMfaRequiredController(null, null, defaultApiClientOptions(), account);
 
-    const authStatus = defaultUserActiveSessionDto(userLoggedOutAuthStatus());
+    const authStatus = defaultUserActiveSessionDto({ is_authenticated: false, is_mfa_required: false });
     jest
-      .spyOn(controller.checkAuthStatusService, "checkAuthStatus")
+      .spyOn(controller.findAndUpdateActiveSessionLocalStorageService, "findAndUpdateAuthenticationStatus")
       .mockImplementation(async () => new UserActiveSessionEntity(authStatus));
 
     const isMfaRequired = await controller.exec();
-    expect(isMfaRequired).toStrictEqual(!authStatus.is_mfa_authenticated);
+    expect(isMfaRequired).toStrictEqual(authStatus.is_mfa_required);
   });
 });

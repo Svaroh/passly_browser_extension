@@ -38,13 +38,13 @@ import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import { MfaEvents } from "../event/mfaEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { RememberMeEvents } from "../event/rememberMeEvents";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import { PermissionEvents } from "../event/permissionEvents";
 import { AccountEvents } from "../event/accountEvents";
 import { AppSignOutEvents } from "../event/appSignOutEvents";
 import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
 import UserEntity from "../model/entity/user/userEntity";
+import GetOrFindActiveSessionService from "../service/activeSession/getOrFindActiveSessionService";
 
 class App extends Pagemod {
   /**
@@ -101,9 +101,9 @@ class App extends Pagemod {
       const tab = port._port.sender.tab;
       const account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-      const checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
-      const authStatus = await checkAuthStatusService.checkAuthStatus(true);
-      if (!authStatus.isAuthenticated || !authStatus.isMfaAuthenticated) {
+      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+      const activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
+      if (!activeSessionEntity.isAuthenticated || activeSessionEntity.isMfaRequired) {
         console.error("Can not attach application if user is not logged in, connect only app sign-out events.");
         for (const event of this.appSignOutEvent) {
           event.listen({ port, tab });

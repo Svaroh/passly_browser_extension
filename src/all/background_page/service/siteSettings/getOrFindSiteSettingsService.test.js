@@ -20,9 +20,11 @@ import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage"
 import SiteSettingsRuntimeCache from "./siteSettingsRuntimeCache";
 import GetOrFindSiteSettingsService from "./getOrFindSiteSettingsService";
 import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
 import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
+import AuthenticationStatusService from "../authenticationStatusService";
+import ServerStatusApiService from "../api/status/serverStatusApiService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -30,7 +32,7 @@ beforeEach(() => {
   SiteSettingsLocalStorage._runtimeCachedData = {};
   // Default to "not authenticated" so anything that doesn't explicitly re-mock stays on the safe path.
   jest
-    .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
     .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
 });
 
@@ -79,7 +81,7 @@ describe("GetOrFindSiteSettingsService", () => {
   describe("::getOrFind (refreshCache=false) — authenticated", () => {
     beforeEach(() => {
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
     });
 
@@ -178,7 +180,8 @@ describe("GetOrFindSiteSettingsService", () => {
   describe("::getOrFind (refreshCache=false) — authentication status unavailable", () => {
     beforeEach(() => {
       // An API error occured
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockRejectedValue(new PassboltBadResponseError());
+      jest.spyOn(ServerStatusApiService.prototype, "find").mockRejectedValue(() => true);
+      jest.spyOn(AuthenticationStatusService.prototype, "isAuthenticated").mockRejectedValue(new PassboltBadResponseError());
     });
 
     it("should return the runtime cache when populated when there is an API error", async () => {

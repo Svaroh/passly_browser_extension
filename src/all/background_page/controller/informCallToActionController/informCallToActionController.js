@@ -14,9 +14,9 @@
 import ResourceModel from "../../model/resource/resourceModel";
 import { QuickAccessService } from "../../service/ui/quickAccess.service";
 import WorkerService from "../../service/worker/workerService";
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
 import GetOrFindResourcesService from "../../service/resource/getOrFindResourcesService";
 import OpenTrustedDomainTabService from "../../service/ui/openTrustedDomainTabService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
 /**
  * Controller related to the in-form call-to-action
@@ -31,7 +31,7 @@ class InformCallToActionController {
   constructor(worker, apiClientOptions, account) {
     this.worker = worker;
     this.resourceModel = new ResourceModel(apiClientOptions, account);
-    this.checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
     this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
     this.openTrustedDomainTabService = new OpenTrustedDomainTabService();
   }
@@ -60,12 +60,12 @@ class InformCallToActionController {
    */
   async execute(requestId) {
     try {
-      const status = await this.checkAuthStatusService.checkAuthStatus(false);
+      const status = await this.getOrFindActiveSessionService.getOrFind();
       if (!status.isAuthenticated) {
         const queryParameters = [{ name: "feature", value: "login" }];
         await QuickAccessService.open(queryParameters);
         this.worker.port.emit(requestId, "SUCCESS");
-      } else if (!status.isMfaAuthenticated) {
+      } else if (status.isMfaRequired) {
         await this.openTrustedDomainTabService.openTab();
         this.worker.port.emit(requestId, "SUCCESS");
       } else {

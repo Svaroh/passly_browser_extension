@@ -44,12 +44,13 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
    * If no session, check server status and create an online or offline active session
    * Else
    *  - Update the is server reachable property
-   *  - If authenticated
-   *    - If online and server is reachable retrieve the authentication status from the API and update them in the active session local storage.
-   *  - Else update the type of session accordingly to the is server reachable property
+   *  - If not authenticated
+   *    - Update the type of session accordingly to the is server reachable property
+   *  - If Session is online and server reachable
+   *    - Retrieve the authentication status from the API and update them in the active session local storage.
    * @returns {Promise<UserActiveSessionEntity>}
    */
-  async findAndUpdateAll() {
+  async findAndUpdateAuthenticationStatus() {
     const lockKey = `${FIND_AND_UPDATE_ACTIVE_SESSION_LS_LOCK_PREFIX}${this.account.id}`;
 
     // If no update is in progress, refresh the session storage.
@@ -64,32 +65,20 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
       }
 
       // Lock is granted, retrieve the user active session.
-      const userActiveSession = await this.activeSessionLocalStorage.get();
+      const userActiveSessionDto = await this.activeSessionLocalStorage.get();
       let userActiveSessionEntity;
-      if (!userActiveSession) {
-        userActiveSessionEntity = await this._createUserActiveSession();
+      // If no active session create a default one
+      if (!userActiveSessionDto) {
+        userActiveSessionEntity = await this._createDefaultUserActiveSession();
       } else {
         try {
-          userActiveSessionEntity = new UserActiveSessionEntity(userActiveSession);
-          userActiveSessionEntity.isServerReachable = await this.findServerStatusService.find();
-
-          if (userActiveSessionEntity.isAuthenticated) {
-            if (
-              userActiveSessionEntity.type === USER_ACTIVE_SESSION_ONLINE &&
-              userActiveSessionEntity.isServerReachable
-            ) {
-              await this._updateAuthenticationStatus(userActiveSessionEntity);
-            }
-          } else {
-            userActiveSessionEntity.type = userActiveSessionEntity.isServerReachable
-              ? USER_ACTIVE_SESSION_ONLINE
-              : USER_ACTIVE_SESSION_OFFLINE;
-          }
+          userActiveSessionEntity = new UserActiveSessionEntity(userActiveSessionDto);
+          await this._updateExistingActiveSessionAuthenticationStatus(userActiveSessionEntity);
         } catch (error) {
           console.error(error);
           Log.write({ level: "debug", message: `Create a new user active session due to an issue: ${error.message}` });
-          userActiveSessionEntity = await this._createUserActiveSession();
-          if (userActiveSessionEntity.type === USER_ACTIVE_SESSION_ONLINE) {
+          userActiveSessionEntity = await this._createDefaultUserActiveSession();
+          if (userActiveSessionEntity.isSessionOnline) {
             await this._updateAuthenticationStatus(userActiveSessionEntity);
           }
         }
@@ -105,14 +94,15 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
    * @return {Promise<UserActiveSessionEntity>}
    * @private
    */
-  async _createUserActiveSession() {
+  async _createDefaultUserActiveSession() {
     const isServerReachable = await this.findServerStatusService.find();
-    const userActiveSession = {
+    const userActiveSessionDto = {
       is_authenticated: false,
+      is_mfa_required: false,
       is_server_reachable: isServerReachable,
       type: isServerReachable ? USER_ACTIVE_SESSION_ONLINE : USER_ACTIVE_SESSION_OFFLINE,
     };
-    return new UserActiveSessionEntity(userActiveSession);
+    return new UserActiveSessionEntity(userActiveSessionDto);
   }
 
   /**
@@ -124,16 +114,37 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
   async _updateAuthenticationStatus(userActiveSessionEntity) {
     try {
       userActiveSessionEntity.isAuthenticated = await this.authenticationStatusService.isAuthenticated();
-      userActiveSessionEntity.isMfaAuthenticated = true;
+      userActiveSessionEntity.isMfaRequired = false;
     } catch (error) {
       if (!(error instanceof MfaAuthenticationRequiredError)) {
         console.error(error);
-        Log.write({ level: "debug", message: `update authentication status raise an issue: ${error.message}` });
         userActiveSessionEntity.isServerReachable = false;
         return;
       }
       userActiveSessionEntity.isAuthenticated = true;
-      userActiveSessionEntity.isMfaAuthenticated = false;
+      userActiveSessionEntity.isMfaRequired = true;
+    }
+  }
+
+  /**
+   * Update user active session
+   * @param {UserActiveSessionEntity} userActiveSessionEntity
+   * @return {Promise<void>}
+   * @private
+   */
+  async _updateExistingActiveSessionAuthenticationStatus(userActiveSessionEntity) {
+    userActiveSessionEntity.isServerReachable = await this.findServerStatusService.find();
+
+    // An unauthenticated session derives its type from server reachability.
+    if (!userActiveSessionEntity.isAuthenticated) {
+      userActiveSessionEntity.type = userActiveSessionEntity.isServerReachable
+        ? USER_ACTIVE_SESSION_ONLINE
+        : USER_ACTIVE_SESSION_OFFLINE;
+    }
+
+    // Refresh the authentication status for an online, reachable session.
+    if (userActiveSessionEntity.isSessionOnline && userActiveSessionEntity.isServerReachable) {
+      await this._updateAuthenticationStatus(userActiveSessionEntity);
     }
   }
 }

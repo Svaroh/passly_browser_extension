@@ -21,6 +21,8 @@ import PassphraseStorageService from "../../service/session_storage/passphraseSt
 import PostLoginService from "../../service/auth/postLoginService";
 import AuthVerifyLoginChallengeService from "../../service/auth/authVerifyLoginChallengeService";
 import KeepSessionAliveService from "../../service/session_storage/keepSessionAliveService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import ActiveSessionLocalStorage from "../../service/local_storage/activeSessionLocalStorage";
 
 class AuthLoginController {
   /**
@@ -38,6 +40,8 @@ class AuthLoginController {
     this.updateSsoCredentialsService = new UpdateSsoCredentialsService(apiClientOptions, account);
     this.checkPassphraseService = new CheckPassphraseService(new Keyring());
     this.userRememberMeLatestChoiceLocalStorage = new UserRememberMeLatestChoiceLocalStorage(account);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+    this.activeSessionLocalStorage = new ActiveSessionLocalStorage(account);
   }
 
   /**
@@ -108,6 +112,7 @@ class AuthLoginController {
       } else {
         await PassphraseStorageService.set(passphrase, 60);
       }
+
       await PostLoginService.exec();
       await this.registerRememberMeOption(rememberMe);
     } catch (error) {

@@ -11,7 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.3.0
  */
-import CheckAuthStatusService from "./checkAuthStatusService";
 import PostLogoutService from "./postLogoutService";
 import StartLoopAuthSessionCheckService from "./startLoopAuthSessionCheckService";
 import AccountEntity from "../../model/entity/account/accountEntity";
@@ -20,6 +19,7 @@ import GetActiveAccountService from "../account/getActiveAccountService";
 import UserActiveSessionEntity, {
   USER_ACTIVE_SESSION_ONLINE,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
 
 jest.useFakeTimers();
@@ -41,11 +41,11 @@ describe("StartLoopAuthSessionCheckService", () => {
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
     const sessionEntity = new UserActiveSessionEntity({
       is_authenticated: true,
-      is_mfa_authenticated: true,
+      is_mfa_required: false,
       type: USER_ACTIVE_SESSION_ONLINE,
     });
     const spyIsAuthenticated = jest
-      .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+      .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
 
     //mocking top-level alarm handler
@@ -77,11 +77,11 @@ describe("StartLoopAuthSessionCheckService", () => {
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
     const sessionEntity = new UserActiveSessionEntity({
       is_authenticated: false,
-      is_mfa_authenticated: true,
+      is_mfa_required: false,
       type: USER_ACTIVE_SESSION_ONLINE,
     });
     const spyIsAuthenticated = jest
-      .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+      .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
     const spyOnPostLogout = jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
@@ -106,8 +106,9 @@ describe("StartLoopAuthSessionCheckService", () => {
   it("should not send logout event if the authentication status cannot be determined, and retry on the next alarm", async () => {
     expect.assertions(4);
 
+    jest.spyOn(ServerStatusApiService.prototype, "find").mockImplementationOnce(() => true);
     const spyIsAuthenticated = jest
-      .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+      .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
       .mockRejectedValue(new PassboltBadResponseError());
     const spyOnPostLogout = jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 

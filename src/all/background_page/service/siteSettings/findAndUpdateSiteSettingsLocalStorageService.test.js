@@ -49,7 +49,7 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
@@ -65,7 +65,7 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
@@ -79,7 +79,7 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
 
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
@@ -113,7 +113,7 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(4);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       const apiSpy = jest
@@ -135,7 +135,7 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
     it("propagates API errors and leaves both caches untouched", async () => {
       expect.assertions(4);
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockRejectedValue(new Error("API down"));

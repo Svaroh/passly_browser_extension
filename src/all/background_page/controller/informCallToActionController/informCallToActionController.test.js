@@ -85,29 +85,27 @@ describe("InformCallToActionController", () => {
     beforeEach(() => {
       jest.spyOn(port, "emit");
       jest
-        .spyOn(controller.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(controller.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue({ isAuthenticated: true, isMfaRequired: false });
     });
 
     it("Should open quick access when user is not authenticated", async () => {
-      expect.assertions(4);
+      expect.assertions(3);
 
-      jest.spyOn(controller.checkAuthStatusService, "checkAuthStatus").mockResolvedValue({ isAuthenticated: false });
+      jest.spyOn(controller.getOrFindActiveSessionService, "getOrFind").mockResolvedValue({ isAuthenticated: false });
       jest.spyOn(QuickAccessService, "open").mockResolvedValue();
 
       await controller.execute(requestId);
 
-      expect(controller.checkAuthStatusService.checkAuthStatus).toHaveBeenCalledTimes(1);
-      expect(controller.checkAuthStatusService.checkAuthStatus).toHaveBeenCalledWith(false);
-
+      expect(controller.getOrFindActiveSessionService.getOrFind).toHaveBeenCalledTimes(1);
       expect(QuickAccessService.open).toHaveBeenCalledWith([{ name: "feature", value: "login" }]);
       expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS");
     });
 
     it("Should open trusted domain tab when MFA is required", async () => {
-      expect.assertions(4);
+      expect.assertions(3);
 
-      jest.spyOn(controller.checkAuthStatusService, "checkAuthStatus").mockResolvedValue({
+      jest.spyOn(controller.getOrFindActiveSessionService, "getOrFind").mockResolvedValue({
         isAuthenticated: true,
         isMfaRequired: true,
       });
@@ -115,20 +113,18 @@ describe("InformCallToActionController", () => {
 
       await controller.execute(requestId);
 
-      expect(controller.checkAuthStatusService.checkAuthStatus).toHaveBeenCalledTimes(1);
-      expect(controller.checkAuthStatusService.checkAuthStatus).toHaveBeenCalledWith(false);
-
+      expect(controller.getOrFindActiveSessionService.getOrFind).toHaveBeenCalledTimes(1);
       expect(controller.openTrustedDomainTabService.openTab).toHaveBeenCalledTimes(1);
       expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS");
     });
 
     it("Should open in-form menu from web integration worker when fully authenticated", async () => {
-      expect.assertions(4);
+      expect.assertions(3);
 
-      jest.spyOn(controller.checkAuthStatusService, "checkAuthStatus").mockResolvedValue(
+      jest.spyOn(controller.getOrFindActiveSessionService, "getOrFind").mockResolvedValue(
         new UserActiveSessionEntity({
           is_authenticated: true,
-          is_mfa_authenticated: true,
+          is_mfa_required: false,
           type: USER_ACTIVE_SESSION_ONLINE,
         }),
       );
@@ -136,18 +132,16 @@ describe("InformCallToActionController", () => {
 
       await controller.execute(requestId);
 
-      expect(controller.checkAuthStatusService.checkAuthStatus).toHaveBeenCalledTimes(1);
-      expect(controller.checkAuthStatusService.checkAuthStatus).toHaveBeenCalledWith(false);
-
+      expect(controller.getOrFindActiveSessionService.getOrFind).toHaveBeenCalledTimes(1);
       expect(WorkerService.get).toHaveBeenCalledWith("WebIntegration", worker.tab.id);
       expect(port.emit).toHaveBeenCalledWith("passbolt.in-form-menu.open");
     });
 
-    it("Should catch and emit ERROR when an error occurs in checkAuthStatusService", async () => {
+    it("Should catch and emit ERROR when an error occurs in getOrFindActiveSessionService", async () => {
       expect.assertions(1);
 
       const error = new Error();
-      jest.spyOn(controller.checkAuthStatusService, "checkAuthStatus").mockRejectedValue(error);
+      jest.spyOn(controller.getOrFindActiveSessionService, "getOrFind").mockRejectedValue(error);
 
       await controller.execute(requestId);
 
@@ -159,7 +153,7 @@ describe("InformCallToActionController", () => {
 
       const error = new Error();
       jest
-        .spyOn(controller.checkAuthStatusService, "checkAuthStatus")
+        .spyOn(controller.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
       jest.spyOn(QuickAccessService, "open").mockRejectedValue(error);
 
@@ -172,10 +166,10 @@ describe("InformCallToActionController", () => {
       expect.assertions(1);
 
       const error = new Error();
-      jest.spyOn(controller.checkAuthStatusService, "checkAuthStatus").mockResolvedValue(
+      jest.spyOn(controller.getOrFindActiveSessionService, "getOrFind").mockResolvedValue(
         new UserActiveSessionEntity({
           is_authenticated: true,
-          is_mfa_authenticated: false,
+          is_mfa_required: true,
           type: USER_ACTIVE_SESSION_ONLINE,
         }),
       );
@@ -190,10 +184,10 @@ describe("InformCallToActionController", () => {
       expect.assertions(1);
 
       const error = new Error();
-      jest.spyOn(controller.checkAuthStatusService, "checkAuthStatus").mockResolvedValue(
+      jest.spyOn(controller.getOrFindActiveSessionService, "getOrFind").mockResolvedValue(
         new UserActiveSessionEntity({
           is_authenticated: true,
-          is_mfa_authenticated: true,
+          is_mfa_required: false,
           type: USER_ACTIVE_SESSION_ONLINE,
         }),
       );

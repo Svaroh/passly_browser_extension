@@ -115,7 +115,7 @@ describe("ActiveSessionLocalStorage", () => {
 
       const resultPromise1 = storage.set(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
       const onlineSessionUpdated = defaultUserActiveSessionDto({
-        is_mfa_authenticated: false,
+        is_mfa_required: true,
         last_logged_in: "2022-05-05T12:41:45.000Z",
       });
       const resultPromise2 = storage.set(new UserActiveSessionEntity(onlineSessionUpdated));

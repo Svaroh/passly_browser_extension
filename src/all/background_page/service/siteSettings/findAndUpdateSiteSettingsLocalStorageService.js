@@ -15,7 +15,7 @@ import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/sit
 import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
 import FindSiteSettingsService from "./findSiteSettingsService";
 import SiteSettingsRuntimeCache from "./siteSettingsRuntimeCache";
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 const FIND_AND_UPDATE_SITE_SETTINGS_LS_LOCK_PREFIX = "FIND_AND_UPDATE_SITE_SETTINGS_LS_LOCK-";
 
@@ -36,7 +36,7 @@ export default class FindAndUpdateSiteSettingsLocalStorageService {
     this.account = account;
     this.findSiteSettingsService = new FindSiteSettingsService(apiClientOptions);
     this.siteSettingsLocalStorage = new SiteSettingsLocalStorage(account);
-    this.checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
   }
 
   /**
@@ -60,16 +60,10 @@ export default class FindAndUpdateSiteSettingsLocalStorageService {
 
       // Authenticated sessions persist to SiteSettingsLocalStorage (the offline-mode store);
       // Anonymous sessions only get the in-memory runtime cache below.
-      try {
-        const activeSession = await this.checkAuthStatusService.checkAuthStatus();
-        if (activeSession.isAuthenticated) {
-          await this.siteSettingsLocalStorage.set(siteSettings);
-        }
-      } catch (error) {
-        // An error occured while checking the auth status
-        console.error(error);
+      const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+      if (activeSession.isAuthenticated) {
+        await this.siteSettingsLocalStorage.set(siteSettings);
       }
-
       /*
        * PB-53134:
        * Set a cache of site setting without account id as a key to get the cache in AppEmailValidatorService

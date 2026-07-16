@@ -17,7 +17,6 @@ import PagemodManager from "../../pagemod/pagemodManager";
 import WebNavigationService from "../../service/webNavigation/webNavigationService";
 import ParseSetupUrlService from "../../service/setup/parseSetupUrlService";
 import ParseRecoverUrlService from "../../service/recover/parseRecoverUrlService";
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
 import User from "../../model/user";
 import Log from "../../model/log";
 import { BrowserExtensionIconService } from "../../service/ui/browserExtensionIcon.service";
@@ -27,6 +26,7 @@ import AuthModel from "../../model/auth/authModel";
 import AppBootstrapPagemod from "../../pagemod/appBootstrapPagemod";
 import GetActiveAccountService from "../../service/account/getActiveAccountService";
 import BuildApiClientOptionsService from "../../service/account/buildApiClientOptionsService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
 class OnExtensionInstalledController {
   /**
@@ -87,13 +87,13 @@ class OnExtensionInstalledController {
     if (!user.isValid()) {
       return;
     }
-    let authStatus;
+    let activeSessionEntity;
     try {
       const account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-      const checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
       // use the cached data as the worker could wake up every 30 secondes.
-      authStatus = await checkAuthStatusService.checkAuthStatus(false);
+      activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...
@@ -104,7 +104,7 @@ class OnExtensionInstalledController {
       return;
     }
     // Do nothing if user is not authenticated
-    if (!authStatus.isAuthenticated) {
+    if (!activeSessionEntity.isAuthenticated) {
       return;
     }
     // Logout authenticated user to prevent to ask passphrase for SSO users
@@ -132,13 +132,13 @@ class OnExtensionInstalledController {
       return;
     }
 
-    let authStatus;
+    let activeSessionEntity;
     try {
       const account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-      const checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
       // use the cached data as the worker could wake up every 30 secondes.
-      authStatus = await checkAuthStatusService.checkAuthStatus(false);
+      activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...
@@ -149,7 +149,7 @@ class OnExtensionInstalledController {
       return;
     }
 
-    if (authStatus.isAuthenticated) {
+    if (activeSessionEntity.isAuthenticated) {
       BrowserExtensionIconService.activate();
     } else {
       BrowserExtensionIconService.deactivate();

@@ -40,11 +40,12 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.flush();
   });
 
-  describe("::findAndUpdateAll", () => {
+  describe("::findAndUpdateAuthenticationStatus", () => {
     it("If no active session create a new one and store it into the local storage.", async () => {
       expect.assertions(3);
       const userActiveSession = {
         is_authenticated: false,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -53,7 +54,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
         .mockImplementation(() => true);
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       expect(entity.toDto()).toEqual(userActiveSession);
       const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
@@ -67,6 +68,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: true,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -79,7 +81,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
       expectedEntity.isServerReachable = false;
@@ -98,6 +100,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: true,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -112,10 +115,10 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
         .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
         .mockImplementationOnce(() => true);
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
-      expectedEntity.isMfaAuthenticated = true;
+      expectedEntity.isMfaRequired = false;
       expect(entity).toEqual(expectedEntity);
       const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
       expect(storageValue).toEqual(expectedEntity.toDto());
@@ -131,7 +134,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: true,
-        is_mfa_authenticated: true,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -146,7 +149,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
         .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
         .mockImplementationOnce(() => false);
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
       expectedEntity.isAuthenticated = false;
@@ -165,7 +168,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: true,
-        is_mfa_authenticated: true,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -182,10 +185,10 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
           throw new MfaAuthenticationRequiredError();
         });
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
-      expectedEntity.isMfaAuthenticated = false;
+      expectedEntity.isMfaRequired = true;
       expect(entity).toEqual(expectedEntity);
       const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
       expect(storageValue).toEqual(expectedEntity.toDto());
@@ -201,6 +204,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: true,
+        is_mfa_required: false,
         is_server_reachable: false,
         type: USER_ACTIVE_SESSION_OFFLINE,
       };
@@ -213,7 +217,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
       expectedEntity.isServerReachable = true;
@@ -232,6 +236,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: true,
+        is_mfa_required: false,
         is_server_reachable: false,
         type: USER_ACTIVE_SESSION_OFFLINE,
       };
@@ -244,7 +249,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
       expect(entity).toEqual(expectedEntity);
@@ -262,6 +267,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: false,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -274,7 +280,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
       expectedEntity.isServerReachable = false;
@@ -294,6 +300,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect.assertions(4);
       const userActiveSession = {
         is_authenticated: false,
+        is_mfa_required: false,
         is_server_reachable: true,
         type: USER_ACTIVE_SESSION_ONLINE,
       };
@@ -304,9 +311,11 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
         .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
         .mockImplementationOnce(() => userActiveSession);
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
-      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+        .mockImplementationOnce(() => false);
 
-      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+      const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
       const expectedEntity = new UserActiveSessionEntity(userActiveSession);
       expect(entity).toEqual(expectedEntity);
@@ -314,7 +323,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect(storageValue).toEqual(expectedEntity.toDto());
       expect(
         findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
-      ).not.toHaveBeenCalled();
+      ).toHaveBeenCalledTimes(1);
       expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
         expectedEntity,
       );
@@ -325,6 +334,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     expect.assertions(4);
     const userActiveSession = {
       is_authenticated: false,
+      is_mfa_required: false,
       is_server_reachable: false,
       type: USER_ACTIVE_SESSION_OFFLINE,
     };
@@ -335,9 +345,11 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
       .mockImplementationOnce(() => userActiveSession);
     jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
-    jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+    jest
+      .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
+      .mockImplementationOnce(() => false);
 
-    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
     const expectedEntity = new UserActiveSessionEntity(userActiveSession);
     expectedEntity.isServerReachable = true;
@@ -347,7 +359,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     expect(storageValue).toEqual(expectedEntity.toDto());
     expect(
       findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledTimes(1);
     expect(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.set).toHaveBeenCalledWith(
       expectedEntity,
     );
@@ -357,6 +369,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     expect.assertions(4);
     const userActiveSession = {
       is_authenticated: false,
+      is_mfa_required: false,
       is_server_reachable: false,
       type: USER_ACTIVE_SESSION_OFFLINE,
     };
@@ -369,7 +382,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
     jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
     const expectedEntity = new UserActiveSessionEntity(userActiveSession);
     expect(entity).toEqual(expectedEntity);
@@ -399,10 +412,11 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     jest.spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "set");
     jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
-    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
     const expectedEntity = new UserActiveSessionEntity({
       is_authenticated: false,
+      is_mfa_required: false,
       is_server_reachable: false,
       type: USER_ACTIVE_SESSION_OFFLINE,
     });
@@ -422,6 +436,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     const userActiveSession = {
       is_authenticated: "false",
       is_server_reachable: true,
+      is_mfa_required: false,
       type: USER_ACTIVE_SESSION_ONLINE,
     };
     jest
@@ -435,11 +450,11 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       .spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated")
       .mockImplementationOnce(() => true);
 
-    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
     const expectedEntity = new UserActiveSessionEntity({
       is_authenticated: true,
-      is_mfa_authenticated: true,
+      is_mfa_required: false,
       is_server_reachable: true,
       type: USER_ACTIVE_SESSION_ONLINE,
     });
@@ -458,6 +473,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     expect.assertions(4);
     const userActiveSession = {
       is_authenticated: true,
+      is_mfa_required: false,
       is_server_reachable: true,
       type: USER_ACTIVE_SESSION_ONLINE,
     };
@@ -474,7 +490,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
         throw new Error();
       });
 
-    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAll();
+    const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
     const expectedEntity = new UserActiveSessionEntity(userActiveSession);
     expectedEntity.isServerReachable = false;

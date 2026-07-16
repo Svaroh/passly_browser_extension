@@ -37,11 +37,13 @@ describe("GetOrFindActiveSessionService", () => {
     it("fetches from the API the server status and initializes the local storage with a user active session.", async () => {
       expect.assertions(3);
       jest.spyOn(FindServerStatusService.prototype, "find").mockImplementation(() => true);
-      jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAll");
+      jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus");
 
       const userActiveSessionEntity = await service.getOrFind();
 
-      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.findAndUpdateAll).toHaveBeenCalledTimes(1);
+      expect(
+        FindAndUpdateActiveSessionLocalStorageService.prototype.findAndUpdateAuthenticationStatus,
+      ).toHaveBeenCalledTimes(1);
       expect(userActiveSessionEntity).toBeInstanceOf(UserActiveSessionEntity);
       expect(await service.activeSessionLocalStorage.get()).toEqual(userActiveSessionEntity.toDto());
     });
@@ -50,11 +52,13 @@ describe("GetOrFindActiveSessionService", () => {
       expect.assertions(3);
       jest.spyOn(FindServerStatusService.prototype, "find").mockImplementation(() => true);
       jest.spyOn(service.activeSessionLocalStorage, "get").mockImplementationOnce(() => {});
-      jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAll");
+      jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus");
 
       const userActiveSessionEntity = await service.getOrFind();
 
-      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.findAndUpdateAll).toHaveBeenCalledTimes(1);
+      expect(
+        FindAndUpdateActiveSessionLocalStorageService.prototype.findAndUpdateAuthenticationStatus,
+      ).toHaveBeenCalledTimes(1);
       expect(userActiveSessionEntity).toBeInstanceOf(UserActiveSessionEntity);
       expect(await service.activeSessionLocalStorage.get()).toEqual(userActiveSessionEntity.toDto());
     });
