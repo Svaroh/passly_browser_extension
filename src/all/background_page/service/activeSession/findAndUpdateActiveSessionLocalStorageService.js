@@ -51,7 +51,7 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
    * @returns {Promise<UserActiveSessionEntity>}
    */
   async findAndUpdateAuthenticationStatus() {
-    const lockKey = `${FIND_AND_UPDATE_ACTIVE_SESSION_LS_LOCK_PREFIX}${this.account.id}`;
+    const lockKey = this._lockKey;
 
     // If no update is in progress, refresh the session storage.
     return await navigator.locks.request(lockKey, { ifAvailable: true }, async (lock) => {
@@ -87,6 +87,15 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
       await this.activeSessionLocalStorage.set(userActiveSessionEntity);
       return userActiveSessionEntity;
     });
+  }
+
+  /**
+   * The lock key serializing all active session writes for this account.
+   * @return {string}
+   * @private
+   */
+  get _lockKey() {
+    return `${FIND_AND_UPDATE_ACTIVE_SESSION_LS_LOCK_PREFIX}${this.account.id}`;
   }
 
   /**
@@ -146,5 +155,44 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
     if (userActiveSessionEntity.isSessionOnline && userActiveSessionEntity.isServerReachable) {
       await this._updateAuthenticationStatus(userActiveSessionEntity);
     }
+  }
+
+  /**
+   * Persist a safe, unauthenticated default active session. Used as the fail-safe when a transition
+   * errors, so the user is never blocked in an inconsistent state.
+   * @return {Promise<void>}
+   * @private
+   */
+  async _persistSafeDefaultSession() {
+    const userActiveSessionEntity = await this._createDefaultUserActiveSession();
+    await this.activeSessionLocalStorage.set(userActiveSessionEntity);
+  }
+
+  /**
+   * Offline session expiry transition: reset the authentication flags in place. The storage is NOT flushed so
+   * durable fields (last_seen_online, last_logged_in) survive.
+   * On any error, fail safe to an unauthenticated session so the user is never blocked in an
+   * inconsistent state.
+   * @return {Promise<void>}
+   */
+  async resetAuthentication() {
+    const lockKey = this._lockKey;
+
+    return await navigator.locks.request(lockKey, async () => {
+      try {
+        const storedSession = await this.activeSessionLocalStorage.get();
+        if (!storedSession) {
+          // Nothing to reset; the read path will rebuild a default on the next getOrFind.
+          return null;
+        }
+        const userActiveSessionEntity = new UserActiveSessionEntity(storedSession);
+        userActiveSessionEntity.isAuthenticated = false;
+        userActiveSessionEntity.isMfaRequired = false;
+        await this.activeSessionLocalStorage.set(userActiveSessionEntity);
+      } catch (error) {
+        console.error(error);
+        await this._persistSafeDefaultSession();
+      }
+    });
   }
 }
