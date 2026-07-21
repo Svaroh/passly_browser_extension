@@ -477,9 +477,7 @@ describe("ResourceCreateService", () => {
       });
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [resourceDto]);
       jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
-      jest
-        .spyOn(FindFoldersService.prototype, "findByIdWithPermissions")
-        ;
+      jest.spyOn(FindFoldersService.prototype, "findByIdWithPermissions");
       jest.spyOn(ShareApiService.prototype, "shareResource");
 
       await resourceCreateService.create(resourceDto, plaintextDto, pgpKeys.ada.passphrase);
