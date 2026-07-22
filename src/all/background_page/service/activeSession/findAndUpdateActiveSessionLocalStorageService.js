@@ -176,9 +176,7 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
    * @return {Promise<void>}
    */
   async resetAuthentication() {
-    const lockKey = this._lockKey;
-
-    return await navigator.locks.request(lockKey, async () => {
+    return await navigator.locks.request(this._lockKey, async () => {
       try {
         const storedSession = await this.activeSessionLocalStorage.get();
         if (!storedSession) {
