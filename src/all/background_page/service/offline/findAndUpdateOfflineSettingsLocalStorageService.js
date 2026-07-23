@@ -14,7 +14,7 @@
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
 import FindOfflineSettingsService from "./findOfflineSettingsService";
-import OrganizationSettingsModel from "../../model/organizationSettings/organizationSettingsModel";
+import GetOrFindSiteSettingsService from "../siteSettings/getOrFindSiteSettingsService";
 
 const FIND_AND_UPDATE_OFFLINE_SETTINGS_LS_LOCK_PREFIX = "FIND_AND_UPDATE_OFFLINE_SETTINGS_LS_LOCK-";
 
@@ -32,7 +32,7 @@ export default class FindAndUpdateOfflineSettingsLocalStorageService {
     this.account = account;
     this.findOfflineSettingsService = new FindOfflineSettingsService(apiClientOptions);
     this.offlineSettingsLocalStorage = new OfflineSettingsLocalStorage(account);
-    this.organisationSettingsModel = new OrganizationSettingsModel(apiClientOptions);
+    this.getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(account, apiClientOptions);
   }
 
   /**
@@ -54,8 +54,8 @@ export default class FindAndUpdateOfflineSettingsLocalStorageService {
       }
 
       // Lock is granted. Skip the API call if the offline plugin is not enabled.
-      const organizationSettings = await this.organisationSettingsModel.getOrFind();
-      if (!organizationSettings.isPluginEnabled("offlineMode")) {
+      const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+      if (!siteSettings.isPluginEnabled("offlineMode")) {
         return null;
       }
 

@@ -383,6 +383,70 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     });
   });
 
+  describe("::authenticateOffline", () => {
+    it("creates an offline authenticated session when none exists", async () => {
+      expect.assertions(3);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      await findAndUpdateActiveSessionLocalStorageService.authenticateOffline();
+
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue.is_authenticated).toBe(true);
+      expect(storageValue.type).toBe(USER_ACTIVE_SESSION_OFFLINE);
+      expect(findAndUpdateActiveSessionLocalStorageService.findServerStatusService.find).not.toHaveBeenCalled();
+    });
+
+    it("asserts offline authenticated while preserving durable fields of the stored session", async () => {
+      expect.assertions(6);
+      const existing = {
+        is_authenticated: false,
+        is_mfa_required: false,
+        is_server_reachable: false,
+        type: USER_ACTIVE_SESSION_ONLINE,
+        last_seen_online: "2025-08-06T10:05:46+00:00",
+        last_logged_in: "2025-08-06T09:00:00+00:00",
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => existing);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      await findAndUpdateActiveSessionLocalStorageService.authenticateOffline();
+
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue.is_authenticated).toBe(true);
+      expect(storageValue.type).toBe(USER_ACTIVE_SESSION_OFFLINE);
+      expect(storageValue.last_seen_online).toBe("2025-08-06T10:05:46+00:00");
+      expect(storageValue.is_server_reachable).toBe(false);
+      expect(storageValue.last_logged_in).toBe("2025-08-06T09:00:00+00:00");
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("fails safe to a minimal authenticated offline session when the write errors, so the user stays signed in offline", async () => {
+      expect.assertions(2);
+      const corrupt = {
+        is_authenticated: false,
+        type: USER_ACTIVE_SESSION_ONLINE,
+        is_server_reachable: "not-a-boolean",
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => corrupt);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => false);
+
+      await findAndUpdateActiveSessionLocalStorageService.authenticateOffline();
+
+      const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(storageValue.is_authenticated).toBe(true);
+      expect(storageValue.type).toBe(USER_ACTIVE_SESSION_OFFLINE);
+    });
+  });
+
   it("User having offline not authenticated active session and server become reachable, active session become online and store it into the local storage.", async () => {
     expect.assertions(4);
     const userActiveSession = {

@@ -20,6 +20,7 @@ import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import { enableFetchMocks } from "jest-fetch-mock";
+import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
 
 beforeEach(() => {
   enableFetchMocks();
@@ -50,10 +51,10 @@ describe("GetOrFindOfflineSettingsController", () => {
       jest
         .spyOn(
           controller.getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService
-            .organisationSettingsModel.organizationSettingsService,
-          "find",
+            .getOrFindSiteSettingsService,
+          "getOrFind",
         )
-        .mockImplementation(() => offlinePluginEnabledSiteSettings());
+        .mockImplementation(() => new SiteSettingsEntity(offlinePluginEnabledSiteSettings()));
 
       const result = await controller.exec();
 
@@ -96,10 +97,10 @@ describe("GetOrFindOfflineSettingsController", () => {
       jest
         .spyOn(
           controller.getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService
-            .organisationSettingsModel.organizationSettingsService,
-          "find",
+            .getOrFindSiteSettingsService,
+          "getOrFind",
         )
-        .mockImplementation(() => offlinePluginEnabledSiteSettings());
+        .mockImplementation(() => new SiteSettingsEntity(offlinePluginEnabledSiteSettings()));
 
       const result = await controller.exec();
 

@@ -19,6 +19,7 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import GetOrFindOfflineSettingsService from "./getOrFindOfflineSettingsService";
+import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -47,11 +48,10 @@ describe("GetOrFindOfflineSettingsService", () => {
         .mockImplementation(() => ({ body: offlineSettingsDto }));
       jest
         .spyOn(
-          getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.organisationSettingsModel
-            .organizationSettingsService,
-          "find",
+          getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.getOrFindSiteSettingsService,
+          "getOrFind",
         )
-        .mockImplementation(() => offlinePluginEnabledSiteSettings());
+        .mockImplementation(() => new SiteSettingsEntity(offlinePluginEnabledSiteSettings()));
 
       // Control initial storage value.
       const initialStorageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
@@ -96,11 +96,10 @@ describe("GetOrFindOfflineSettingsService", () => {
         .mockImplementation(() => ({ body: {} }));
       jest
         .spyOn(
-          getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.organisationSettingsModel
-            .organizationSettingsService,
-          "find",
+          getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.getOrFindSiteSettingsService,
+          "getOrFind",
         )
-        .mockImplementation(() => offlinePluginEnabledSiteSettings());
+        .mockImplementation(() => new SiteSettingsEntity(offlinePluginEnabledSiteSettings()));
 
       const entity = await getOrFindOfflineSettingsService.getOrFind();
 
