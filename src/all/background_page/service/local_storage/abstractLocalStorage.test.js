@@ -107,6 +107,42 @@ describe("AbstractLocalStorage", () => {
     });
   });
 
+  describe("::isStaleSinceLastLoggedIn", () => {
+    it("returns false when no login date is provided.", async () => {
+      expect.assertions(1);
+      browser.storage.local.set({ [storage.storageMetadataKey]: { last_updated: "2025-08-06T09:00:00+00:00" } });
+      const result = await storage.isStaleSinceLastLoggedIn(undefined);
+      expect(result).toBe(false);
+    });
+
+    it("returns true when data has no metadata date.", async () => {
+      expect.assertions(1);
+      const result = await storage.isStaleSinceLastLoggedIn("2025-08-06T09:00:00+00:00");
+      expect(result).toBe(true);
+    });
+
+    it("returns true when the login date is more recent than the last updated date.", async () => {
+      expect.assertions(1);
+      browser.storage.local.set({ [storage.storageMetadataKey]: { last_updated: "2025-08-06T09:00:00+00:00" } });
+      const result = await storage.isStaleSinceLastLoggedIn("2025-08-06T10:00:00+00:00");
+      expect(result).toBe(true);
+    });
+
+    it("returns false when the login date is older than the last updated date.", async () => {
+      expect.assertions(1);
+      browser.storage.local.set({ [storage.storageMetadataKey]: { last_updated: "2025-08-06T10:00:00+00:00" } });
+      const result = await storage.isStaleSinceLastLoggedIn("2025-08-06T09:00:00+00:00");
+      expect(result).toBe(false);
+    });
+
+    it("returns false when the login date equals the last updated date.", async () => {
+      expect.assertions(1);
+      browser.storage.local.set({ [storage.storageMetadataKey]: { last_updated: "2025-08-06T09:00:00+00:00" } });
+      const result = await storage.isStaleSinceLastLoggedIn("2025-08-06T09:00:00+00:00");
+      expect(result).toBe(false);
+    });
+  });
+
   describe("::setMetadata", () => {
     it("stores content in the local storage.", async () => {
       expect.assertions(3);
