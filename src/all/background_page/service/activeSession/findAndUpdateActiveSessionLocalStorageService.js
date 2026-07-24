@@ -195,6 +195,38 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
   }
 
   /**
+   * Online login transition: find-or-create the active session, assert it authenticated + online, stamp
+   * the login date, then persist it.
+   * @return {Promise<void>}
+   */
+  async authenticateOnline() {
+    const lockKey = this._lockKey;
+
+    return await navigator.locks.request(lockKey, async () => {
+      const lastLoggedIn = new Date().toISOString();
+      try {
+        const storedSession = await this.activeSessionLocalStorage.get();
+        const userActiveSessionEntity = new UserActiveSessionEntity({
+          ...storedSession,
+          is_authenticated: true,
+          type: USER_ACTIVE_SESSION_ONLINE,
+          last_logged_in: lastLoggedIn,
+        });
+        await this.activeSessionLocalStorage.set(userActiveSessionEntity);
+      } catch (error) {
+        console.error(error);
+        // In case of failure, keep the user signed in online.
+        const userActiveSessionEntity = new UserActiveSessionEntity({
+          is_authenticated: true,
+          type: USER_ACTIVE_SESSION_ONLINE,
+          last_logged_in: lastLoggedIn,
+        });
+        await this.activeSessionLocalStorage.set(userActiveSessionEntity);
+      }
+    });
+  }
+
+  /**
    * Offline login transition: find-or-create the active session, assert it authenticated + offline, then
    * persist it.
    * @return {Promise<void>}

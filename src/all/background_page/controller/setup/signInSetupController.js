@@ -87,7 +87,7 @@ class SignInSetupController {
     } else {
       await PassphraseStorageService.set(temporaryAccount.passphrase, 60);
     }
-    await PostLoginService.exec();
+    await PostLoginService.exec(temporaryAccount.account, this.apiClientOptions);
     // Clear all data in the temporary account session storage
     await AccountTemporarySessionStorageService.remove();
   }
