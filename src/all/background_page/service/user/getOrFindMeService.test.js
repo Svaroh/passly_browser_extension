@@ -22,6 +22,17 @@ import UserEntity from "../../model/entity/user/userEntity";
 import GetOrFindSiteSettingsService from "../siteSettings/getOrFindSiteSettingsService";
 import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
 import { defaultCeSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_OFFLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import LocalStorageMetadataEntity from "../../model/entity/localStorage/localStorageMetadataEntity";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+
+const mockActiveSession = (data) =>
+  jest
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+    .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto(data)));
 
 describe("GetOrFindMeService", () => {
   let service, account, storage;
@@ -60,6 +71,52 @@ describe("GetOrFindMeService", () => {
 
       expect(service.userApiService.get).toHaveBeenCalledTimes(1);
       expect(result).toStrictEqual(expected);
+    });
+
+    it("refreshes from the API when the online session logged in after the cache was written.", async () => {
+      expect.assertions(2);
+      await storage.setData(new UserEntity(defaultUserDto()));
+      await storage.setMetadata(new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }));
+      mockActiveSession({ last_logged_in: "2025-08-04T18:58:11+00:00" });
+      const expected = new UserEntity(defaultUserDto());
+      jest.spyOn(service.userApiService, "get").mockImplementation(() => expected);
+
+      const result = await service.getOrFindMe();
+
+      expect(service.userApiService.get).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual(expected);
+    });
+
+    it("returns the cache when the online session logged in before the cache was written.", async () => {
+      expect.assertions(2);
+      const usersDto = defaultUserDto();
+      await storage.setData(new UserEntity(usersDto));
+      await storage.setMetadata(new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }));
+      mockActiveSession({ last_logged_in: "2025-08-01T00:00:00+00:00" });
+      jest.spyOn(service.userApiService, "get");
+
+      const result = await service.getOrFindMe();
+
+      expect(service.userApiService.get).not.toHaveBeenCalled();
+      expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(new UserEntity(usersDto).toDto(storage.DEFAULT_CONTAIN));
+    });
+
+    it("returns the cache for an offline session even when it logged in after the cache was written.", async () => {
+      expect.assertions(2);
+      const usersDto = defaultUserDto();
+      await storage.setData(new UserEntity(usersDto));
+      await storage.setMetadata(new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }));
+      mockActiveSession({
+        type: USER_ACTIVE_SESSION_OFFLINE,
+        is_server_reachable: false,
+        last_logged_in: "2025-08-04T18:58:11+00:00",
+      });
+      jest.spyOn(service.userApiService, "get");
+
+      const result = await service.getOrFindMe();
+
+      expect(service.userApiService.get).not.toHaveBeenCalled();
+      expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(new UserEntity(usersDto).toDto(storage.DEFAULT_CONTAIN));
     });
   });
 });
