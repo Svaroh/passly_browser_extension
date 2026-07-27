@@ -20,6 +20,17 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import GetOrFindOfflineSettingsService from "./getOrFindOfflineSettingsService";
 import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_OFFLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import LocalStorageMetadataEntity from "../../model/entity/localStorage/localStorageMetadataEntity";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+
+const mockActiveSession = (data) =>
+  jest
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+    .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto(data)));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -110,6 +121,72 @@ describe("GetOrFindOfflineSettingsService", () => {
       ).toHaveBeenCalledTimes(1);
       const storageValue = await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.getData();
       expect(storageValue).toBeUndefined();
+    });
+
+    it("refreshes from the API when the online session logged in after the cache was written.", async () => {
+      expect.assertions(2);
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
+        new OfflineSettingsEntity(defaultOfflineSettingsDto()),
+      );
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setMetadata(
+        new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }),
+      );
+      mockActiveSession({ last_logged_in: "2025-08-04T18:58:11+00:00" });
+      const expected = new OfflineSettingsEntity(defaultOfflineSettingsDto());
+      jest
+        .spyOn(getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate")
+        .mockResolvedValue(expected);
+
+      const entity = await getOrFindOfflineSettingsService.getOrFind();
+
+      expect(
+        getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate,
+      ).toHaveBeenCalledTimes(1);
+      expect(entity).toStrictEqual(expected);
+    });
+
+    it("returns the cache when the online session logged in before the cache was written.", async () => {
+      expect.assertions(2);
+      const offlineSettingsDto = defaultOfflineSettingsDto();
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
+        new OfflineSettingsEntity(offlineSettingsDto),
+      );
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setMetadata(
+        new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }),
+      );
+      mockActiveSession({ last_logged_in: "2025-08-01T00:00:00+00:00" });
+      jest.spyOn(getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate");
+
+      const entity = await getOrFindOfflineSettingsService.getOrFind();
+
+      expect(
+        getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate,
+      ).not.toHaveBeenCalled();
+      expect(entity.toDto()).toEqual(offlineSettingsDto);
+    });
+
+    it("returns the cache for an offline session even when it logged in after the cache was written.", async () => {
+      expect.assertions(2);
+      const offlineSettingsDto = defaultOfflineSettingsDto();
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
+        new OfflineSettingsEntity(offlineSettingsDto),
+      );
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setMetadata(
+        new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }),
+      );
+      mockActiveSession({
+        type: USER_ACTIVE_SESSION_OFFLINE,
+        is_server_reachable: false,
+        last_logged_in: "2025-08-04T18:58:11+00:00",
+      });
+      jest.spyOn(getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate");
+
+      const entity = await getOrFindOfflineSettingsService.getOrFind();
+
+      expect(
+        getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate,
+      ).not.toHaveBeenCalled();
+      expect(entity.toDto()).toEqual(offlineSettingsDto);
     });
   });
 });
