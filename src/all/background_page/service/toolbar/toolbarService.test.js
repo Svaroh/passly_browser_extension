@@ -48,6 +48,9 @@ describe("ToolbarService", () => {
     jest
       .spyOn(BrowserExtensionIconService, "setSuggestedResourcesCount")
       .mockImplementation(browserExtensionIconServiceSetCountMock);
+    // For an online session, GetOrFindResourceTypesService checks the cache staleness against the storage
+    // metadata; keep the mocked cache fresh so it is served without reading the storage.
+    jest.spyOn(ResourceTypeLocalStorage.prototype, "isStaleSinceLastLoggedIn").mockImplementation(() => false);
   });
 
   describe("handleUserLoggedIn", () => {
