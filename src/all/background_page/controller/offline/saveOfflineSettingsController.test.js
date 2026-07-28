@@ -17,13 +17,16 @@ import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
 import EntityValidationError from "passbolt-styleguide/src/shared/models/entity/abstract/entityValidationError";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("SaveOfflineSettingsController", () => {
-  let apiClientOptions, controller;
+  let apiClientOptions, account, controller;
 
   beforeEach(() => {
     apiClientOptions = defaultApiClientOptions();
-    controller = new SaveOfflineSettingsController(null, null, apiClientOptions);
+    account = new AccountEntity(defaultAccountDto());
+    controller = new SaveOfflineSettingsController(null, null, apiClientOptions, account);
   });
 
   describe("::exec", () => {

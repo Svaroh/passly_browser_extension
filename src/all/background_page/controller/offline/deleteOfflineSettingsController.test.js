@@ -15,13 +15,16 @@
 import DeleteOfflineSettingsController from "./deleteOfflineSettingsController";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { v4 as uuidv4 } from "uuid";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("DeleteOfflineSettingsController", () => {
-  let apiClientOptions, controller;
+  let apiClientOptions, account, controller;
 
   beforeEach(() => {
     apiClientOptions = defaultApiClientOptions();
-    controller = new DeleteOfflineSettingsController(null, null, apiClientOptions);
+    account = new AccountEntity(defaultAccountDto());
+    controller = new DeleteOfflineSettingsController(null, null, apiClientOptions, account);
   });
 
   describe("::exec", () => {

@@ -13,25 +13,30 @@
  */
 
 import OfflineSettingsApiService from "../api/offline/offlineSettingsApiService";
+import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
 import { assertUuid } from "../../utils/assertions";
 
 class DisableOfflineSettingsService {
   /**
    * @constructor
+   * @param {AccountEntity} account The user account
    * @param {ApiClientOptions} apiClientOptions The api client options
    */
-  constructor(apiClientOptions) {
+  constructor(account, apiClientOptions) {
     this.offlineSettingsApiService = new OfflineSettingsApiService(apiClientOptions);
+    this.offlineSettingsLocalStorage = new OfflineSettingsLocalStorage(account);
   }
 
   /**
-   * Disable offline settings by id
+   * Disable the offline settings by id and clear the local storage.
    * @param {string} id The offline settings uuid
    * @returns {Promise<PassboltResponseEntity>} The api response
    */
   async disable(id) {
     assertUuid(id);
-    return this.offlineSettingsApiService.delete(id);
+    const result = await this.offlineSettingsApiService.delete(id);
+    await this.offlineSettingsLocalStorage.flush();
+    return result;
   }
 }
 

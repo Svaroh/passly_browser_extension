@@ -21,11 +21,12 @@ class DeleteOfflineSettingsController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions the api client options
+   * @param {AccountEntity} account the user account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.disableOfflineSettingsService = new DisableOfflineSettingsService(apiClientOptions);
+    this.disableOfflineSettingsService = new DisableOfflineSettingsService(account, apiClientOptions);
   }
 
   /**

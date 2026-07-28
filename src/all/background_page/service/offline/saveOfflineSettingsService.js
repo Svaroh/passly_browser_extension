@@ -14,26 +14,31 @@
 
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import OfflineSettingsApiService from "../api/offline/offlineSettingsApiService";
+import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
 import { assertType } from "../../utils/assertions";
 
 class SaveOfflineSettingsService {
   /**
    * @constructor
+   * @param {AccountEntity} account The user account
    * @param {ApiClientOptions} apiClientOptions The api client options
    */
-  constructor(apiClientOptions) {
+  constructor(account, apiClientOptions) {
     this.offlineSettingsApiService = new OfflineSettingsApiService(apiClientOptions);
+    this.offlineSettingsLocalStorage = new OfflineSettingsLocalStorage(account);
   }
 
   /**
-   * Save offline settings
+   * Save the offline settings to the API and update the local storage with the latest version.
    * @param {OfflineSettingsEntity} offlineSettings The offline settings entity to save
    * @returns {Promise<OfflineSettingsEntity>} The saved offline settings entity
    */
   async save(offlineSettings) {
     assertType(offlineSettings, OfflineSettingsEntity);
     const result = await this.offlineSettingsApiService.save(offlineSettings);
-    return new OfflineSettingsEntity(result.body);
+    const savedOfflineSettings = new OfflineSettingsEntity(result.body);
+    await this.offlineSettingsLocalStorage.setData(savedOfflineSettings);
+    return savedOfflineSettings;
   }
 }
 

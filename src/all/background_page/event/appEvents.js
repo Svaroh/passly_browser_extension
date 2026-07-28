@@ -944,7 +944,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param offlineSettingsDto {Object} The offline settings dto
    */
   worker.port.on("passbolt.offline.save-settings", async (requestId, offlineSettingsDto) => {
-    const controller = new SaveOfflineSettingsController(worker, requestId, apiClientOptions);
+    const controller = new SaveOfflineSettingsController(worker, requestId, apiClientOptions, account);
     await controller._exec(offlineSettingsDto);
   });
 
@@ -956,7 +956,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param id {uuid} The offline settings id
    */
   worker.port.on("passbolt.offline.delete-settings", async (requestId, id) => {
-    const controller = new DeleteOfflineSettingsController(worker, requestId, apiClientOptions);
+    const controller = new DeleteOfflineSettingsController(worker, requestId, apiClientOptions, account);
     await controller._exec(id);
   });
 

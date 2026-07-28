@@ -20,33 +20,39 @@ import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/PassboltApiFetchError";
 import PassboltServiceUnavailableError from "passbolt-styleguide/src/shared/lib/Error/PassboltServiceUnavailableError";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("SaveOfflineSettingsService", () => {
-  let apiClientOptions;
+  let apiClientOptions, account;
 
   beforeEach(async () => {
     enableFetchMocks();
     fetch.resetMocks();
     apiClientOptions = defaultApiClientOptions();
+    account = new AccountEntity(defaultAccountDto());
   });
 
   describe("::save", () => {
-    it("successfully saves offline settings", async () => {
-      expect.assertions(2);
+    it("successfully saves offline settings and updates the local storage", async () => {
+      expect.assertions(3);
       const apiResponse = defaultOfflineSettingsDto();
       fetch.doMockOnceIf(/offline\/settings\.json/, () => mockApiResponse(apiResponse));
 
-      const service = new SaveOfflineSettingsService(apiClientOptions);
+      const service = new SaveOfflineSettingsService(account, apiClientOptions);
+      await service.offlineSettingsLocalStorage.flush();
       const offlineSettings = new OfflineSettingsEntity(defaultOfflineSettingsDto());
       const result = await service.save(offlineSettings);
 
       expect(result).toBeInstanceOf(OfflineSettingsEntity);
       expect(result).toEqual(new OfflineSettingsEntity(apiResponse));
+      const storageValue = await service.offlineSettingsLocalStorage.getData();
+      expect(storageValue).toEqual(apiResponse);
     });
 
     it("throws a TypeError if the parameter is not an OfflineSettingsEntity", async () => {
       expect.assertions(1);
-      const service = new SaveOfflineSettingsService(apiClientOptions);
+      const service = new SaveOfflineSettingsService(account, apiClientOptions);
 
       await expect(() => service.save({})).rejects.toThrow(TypeError);
     });
@@ -57,7 +63,7 @@ describe("SaveOfflineSettingsService", () => {
         throw new Error("Service unavailable");
       });
 
-      const service = new SaveOfflineSettingsService(apiClientOptions);
+      const service = new SaveOfflineSettingsService(account, apiClientOptions);
       const offlineSettings = new OfflineSettingsEntity(defaultOfflineSettingsDto());
 
       await expect(() => service.save(offlineSettings)).rejects.toThrow(PassboltServiceUnavailableError);
@@ -67,7 +73,7 @@ describe("SaveOfflineSettingsService", () => {
       expect.assertions(1);
       fetch.doMockOnceIf(/offline\/settings\.json/, () => mockApiResponseError(500, "Something wrong happened!"));
 
-      const service = new SaveOfflineSettingsService(apiClientOptions);
+      const service = new SaveOfflineSettingsService(account, apiClientOptions);
       const offlineSettings = new OfflineSettingsEntity(defaultOfflineSettingsDto());
 
       await expect(() => service.save(offlineSettings)).rejects.toThrow(PassboltApiFetchError);
