@@ -19,95 +19,224 @@ import {
 } from "passbolt-styleguide/src/shared/models/entity/rbac/rbacEntity.test.data";
 import { defaultActionData } from "passbolt-styleguide/src/shared/models/entity/rbac/actionEntity.test.data";
 import { actions } from "passbolt-styleguide/src/shared/services/rbacs/actionEnumeration";
+import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
+import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
+import {
+  defaultAdminUserDto,
+  defaultUserDto,
+} from "passbolt-styleguide/src/shared/models/entity/user/userEntity.test.data";
+import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
-import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
+import UserEntity from "../../model/entity/user/userEntity";
+import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
 import {
   defaultCeSiteSettings,
   offlinePluginEnabledSiteSettings,
 } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
+import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
+import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
+import UserMeLocalStorage from "../local_storage/userMeLocalStorage";
+import RbacsLocalStorage from "../local_storage/rbacLocalStorage";
 import CanUseOfflineStorageService from "./canUseOfflineStorageService";
 
-const allowOfflineAccessRbac = () =>
-  defaultRbacWithActionData({ action: defaultActionData({ name: actions.OFFLINE_ITEMS_VIEW }) });
+const allowOfflineAccessRbac = (data = {}) =>
+  defaultRbacWithActionData({ action: defaultActionData({ name: actions.OFFLINE_ITEMS_VIEW }), ...data });
 
-const denyOfflineAccessRbac = () =>
-  denyRbacWithActionData({ action: defaultActionData({ name: actions.OFFLINE_ITEMS_VIEW }) });
-
-const otherActionRbac = () => defaultRbacWithActionData({ action: defaultActionData({ name: "Resources.add" }) });
+const denyOfflineAccessRbac = (data = {}) =>
+  denyRbacWithActionData({ action: defaultActionData({ name: actions.OFFLINE_ITEMS_VIEW }), ...data });
 
 describe("CanUseOfflineStorageService", () => {
-  let canUseOfflineStorageService, account, apiClientOptions;
+  let account;
 
   beforeEach(() => {
     jest.clearAllMocks();
     account = new AccountEntity(defaultAccountDto());
-    apiClientOptions = defaultApiClientOptions();
-    canUseOfflineStorageService = new CanUseOfflineStorageService(account, apiClientOptions);
   });
 
-  const mockSettings = (siteSettingsDto) => {
-    jest
-      .spyOn(canUseOfflineStorageService.getOrFindSiteSettingsService, "getOrFind")
-      .mockResolvedValue(new SiteSettingsEntity(siteSettingsDto));
-  };
-
-  const mockRbacs = (rbacs) => {
-    jest.spyOn(canUseOfflineStorageService.getOrFindRbacService, "getOrFindMe").mockResolvedValue(rbacs);
-  };
-
   describe("::canUseOfflineStorage", () => {
-    it("returns false when the offline plugin is not enabled.", async () => {
-      expect.assertions(2);
-      mockSettings(defaultCeSiteSettings());
+    let canUseOfflineStorageService;
+
+    const mockSiteSettings = (siteSettingsDto) =>
+      jest
+        .spyOn(canUseOfflineStorageService.getOrFindSiteSettingsService, "getOrFind")
+        .mockResolvedValue(new SiteSettingsEntity(siteSettingsDto));
+
+    beforeEach(() => {
+      canUseOfflineStorageService = new CanUseOfflineStorageService(account, defaultApiClientOptions());
+      mockSiteSettings(offlinePluginEnabledSiteSettings());
+    });
+
+    const mockOfflineSettings = (offlineSettings) =>
+      jest
+        .spyOn(canUseOfflineStorageService.getOrFindOfflineSettingsService, "getOrFind")
+        .mockResolvedValue(offlineSettings);
+
+    const mockMe = (userDto) =>
+      jest
+        .spyOn(canUseOfflineStorageService.getOrFindMeService, "getOrFindMe")
+        .mockResolvedValue(new UserEntity(userDto));
+
+    const mockRbacs = (rbacs) =>
+      jest.spyOn(canUseOfflineStorageService.getOrFindRbacService, "getOrFindMe").mockResolvedValue(rbacs);
+
+    it("returns false when the offline mode plugin is not enabled, without consulting the offline settings.", async () => {
+      expect.assertions(4);
+      mockSiteSettings(defaultCeSiteSettings());
+      const offlineSettingsSpy = jest.spyOn(canUseOfflineStorageService.getOrFindOfflineSettingsService, "getOrFind");
+      const meSpy = jest.spyOn(canUseOfflineStorageService.getOrFindMeService, "getOrFindMe");
       const rbacsSpy = jest.spyOn(canUseOfflineStorageService.getOrFindRbacService, "getOrFindMe");
 
-      const result = await canUseOfflineStorageService.canUseOfflineStorage();
-
-      expect(result).toBe(false);
-      // Short-circuits before consulting RBAC.
+      expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(false);
+      // Short-circuits before consulting the offline settings, the user and its rbacs.
+      expect(offlineSettingsSpy).not.toHaveBeenCalled();
+      expect(meSpy).not.toHaveBeenCalled();
       expect(rbacsSpy).not.toHaveBeenCalled();
     });
 
-    it("returns false when the user has no RBAC for offline access.", async () => {
-      expect.assertions(1);
-      mockSettings(offlinePluginEnabledSiteSettings());
-      mockRbacs(new RbacsCollection([otherActionRbac()]));
+    it("returns false when the org has no offline settings, without resolving the user.", async () => {
+      expect.assertions(3);
+      mockOfflineSettings(null);
+      const meSpy = jest.spyOn(canUseOfflineStorageService.getOrFindMeService, "getOrFindMe");
+      const rbacsSpy = jest.spyOn(canUseOfflineStorageService.getOrFindRbacService, "getOrFindMe");
 
-      const result = await canUseOfflineStorageService.canUseOfflineStorage();
-
-      expect(result).toBe(false);
+      expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(false);
+      // Short-circuits before consulting the user and its rbacs.
+      expect(meSpy).not.toHaveBeenCalled();
+      expect(rbacsSpy).not.toHaveBeenCalled();
     });
 
-    it("returns false when the user's RBAC for offline access is DENY.", async () => {
-      expect.assertions(1);
-      mockSettings(offlinePluginEnabledSiteSettings());
-      mockRbacs(new RbacsCollection([denyOfflineAccessRbac()]));
+    it("returns true for an administrator, without retrieving the rbacs.", async () => {
+      expect.assertions(2);
+      mockOfflineSettings(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
+      mockMe(defaultAdminUserDto());
+      const rbacsSpy = jest.spyOn(canUseOfflineStorageService.getOrFindRbacService, "getOrFindMe");
 
-      const result = await canUseOfflineStorageService.canUseOfflineStorage();
-
-      expect(result).toBe(false);
+      expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(true);
+      expect(rbacsSpy).not.toHaveBeenCalled();
     });
 
-    it("returns false when the RBAC collection is empty.", async () => {
+    it("returns true when the offline settings are set and the user role is allowed.", async () => {
       expect.assertions(1);
-      mockSettings(offlinePluginEnabledSiteSettings());
-      mockRbacs(new RbacsCollection([]));
+      const userDto = defaultUserDto({}, { withRole: true });
+      mockOfflineSettings(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
+      mockMe(userDto);
+      mockRbacs(new RbacsCollection([allowOfflineAccessRbac({ role_id: userDto.role.id })]));
 
-      const result = await canUseOfflineStorageService.canUseOfflineStorage();
-
-      expect(result).toBe(false);
+      expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(true);
     });
 
-    it("returns true when the offline plugin is enabled and the user's RBAC for offline access is ALLOW.", async () => {
+    it("returns false when the offline settings are set but the user role is denied.", async () => {
       expect.assertions(1);
-      mockSettings(offlinePluginEnabledSiteSettings());
-      mockRbacs(new RbacsCollection([allowOfflineAccessRbac()]));
+      const userDto = defaultUserDto({}, { withRole: true });
+      mockOfflineSettings(new OfflineSettingsEntity(defaultOfflineSettingsDto()));
+      mockMe(userDto);
+      mockRbacs(new RbacsCollection([denyOfflineAccessRbac({ role_id: userDto.role.id })]));
 
-      const result = await canUseOfflineStorageService.canUseOfflineStorage();
+      expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(false);
+    });
+  });
 
-      expect(result).toBe(true);
+  describe("::canUseOfflineStorageFromLocalStorage", () => {
+    const mockStorages = ({ offlineSettings, user, rbacs, ...storages }) => {
+      const siteSettings = "siteSettings" in storages ? storages.siteSettings : offlinePluginEnabledSiteSettings();
+      jest.spyOn(SiteSettingsLocalStorage.prototype, "get").mockResolvedValue(siteSettings);
+      jest.spyOn(OfflineSettingsLocalStorage.prototype, "getData").mockResolvedValue(offlineSettings);
+      jest.spyOn(UserMeLocalStorage.prototype, "getData").mockResolvedValue(user);
+      jest.spyOn(RbacsLocalStorage.prototype, "getData").mockResolvedValue(rbacs);
+    };
+
+    it("returns false when the site settings storage is empty, without reading the other storages.", async () => {
+      expect.assertions(4);
+      mockStorages({
+        siteSettings: undefined,
+        offlineSettings: defaultOfflineSettingsDto(),
+        user: defaultAdminUserDto(),
+        rbacs: [],
+      });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
+      expect(OfflineSettingsLocalStorage.prototype.getData).not.toHaveBeenCalled();
+      expect(UserMeLocalStorage.prototype.getData).not.toHaveBeenCalled();
+      expect(RbacsLocalStorage.prototype.getData).not.toHaveBeenCalled();
+    });
+
+    it("returns false when the stored site settings have the offline mode plugin disabled.", async () => {
+      expect.assertions(2);
+      mockStorages({
+        siteSettings: defaultCeSiteSettings(),
+        offlineSettings: defaultOfflineSettingsDto(),
+        user: defaultAdminUserDto(),
+        rbacs: [],
+      });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
+      expect(OfflineSettingsLocalStorage.prototype.getData).not.toHaveBeenCalled();
+    });
+
+    it("returns false when the offline settings storage is empty, without reading the other storages.", async () => {
+      expect.assertions(3);
+      mockStorages({ offlineSettings: undefined, user: defaultAdminUserDto(), rbacs: [] });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
+      expect(UserMeLocalStorage.prototype.getData).not.toHaveBeenCalled();
+      expect(RbacsLocalStorage.prototype.getData).not.toHaveBeenCalled();
+    });
+
+    it("returns false when the user me storage is empty.", async () => {
+      expect.assertions(1);
+      mockStorages({ offlineSettings: defaultOfflineSettingsDto(), user: undefined, rbacs: [] });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
+    });
+
+    it("returns true for an administrator even when the rbacs storage is empty.", async () => {
+      expect.assertions(1);
+      mockStorages({ offlineSettings: defaultOfflineSettingsDto(), user: defaultAdminUserDto(), rbacs: undefined });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(true);
+    });
+
+    it("returns false for a user when the rbacs storage is empty.", async () => {
+      expect.assertions(1);
+      mockStorages({
+        offlineSettings: defaultOfflineSettingsDto(),
+        user: defaultUserDto({}, { withRole: true }),
+        rbacs: undefined,
+      });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
+    });
+
+    it("returns true when the user role is allowed.", async () => {
+      expect.assertions(1);
+      const userDto = defaultUserDto({}, { withRole: true });
+      mockStorages({
+        offlineSettings: defaultOfflineSettingsDto(),
+        user: userDto,
+        rbacs: [allowOfflineAccessRbac({ role_id: userDto.role.id })],
+      });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(true);
+    });
+
+    it("returns false when the user role is denied.", async () => {
+      expect.assertions(1);
+      const userDto = defaultUserDto({}, { withRole: true });
+      mockStorages({
+        offlineSettings: defaultOfflineSettingsDto(),
+        user: userDto,
+        rbacs: [denyOfflineAccessRbac({ role_id: userDto.role.id })],
+      });
+
+      expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
+    });
+
+    it("throws when a stored dto does not validate, letting the caller decide how to fail.", async () => {
+      expect.assertions(1);
+      mockStorages({ offlineSettings: defaultOfflineSettingsDto(), user: { username: 42 }, rbacs: [] });
+
+      await expect(CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).rejects.toThrow();
     });
   });
 });
