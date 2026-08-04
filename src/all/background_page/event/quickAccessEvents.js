@@ -17,6 +17,7 @@ import CopyTemporarilyToClipboardController from "../controller/clipboard/copyTe
 import PrepareResourceController from "../controller/quickaccess/prepareResourceController";
 import ConsumeInProgressCreationResourceController from "../controller/quickaccess/consumeInProgressCreationResourceController";
 import GetOrFindMetadataKeysSettingsController from "../controller/metadata/getOrFindMetadataKeysSettingsController";
+import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 
 /**
  * Listens to the quickaccess application events
@@ -184,6 +185,21 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.clipboard.copy-temporarily", async (requestId, text) => {
     const clipboardController = new CopyTemporarilyToClipboardController(worker, requestId);
     await clipboardController._exec(text);
+  });
+
+  /*
+   * Get or find offline settings.
+   *
+   * QuickAccess now relies on OfflineSettingsLocalStorageContext
+   * that fetches offline settings through passbolt.offline.get-or-find-settings
+   * for Server not available paths
+   *
+   * @listens passbolt.offline.get-or-find-settings
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.offline.get-or-find-settings", async (requestId) => {
+    const controller = new GetOrFindOfflineSettingsController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 };
 
