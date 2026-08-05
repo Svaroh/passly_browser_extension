@@ -45,7 +45,9 @@ export default class GetOrFindRbacService {
     if (!isStale) {
       const collectionDto = await this.rbacsLocalStorage.getData();
       if (typeof collectionDto !== "undefined") {
-        return new RbacsCollection(collectionDto, true);
+        return new RbacsCollection(collectionDto);
+      } else if (activeSession.isSessionOffline) {
+        return new RbacsCollection([]);
       }
     }
     return this.findAndUpdateRbacLocalStorageService.findAndUpdateAll();

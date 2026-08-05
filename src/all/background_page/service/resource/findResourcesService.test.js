@@ -39,6 +39,9 @@ import PassphraseStorageService from "../session_storage/passphraseStorageServic
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -51,6 +54,9 @@ describe("FindResourcesService", () => {
   beforeEach(async () => {
     apiClientOptions = defaultApiClientOptions();
     findResourcesService = new FindResourcesService(account, apiClientOptions);
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("::findAll", () => {

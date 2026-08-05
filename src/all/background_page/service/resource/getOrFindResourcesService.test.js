@@ -32,6 +32,9 @@ import {
 import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.useFakeTimers();
 
@@ -39,6 +42,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.clearAllTimers();
   jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
+  jest
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+    .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
 });
 
 describe("GetOrFindResourcesService", () => {

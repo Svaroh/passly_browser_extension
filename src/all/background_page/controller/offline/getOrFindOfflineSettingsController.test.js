@@ -21,6 +21,8 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
 import { enableFetchMocks } from "jest-fetch-mock";
 import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   enableFetchMocks();
@@ -35,6 +37,9 @@ describe("GetOrFindOfflineSettingsController", () => {
     account = new AccountEntity(defaultAccountDto());
     controller = new GetOrFindOfflineSettingsController(null, null, apiClientOptions, account);
     await controller.getOrFindOfflineSettingsService.offlineSettingsLocalStorage.flush();
+    jest
+      .spyOn(controller.getOrFindOfflineSettingsService.getOrFindActiveSessionService, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("::exec", () => {

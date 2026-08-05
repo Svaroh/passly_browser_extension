@@ -36,6 +36,8 @@ import UserMeLocalStorage from "../local_storage/userMeLocalStorage";
 import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
 import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import OfflineRetentionDataFlushService from "../offline/offlineRetentionDataFlushService";
+import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 
 /**
  * Flush storage data when:
@@ -118,6 +120,10 @@ class LocalStorageService {
         new SiteSettingsLocalStorage(account).flush(),
         new OfflineSettingsLocalStorage(account).flush(),
       );
+    } else {
+      const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      // Flush offline data if time is exceeded
+      flushes.push(new OfflineRetentionDataFlushService(account, apiClientOptions).flushIfExceeded());
     }
 
     LocalStorageService.logFlushFailures(await Promise.allSettled(flushes));

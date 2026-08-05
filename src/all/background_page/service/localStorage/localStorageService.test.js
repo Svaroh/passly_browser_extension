@@ -39,6 +39,7 @@ import ActiveSessionLocalStorage, {
 } from "../local_storage/activeSessionLocalStorage";
 import SiteSettingsLocalStorage, { SITE_SETTINGS } from "../local_storage/siteSettingsLocalStorage";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import OfflineRetentionDataFlushService from "../offline/offlineRetentionDataFlushService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -94,7 +95,7 @@ describe("LocalStorageService", () => {
 
   describe("LocalStorageService::flushAccountBasedStorages", () => {
     it("Should retain the offline-related storages when the user can use offline storage while flushing others", async () => {
-      expect.assertions(16);
+      expect.assertions(17);
       // mock data
       await MockExtension.withConfiguredAccount();
       const account = new AccountEntity(defaultAccountDto());
@@ -102,6 +103,7 @@ describe("LocalStorageService", () => {
       jest.spyOn(browser.storage.local, "remove");
       jest.spyOn(browser.storage.session, "remove");
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
+      jest.spyOn(OfflineRetentionDataFlushService.prototype, "flushIfExceeded").mockImplementationOnce(jest.fn());
       // The user is eligible for offline access, resolved from the local storages only.
       jest
         .spyOn(CanUseOfflineStorageService, "canUseOfflineStorageFromLocalStorage")
@@ -144,6 +146,7 @@ describe("LocalStorageService", () => {
         `${ACTIVE_SESSION_LOCAL_STORAGE_KEY}-${account.id}`,
       );
       expect(browser.storage.local.remove).not.toHaveBeenCalledWith(`${SITE_SETTINGS}-${account.id}`);
+      expect(OfflineRetentionDataFlushService.prototype.flushIfExceeded).toHaveBeenCalledWith();
     });
 
     it("Should flush the offline-related storages when the user cannot use offline storage", async () => {

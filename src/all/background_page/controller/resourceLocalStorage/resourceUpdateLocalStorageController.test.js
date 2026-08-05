@@ -29,6 +29,9 @@ import { v4 as uuidv4 } from "uuid";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import CanUseOfflineStorageService from "../../service/offline/canUseOfflineStorageService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 describe("ResourceUpdateLocalStorageController", () => {
   let controller, worker;
@@ -90,6 +93,9 @@ describe("ResourceUpdateLocalStorageController", () => {
       jest.spyOn(PassphraseStorageService, "set").mockImplementation(() => {});
       jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
       jest.spyOn(controller.findAndUpdateResourcesLocalStorage, "findAndUpdateAll");
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
 
       await controller._exec();
 

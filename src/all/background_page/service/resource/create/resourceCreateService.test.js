@@ -52,6 +52,9 @@ import GetDecryptedUserPrivateKeyService from "../../account/getDecryptedUserPri
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import CanUseOfflineStorageService from "../../offline/canUseOfflineStorageService";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -73,6 +76,9 @@ describe("ResourceCreateService", () => {
     apiClientOptions = defaultApiClientOptions();
     jest.spyOn(Keyring.prototype, "sync").mockImplementation(() => jest.fn());
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     jest.spyOn(ResourceLocalStorage, "addResource");
     resourceCreateService = new ResourceCreateService(account, apiClientOptions, new ProgressService(worker, ""));
   });

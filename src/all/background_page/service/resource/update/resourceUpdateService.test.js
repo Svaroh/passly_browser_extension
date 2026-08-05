@@ -68,6 +68,9 @@ import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data.js";
 import PermissionService from "../../api/permission/permissionService";
 import { ownerGroupPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -114,6 +117,9 @@ describe("ResourceUpdateService", () => {
       .mockImplementation(() => [pgpKeys.ada.userId, pgpKeys.admin.userId, pgpKeys.betty.userId]);
     jest.spyOn(PermissionService.prototype, "findAllByAcoForeignKey").mockImplementation(() => []);
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("ResourceUpdateService::exec", () => {

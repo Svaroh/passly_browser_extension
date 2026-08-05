@@ -63,6 +63,7 @@ describe("GetOrFindMeService", () => {
 
     it("delegates to the get service on cold cache and returns its result.", async () => {
       expect.assertions(2);
+      mockActiveSession();
       const usersDto = defaultUserDto();
       const expected = new UserEntity(usersDto);
       jest.spyOn(service.userApiService, "get").mockImplementation(() => expected);
@@ -117,6 +118,17 @@ describe("GetOrFindMeService", () => {
 
       expect(service.userApiService.get).not.toHaveBeenCalled();
       expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(new UserEntity(usersDto).toDto(storage.DEFAULT_CONTAIN));
+    });
+
+    it("return null for offline session if nothing is in the local storage.", async () => {
+      expect.assertions(2);
+      mockActiveSession({ type: USER_ACTIVE_SESSION_OFFLINE });
+      jest.spyOn(service.userApiService, "get");
+
+      const result = await service.getOrFindMe();
+
+      expect(service.userApiService.get).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
   });
 });

@@ -46,6 +46,8 @@ class GetOrFindResourceTypesService {
       const resourceTypesDto = await this.resourceTypeLocalStorage.getData();
       if (typeof resourceTypesDto !== "undefined") {
         return new ResourceTypesCollection(resourceTypesDto);
+      } else if (activeSession.isSessionOffline) {
+        return null;
       }
     }
     const resourceTypeDtos = await this.resourceTypeService.findAll();

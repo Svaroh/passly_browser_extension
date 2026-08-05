@@ -15,7 +15,9 @@
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
-import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_OFFLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import {
   minimalUserActiveSessionDto,
@@ -51,6 +53,24 @@ describe("OfflineRetentionDataFlushService", () => {
       expect.assertions(3);
       mockActiveSession(minimalUserActiveSessionDto());
       mockOfflineSettings(defaultOfflineSettingsDto());
+
+      jest.spyOn(offlineRetentionDataFlushService.metadataKeyOPFSStorage, "flush");
+      jest.spyOn(offlineRetentionDataFlushService.offlineResourcesOPFSStorage, "flush");
+      jest.spyOn(offlineRetentionDataFlushService.offlineSecretsOPFSStorage, "flush");
+
+      await offlineRetentionDataFlushService.flushIfExceeded();
+
+      expect(offlineRetentionDataFlushService.metadataKeyOPFSStorage.flush).not.toHaveBeenCalled();
+      expect(offlineRetentionDataFlushService.offlineResourcesOPFSStorage.flush).not.toHaveBeenCalled();
+      expect(offlineRetentionDataFlushService.offlineSecretsOPFSStorage.flush).not.toHaveBeenCalled();
+    });
+
+    it("Do nothing if offline settings is not in local storage.", async () => {
+      expect.assertions(3);
+      mockActiveSession(minimalUserActiveSessionDto({ type: USER_ACTIVE_SESSION_OFFLINE }));
+      jest
+        .spyOn(offlineRetentionDataFlushService.getOrFindOfflineSettingsService, "getOrFind")
+        .mockImplementationOnce(() => null);
 
       jest.spyOn(offlineRetentionDataFlushService.metadataKeyOPFSStorage, "flush");
       jest.spyOn(offlineRetentionDataFlushService.offlineResourcesOPFSStorage, "flush");

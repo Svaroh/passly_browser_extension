@@ -46,6 +46,9 @@ import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage"
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import { readSecret as readSecretDto } from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 jest.useFakeTimers();
 
@@ -69,6 +72,9 @@ describe("UpdateResourcesLocalStorage", () => {
       jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
       jest.spyOn(OfflineResourcesOPFSStorage.prototype, "flush").mockResolvedValue();
       jest.spyOn(OfflineSecretsOPFSStorage.prototype, "flush").mockResolvedValue();
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     });
 
     it("asserts updatePeriodThreshold parameter", async () => {

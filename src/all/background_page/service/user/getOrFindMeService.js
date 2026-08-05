@@ -38,7 +38,7 @@ class GetOrFindMeService {
   /**
    * Get or find me as a user.
    * @param {boolean} refreshCache (Optional) Should request the API and refresh the cache. Default false.
-   * @returns {Promise<UserEntity>}
+   * @returns {Promise<UserEntity|null>}
    */
   async getOrFindMe(refreshCache = false) {
     if (!refreshCache) {
@@ -51,6 +51,8 @@ class GetOrFindMeService {
         const userDto = await this.userMeLocalStorageService.getData();
         if (typeof userDto !== "undefined") {
           return new UserEntity(userDto);
+        } else if (activeSession.isSessionOffline) {
+          return null;
         }
       }
     }

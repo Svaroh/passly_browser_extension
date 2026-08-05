@@ -50,6 +50,7 @@ describe("GetOrFindOfflineSettingsService", () => {
     it("with empty storage, retrieves the offline settings from the API and stores them into the local storage.", async () => {
       expect.assertions(3);
       const offlineSettingsDto = defaultOfflineSettingsDto();
+      mockActiveSession();
       jest
         .spyOn(
           getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findOfflineSettingsService
@@ -81,6 +82,7 @@ describe("GetOrFindOfflineSettingsService", () => {
       await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
         new OfflineSettingsEntity(offlineSettingsDto),
       );
+      mockActiveSession();
       jest.spyOn(
         getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findOfflineSettingsService
           .offlineSettingsApiService,
@@ -187,6 +189,21 @@ describe("GetOrFindOfflineSettingsService", () => {
         getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate,
       ).not.toHaveBeenCalled();
       expect(entity.toDto()).toEqual(offlineSettingsDto);
+    });
+
+    it("returns null if the active session is offline and local storage is empty.", async () => {
+      expect.assertions(2);
+      mockActiveSession({
+        type: USER_ACTIVE_SESSION_OFFLINE,
+      });
+      jest.spyOn(getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate");
+
+      const entity = await getOrFindOfflineSettingsService.getOrFind();
+
+      expect(
+        getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate,
+      ).not.toHaveBeenCalled();
+      expect(entity).toBeNull();
     });
   });
 });

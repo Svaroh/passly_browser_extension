@@ -59,6 +59,7 @@ describe("GetOrFindResourceTypesService", () => {
 
     it("delegates to the find-and-update service on cold cache and returns its result.", async () => {
       expect.assertions(2);
+      mockActiveSession();
       const resourceTypesDto = resourceTypesCollectionDto();
       const expected = new ResourceTypesCollection(resourceTypesDto);
       jest.spyOn(service.resourceTypeService, "findAll").mockImplementation(() => expected);
@@ -117,6 +118,19 @@ describe("GetOrFindResourceTypesService", () => {
       expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(
         new ResourceTypesCollection(resourceTypesDto).toDto(storage.DEFAULT_CONTAIN),
       );
+    });
+
+    it("returns null if the active session is offline and local storage is empty.", async () => {
+      expect.assertions(2);
+      mockActiveSession({
+        type: USER_ACTIVE_SESSION_OFFLINE,
+      });
+      jest.spyOn(service.resourceTypeService, "findAll");
+
+      const result = await service.getOrFindAll();
+
+      expect(service.resourceTypeService.findAll).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
   });
 });

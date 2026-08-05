@@ -49,6 +49,8 @@ export default class GetOrFindOfflineSettingsService {
       const offlineSettingsDto = await this.offlineSettingsLocalStorage.getData();
       if (offlineSettingsDto) {
         return new OfflineSettingsEntity(offlineSettingsDto);
+      } else if (activeSession.isSessionOffline) {
+        return null;
       }
     }
     return this.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate();
