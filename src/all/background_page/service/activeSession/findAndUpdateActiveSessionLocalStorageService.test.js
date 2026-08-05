@@ -685,4 +685,88 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expectedEntity,
     );
   });
+
+  describe("::updateLastSeenOnline", () => {
+    it("Update the last seen online property when no user active session is stored in local storage", async () => {
+      expect.assertions(5);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementationOnce(() => true);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const date = new Date();
+      await findAndUpdateActiveSessionLocalStorageService.updateLastSeenOnline(date);
+
+      const userActiveSessionDto = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(userActiveSessionDto.is_authenticated).toBeFalsy();
+      expect(userActiveSessionDto.type).toBe(USER_ACTIVE_SESSION_ONLINE);
+      expect(userActiveSessionDto.last_seen_online).toBe(date.toISOString());
+      expect(findAndUpdateActiveSessionLocalStorageService.findServerStatusService.find).toHaveBeenCalledTimes(1);
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("Update the last seen online property when user active session is stored in local storage", async () => {
+      expect.assertions(5);
+      const userActiveSession = {
+        is_authenticated: true,
+        is_server_reachable: true,
+        is_mfa_required: false,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => userActiveSession);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find");
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const date = new Date();
+      await findAndUpdateActiveSessionLocalStorageService.updateLastSeenOnline(date);
+
+      const userActiveSessionDto = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(userActiveSessionDto.is_authenticated).toBeTruthy();
+      expect(userActiveSessionDto.type).toBe(USER_ACTIVE_SESSION_ONLINE);
+      expect(userActiveSessionDto.last_seen_online).toBe(date.toISOString());
+      expect(findAndUpdateActiveSessionLocalStorageService.findServerStatusService.find).not.toHaveBeenCalled();
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("assert parameter last seen online property is a date", async () => {
+      expect.assertions(1);
+      expect(findAndUpdateActiveSessionLocalStorageService.updateLastSeenOnline({})).rejects.toThrow(
+        "The given data is not of the expected type",
+      );
+    });
+
+    it("fails safe to a minimal user active session and update last seen online property", async () => {
+      expect.assertions(5);
+      const corrupt = {
+        is_authenticated: false,
+        type: USER_ACTIVE_SESSION_ONLINE,
+        is_server_reachable: "not-a-boolean",
+      };
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage, "get")
+        .mockImplementationOnce(() => corrupt);
+      jest
+        .spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find")
+        .mockImplementation(() => true);
+      jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
+
+      const date = new Date();
+      await findAndUpdateActiveSessionLocalStorageService.updateLastSeenOnline(date);
+
+      const userActiveSessionDto = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
+      expect(userActiveSessionDto.is_authenticated).toBeFalsy();
+      expect(userActiveSessionDto.type).toBe(USER_ACTIVE_SESSION_ONLINE);
+      expect(userActiveSessionDto.last_seen_online).toBe(date.toISOString());
+      expect(findAndUpdateActiveSessionLocalStorageService.findServerStatusService.find).toHaveBeenCalledTimes(1);
+      expect(
+        findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
+      ).not.toHaveBeenCalled();
+    });
+  });
 });

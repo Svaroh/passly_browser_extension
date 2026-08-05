@@ -62,6 +62,7 @@ class StartLoopAuthSessionCheckService {
     if (!activeSessionEntity.isAuthenticated) {
       PostLogoutService.exec();
     }
+    await findAndUpdateActiveSessionLocalStorageService.updateLastSeenOnline(new Date());
   }
 
   /**

@@ -36,7 +36,7 @@ beforeEach(async () => {
 
 describe("StartLoopAuthSessionCheckService", () => {
   it("should trigger a check authentication and clear alarm on logout", async () => {
-    expect.assertions(7);
+    expect.assertions(8);
     // Function mocked
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
     const sessionEntity = new UserActiveSessionEntity({
@@ -47,6 +47,10 @@ describe("StartLoopAuthSessionCheckService", () => {
     const spyIsAuthenticated = jest
       .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
+    const spyUpdateLastSeenOnline = jest.spyOn(
+      FindAndUpdateActiveSessionLocalStorageService.prototype,
+      "updateLastSeenOnline",
+    );
 
     //mocking top-level alarm handler
     browser.alarms.onAlarm.addListener(
@@ -69,10 +73,11 @@ describe("StartLoopAuthSessionCheckService", () => {
     await PostLogoutService.exec();
     expect(spyIsAuthenticated).toHaveBeenCalledTimes(2);
     expect(spyClearAuthSessionCheck).toHaveBeenCalledTimes(1);
+    expect(spyUpdateLastSeenOnline).toHaveBeenCalledTimes(2);
   });
 
   it("should send logout event if not authenticated anymore", async () => {
-    expect.assertions(4);
+    expect.assertions(5);
     // Function mocked
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
     const sessionEntity = new UserActiveSessionEntity({
@@ -83,6 +88,10 @@ describe("StartLoopAuthSessionCheckService", () => {
     const spyIsAuthenticated = jest
       .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
+    const spyUpdateLastSeenOnline = jest.spyOn(
+      FindAndUpdateActiveSessionLocalStorageService.prototype,
+      "updateLastSeenOnline",
+    );
     const spyOnPostLogout = jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
     //mocking top-level alarm handler
@@ -101,6 +110,7 @@ describe("StartLoopAuthSessionCheckService", () => {
 
     expect(spyIsAuthenticated).toHaveBeenCalledTimes(1);
     expect(spyOnPostLogout).toHaveBeenCalledTimes(1);
+    expect(spyUpdateLastSeenOnline).toHaveBeenCalledTimes(1);
   });
 
   it("should not send logout event if the authentication status cannot be determined, and retry on the next alarm", async () => {
