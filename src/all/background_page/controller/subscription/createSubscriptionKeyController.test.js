@@ -18,17 +18,23 @@ import { mockSubscriptionUpdated } from "passbolt-styleguide/src/react-extension
 
 import CreateSubscriptionKeyController from "./createSubscriptionKeyController";
 import PostLogoutService from "../../service/auth/postLogoutService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("CreateSubscriptionKeyController", () => {
+  const account = new AccountEntity(defaultAccountDto());
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "resetAuthentication").mockResolvedValue();
   });
 
   describe("::exec", () => {
-    it("should create the subscription key and log the user out", async () => {
-      expect.assertions(3);
+    it("should create the subscription key, mark the active session as signed out and log the user out", async () => {
+      expect.assertions(4);
 
-      const controller = new CreateSubscriptionKeyController(null, null, defaultApiClientOptions());
+      const controller = new CreateSubscriptionKeyController(null, null, defaultApiClientOptions(), account);
       jest
         .spyOn(controller.createSubscriptionService, "create")
         .mockResolvedValue(new SubscriptionEntity(mockSubscriptionUpdated));
@@ -38,18 +44,20 @@ describe("CreateSubscriptionKeyController", () => {
 
       expect(result).toEqual(new SubscriptionEntity(mockSubscriptionUpdated));
       expect(controller.createSubscriptionService.create).toHaveBeenCalledTimes(1);
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).toHaveBeenCalledTimes(1);
       expect(PostLogoutService.exec).toHaveBeenCalledTimes(1);
     });
 
     it("should not catch errors", async () => {
-      expect.assertions(2);
+      expect.assertions(3);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new CreateSubscriptionKeyController(null, null, defaultApiClientOptions());
+      const controller = new CreateSubscriptionKeyController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.createSubscriptionService, "create").mockRejectedValue(expectedError);
       jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       await expect(controller.exec({ data: mockSubscriptionUpdated.data })).rejects.toStrictEqual(expectedError);
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).not.toHaveBeenCalled();
       expect(PostLogoutService.exec).not.toHaveBeenCalled();
     });
   });

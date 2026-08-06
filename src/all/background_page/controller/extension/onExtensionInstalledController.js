@@ -87,9 +87,9 @@ class OnExtensionInstalledController {
     if (!user.isValid()) {
       return;
     }
-    let activeSessionEntity;
+    let activeSessionEntity, account;
     try {
-      const account = await GetActiveAccountService.get();
+      account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
       const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
       // use the cached data as the worker could wake up every 30 secondes.
@@ -109,7 +109,7 @@ class OnExtensionInstalledController {
     }
     // Logout authenticated user to prevent to ask passphrase for SSO users
     const apiClientOptions = await user.getApiClientOptions();
-    const authModel = new AuthModel(apiClientOptions);
+    const authModel = new AuthModel(apiClientOptions, account);
     await authModel.logout();
     /*
      * Reload only tabs that match passbolt app url. Reload is necessary as the application loaded in the tab

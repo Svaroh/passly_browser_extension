@@ -12,25 +12,33 @@
  * @since         5.13.0
  */
 import { v4 as uuid } from "uuid";
+import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import AuthLocalLogoutController from "./authLocalLogoutController";
 import PostLogoutService from "../../service/auth/postLogoutService";
 import SessionCookieFlushService from "../../service/auth/sessionCookieFlushService";
+import GetActiveAccountService from "../../service/account/getActiveAccountService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(GetActiveAccountService, "get").mockResolvedValue(new AccountEntity(defaultAccountDto()));
+  jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "resetAuthentication").mockResolvedValue();
 });
 
 describe("AuthLocalLogoutController", () => {
   describe("AuthLocalLogoutController::exec", () => {
-    it("flushes the session cookies then runs the post-logout cleanup", async () => {
-      expect.assertions(2);
+    it("flushes the session cookies, marks the active session as signed out then runs the post-logout cleanup", async () => {
+      expect.assertions(3);
       const cookieFlushSpy = jest.spyOn(SessionCookieFlushService, "flush").mockResolvedValue();
       const postLogoutSpy = jest.spyOn(PostLogoutService, "exec").mockResolvedValue();
 
-      const controller = new AuthLocalLogoutController(null, null);
+      const controller = new AuthLocalLogoutController(null, null, defaultApiClientOptions());
       await controller.exec();
 
       expect(cookieFlushSpy).toHaveBeenCalledTimes(1);
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).toHaveBeenCalledTimes(1);
       expect(postLogoutSpy).toHaveBeenCalledTimes(1);
     });
   });
@@ -43,7 +51,7 @@ describe("AuthLocalLogoutController", () => {
       const requestId = uuid();
       const worker = { port: { emit: jest.fn() } };
 
-      const controller = new AuthLocalLogoutController(worker, requestId);
+      const controller = new AuthLocalLogoutController(worker, requestId, defaultApiClientOptions());
       await controller._exec();
 
       expect(worker.port.emit).toHaveBeenCalledWith(requestId, "SUCCESS");
@@ -58,7 +66,7 @@ describe("AuthLocalLogoutController", () => {
       const requestId = uuid();
       const worker = { port: { emit: jest.fn() } };
 
-      const controller = new AuthLocalLogoutController(worker, requestId);
+      const controller = new AuthLocalLogoutController(worker, requestId, defaultApiClientOptions());
       await controller._exec();
 
       expect(worker.port.emit).toHaveBeenCalledWith(requestId, "ERROR", error);

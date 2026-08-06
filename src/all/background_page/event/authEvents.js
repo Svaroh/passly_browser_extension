@@ -12,7 +12,6 @@ import IsMfaRequiredController from "../controller/auth/isMfaRequiredController"
 import CheckPassphraseController from "../controller/crypto/checkPassphraseController";
 import RequestHelpCredentialsLostController from "../controller/auth/requestHelpCredentialsLostController";
 import AuthLoginController from "../controller/auth/authLoginController";
-import AuthLoginOfflineController from "../controller/auth/authLoginOfflineController";
 import GetLocalSsoProviderConfiguredController from "../controller/sso/getLocalSsoProviderConfiguredController";
 import SsoAuthenticationController from "../controller/sso/ssoAuthenticationController";
 import DeleteLocalSsoKitController from "../controller/sso/deleteLocalSsoKitController";
@@ -24,7 +23,6 @@ import GetServerKeyController from "../controller/auth/getServerKeyController";
 import ReplaceServerKeyController from "../controller/auth/replaceServerKeyController";
 import ReloadTabController from "../controller/tab/reloadTabController";
 import RedirectPostLoginController from "../controller/auth/redirectPostLoginController";
-import AuthLocalLogoutController from "../controller/auth/authLocalLogoutController";
 
 /**
  * Listens to the authentication events
@@ -67,20 +65,8 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.auth.logout", async (requestId, withRedirection) => {
-    const controller = new AuthLogoutController(worker, requestId, apiClientOptions);
+    const controller = new AuthLogoutController(worker, requestId, apiClientOptions, account);
     await controller._exec(withRedirection);
-  });
-
-  /**
-   * Local Logout when user was signed-in
-   * but the server is now unavailable
-   *
-   * @listens passbolt.auth.logout-local
-   * @param requestId {uuid} The request identifier
-   */
-  worker.port.on("passbolt.auth.local-logout", async (requestId) => {
-    const controller = new AuthLocalLogoutController(worker, requestId, apiClientOptions);
-    await controller._exec();
   });
 
   /*
@@ -141,19 +127,6 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.auth.login", async (requestId, passphrase, remember) => {
     const controller = new AuthLoginController(worker, requestId, apiClientOptions, account);
     await controller._exec(passphrase, remember);
-  });
-
-  /*
-   * Attempt to login the current user in offline mode.
-   *
-   * @listens passbolt.auth.login-offline
-   * @param requestId {uuid} The request identifier
-   * @param passphrase {string} The passphrase to decrypt the private key
-   * @param sessionDuration {number} the chosen session duration in seconds
-   */
-  worker.port.on("passbolt.auth.login-offline", async (requestId, passphrase, rememberMe) => {
-    const controller = new AuthLoginOfflineController(worker, requestId, apiClientOptions, account);
-    await controller._exec(passphrase, rememberMe);
   });
 
   /*

@@ -792,7 +792,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param subscriptionKeyDto {{ data: string }} The new subscription key
    */
   worker.port.on("passbolt.subscription.create", async (requestId, subscriptionKeyDto) => {
-    const subscriptionController = new CreateSubscriptionKeyController(worker, requestId, apiClientOptions);
+    const subscriptionController = new CreateSubscriptionKeyController(worker, requestId, apiClientOptions, account);
     await subscriptionController._exec(subscriptionKeyDto);
   });
 
@@ -803,7 +803,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.subscription.downgrade", async (requestId) => {
-    const subscriptionController = new DeleteSubscriptionKeyController(worker, requestId, apiClientOptions);
+    const subscriptionController = new DeleteSubscriptionKeyController(worker, requestId, apiClientOptions, account);
     await subscriptionController._exec();
   });
 

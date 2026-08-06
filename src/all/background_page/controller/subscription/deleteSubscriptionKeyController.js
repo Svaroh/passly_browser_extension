@@ -14,6 +14,7 @@
 
 import PostLogoutService from "../../service/auth/postLogoutService";
 import DeleteSubscriptionKeyService from "../../service/subscription/deleteSubscriptionKeyService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 export default class DeleteSubscriptionKeyController {
   /**
@@ -21,12 +22,17 @@ export default class DeleteSubscriptionKeyController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
 
     this.deleteSubscriptionService = new DeleteSubscriptionKeyService(apiClientOptions);
+    this.findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
   }
 
   /**
@@ -50,6 +56,8 @@ export default class DeleteSubscriptionKeyController {
    */
   async exec() {
     await this.deleteSubscriptionService.delete();
+    // Mark the active session as signed out, before the post-logout cleanup flushes the storages.
+    await this.findAndUpdateActiveSessionLocalStorageService.resetAuthentication();
     await PostLogoutService.exec();
   }
 }

@@ -14,6 +14,8 @@
 
 import PostLogoutService from "../../service/auth/postLogoutService";
 import SessionCookieFlushService from "../../service/auth/sessionCookieFlushService";
+import GetActiveAccountService from "../../service/account/getActiveAccountService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 class AuthLocalLogoutController {
   /**
@@ -48,6 +50,9 @@ class AuthLocalLogoutController {
    */
   async exec() {
     await SessionCookieFlushService.flush();
+    // Mark the active session as signed out, before the post-logout cleanup flushes the storages.
+    const account = await GetActiveAccountService.get();
+    await new FindAndUpdateActiveSessionLocalStorageService(account, this.apiClientOptions).resetAuthentication();
     await PostLogoutService.exec();
   }
 }

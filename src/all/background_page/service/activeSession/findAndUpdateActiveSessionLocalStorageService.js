@@ -170,8 +170,11 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
   }
 
   /**
-   * Offline session expiry transition: reset the authentication flags in place. The storage is NOT flushed so
-   * durable fields (last_seen_online, last_logged_in) survive.
+   * Logout and offline session expiry transition: reset the authentication flags in place. The storage is NOT
+   * flushed so durable fields (last_seen_online, last_logged_in) survive.
+   * A logout flow must run this before the post-logout service, because the storages flush
+   * stays the last update on the active session: it removes it for a non-offline user, or keeps the
+   * signed-out record written here for an offline user, whose session is retained across logout.
    * On any error, fail safe to an unauthenticated session so the user is never blocked in an
    * inconsistent state.
    * @return {Promise<void>}
