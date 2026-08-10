@@ -59,7 +59,7 @@ export default class FindAndUpdateMetadataSettingsLocalStorageService {
 
       // Lock is granted, retrieve the metadata types settings and update the local storage.
       let metadataTypesSettings;
-      const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+      const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
       if (siteSettings.isPluginEnabled("metadata")) {
         metadataTypesSettings = await this.findMetadataSettingsService.findTypesSettings();
       } else {

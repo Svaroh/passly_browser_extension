@@ -65,7 +65,7 @@ export default class CanUseOfflineStorageService {
    */
   async canUseOfflineStorage() {
     // Offline mode plugin is enabled on the API.
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     if (!siteSettings?.isPluginEnabled("offlineMode")) {
       return false;
     }

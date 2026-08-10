@@ -27,7 +27,7 @@ class GetGpgKeyCreationDateService {
 
     let siteSettings;
     try {
-      siteSettings = await getOrFindSiteSettingsService.getOrFind(false);
+      siteSettings = await getOrFindSiteSettingsService.getOrFind();
     } catch (e) {
       console.error(e);
       return new Date().getTime();

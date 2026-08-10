@@ -76,7 +76,7 @@ class ImportResourcesService {
    */
   async importFile(importResourcesFile, passphrase) {
     const userId = User.getInstance().get().id;
-    const organizationSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const organizationSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const privateKey = await DecryptPrivateKeyService.decryptArmoredKey(this.account.userPrivateArmoredKey, passphrase);
     await this.encryptSecrets(importResourcesFile, userId, privateKey);
     importResourcesFile.mustImportFolders && (await this.bulkImportFolders(importResourcesFile));

@@ -20,6 +20,7 @@ import SiteSettingsLocalStorage from "../../service/local_storage/siteSettingsLo
 import SiteSettingsRuntimeCache from "../../service/siteSettings/siteSettingsRuntimeCache";
 import GetOrFindSiteSettingsController from "./getOrFindSiteSettingsController";
 import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_OFFLINE,
   USER_ACTIVE_SESSION_ONLINE,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
@@ -39,18 +40,27 @@ describe("GetOrFindSiteSettingsController", () => {
     worker = { port: { emit: jest.fn() } };
   });
 
-  describe("::exec (default refreshCache=true)", () => {
+  /**
+   * @param {object} data Fields to override on the session dto.
+   * @returns {void}
+   */
+  const mockActiveSession = (data) => {
+    jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
+      new UserActiveSessionEntity({
+        is_authenticated: false,
+        is_mfa_required: false,
+        type: USER_ACTIVE_SESSION_ONLINE,
+        ...data,
+      }),
+    );
+  };
+
+  describe("::exec", () => {
     it("fetches from the API and persists when authenticated", async () => {
       expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
-        new UserActiveSessionEntity({
-          is_authenticated: true,
-          is_mfa_required: false,
-          type: USER_ACTIVE_SESSION_ONLINE,
-        }),
-      );
+      mockActiveSession({ is_authenticated: true });
       jest
         .spyOn(
           controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
@@ -72,13 +82,7 @@ describe("GetOrFindSiteSettingsController", () => {
       expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
-        new UserActiveSessionEntity({
-          is_authenticated: false,
-          is_mfa_required: false,
-          type: USER_ACTIVE_SESSION_ONLINE,
-        }),
-      );
+      mockActiveSession({ is_authenticated: false });
       jest
         .spyOn(
           controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
@@ -95,66 +99,71 @@ describe("GetOrFindSiteSettingsController", () => {
       expect(SiteSettingsRuntimeCache.get()).toEqual(dto);
       expect(await ls.get()).toBeUndefined();
     });
-  });
 
-  describe("::exec (refreshCache=false)", () => {
-    it("returns from the in-memory cache without an API call when populated", async () => {
+    it("returns a cached value without an API call", async () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
+      mockActiveSession({ is_authenticated: false });
       SiteSettingsRuntimeCache.set(new SiteSettingsEntity(dto));
       const apiSpy = jest.spyOn(
         controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
         "findSiteSettings",
       );
 
-      const result = await controller.exec(false);
+      const result = await controller.exec();
 
       expect(apiSpy).not.toHaveBeenCalled();
       expect(result.toDto()).toEqual(dto);
     });
 
-    it("returns from local storage when authenticated, without an API call", async () => {
+    it("resolves to null on an offline session with nothing persisted", async () => {
       expect.assertions(2);
-      const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
-      jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
-        new UserActiveSessionEntity({
-          is_authenticated: true,
-          is_mfa_required: false,
-          type: USER_ACTIVE_SESSION_ONLINE,
-        }),
-      );
-      await controller.getOrFindSiteSettingsService.siteSettingsLocalStorage.set(new SiteSettingsEntity(dto));
+      mockActiveSession({ is_authenticated: false, type: USER_ACTIVE_SESSION_OFFLINE });
+      await controller.getOrFindSiteSettingsService.siteSettingsLocalStorage.flush();
       const apiSpy = jest.spyOn(
         controller.getOrFindSiteSettingsService.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
         "findSiteSettings",
       );
 
-      const result = await controller.exec(false);
-
-      expect(result.toDto()).toEqual(dto);
+      expect(await controller.exec()).toBeNull();
       expect(apiSpy).not.toHaveBeenCalled();
     });
   });
 
   describe("::_exec", () => {
-    it("forwards refreshCache from the port handler through to the service", async () => {
-      expect.assertions(1);
+    it("emits the site settings on success", async () => {
+      expect.assertions(3);
       const dto = defaultProSiteSettings();
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
+      mockActiveSession({ is_authenticated: false });
       SiteSettingsRuntimeCache.set(new SiteSettingsEntity(dto));
-      const execSpy = jest.spyOn(controller, "exec");
 
-      await controller._exec(false);
+      await controller._exec();
 
-      expect(execSpy).toHaveBeenCalledWith(false);
+      const [requestId, status, emitted] = worker.port.emit.mock.calls[0];
+      expect(requestId).toBe("req-1");
+      expect(status).toBe("SUCCESS");
+      expect(emitted.toDto()).toEqual(dto);
+    });
+
+    it("emits null on an offline session with nothing persisted", async () => {
+      expect.assertions(1);
+      const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
+      mockActiveSession({ is_authenticated: false, type: USER_ACTIVE_SESSION_OFFLINE });
+      await controller.getOrFindSiteSettingsService.siteSettingsLocalStorage.flush();
+
+      await controller._exec();
+
+      expect(worker.port.emit).toHaveBeenCalledWith("req-1", "SUCCESS", null);
     });
 
     it("emits ERROR when the service throws", async () => {
       expect.assertions(1);
       const controller = new GetOrFindSiteSettingsController(worker, "req-1", apiClientOptions, account);
       jest.spyOn(controller.getOrFindSiteSettingsService, "getOrFind").mockRejectedValue(new Error("boom"));
+      jest.spyOn(console, "error").mockImplementation(() => {});
 
       await controller._exec();
 

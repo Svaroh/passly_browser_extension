@@ -29,11 +29,11 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import UserEntity from "../../model/entity/user/userEntity";
-import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
 import {
   defaultCeSiteSettings,
   offlinePluginEnabledSiteSettings,
-} from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
+} from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
 import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
 import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
 import UserMeLocalStorage from "../local_storage/userMeLocalStorage";

@@ -17,9 +17,9 @@ import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
-import { offlinePluginEnabledSiteSettings } from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
+import { offlinePluginEnabledSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
 import GetOrFindOfflineSettingsService from "./getOrFindOfflineSettingsService";
-import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
 import UserActiveSessionEntity, {
   USER_ACTIVE_SESSION_OFFLINE,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";

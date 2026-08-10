@@ -58,7 +58,7 @@ class GetOrFindMeService {
     }
 
     const contains = { profile: true, role: true, account_recovery_user_setting: true };
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     if (siteSettings.isPluginEnabled("metadata")) {
       contains.missing_metadata_key_ids = true;
     }

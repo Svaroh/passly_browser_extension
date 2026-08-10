@@ -45,7 +45,7 @@ class VerifyOrTrustMetadataKeyService {
    * @throws {UntrustedMetadataKeyError} If user has not confirmed the new metadata key.
    */
   async verifyTrustedOrTrustNewMetadataKey(passphrase) {
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const metadataIsEnabled = siteSettings.isPluginEnabled("metadata");
     if (!metadataIsEnabled) {
       return;

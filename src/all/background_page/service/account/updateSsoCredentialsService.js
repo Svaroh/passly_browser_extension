@@ -48,7 +48,7 @@ class UpdateSsoCredentialsService {
    */
   async updateSsoKitIfNeeded(passphrase) {
     const localSsoKit = await SsoDataStorage.get();
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     if (!siteSettings.isPluginEnabled("sso")) {
       /*
        * If the plugin is disabled there is no reason to keep an SSO kit

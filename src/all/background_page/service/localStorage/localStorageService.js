@@ -34,6 +34,7 @@ import SessionKeysBundlesSessionStorageService from "../sessionStorage/sessionKe
 import ActiveSessionLocalStorage from "../local_storage/activeSessionLocalStorage";
 import UserMeLocalStorage from "../local_storage/userMeLocalStorage";
 import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
+import SiteSettingsRuntimeCache from "../siteSettings/siteSettingsRuntimeCache";
 import OfflineSettingsLocalStorage from "../local_storage/offlineSettingsLocalStorage";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import OfflineRetentionDataFlushService from "../offline/offlineRetentionDataFlushService";
@@ -50,6 +51,8 @@ class LocalStorageService {
    */
   static async flush() {
     PostponeUserSettingInvitationService.reset();
+
+    SiteSettingsRuntimeCache.flushAll();
     /*
      * Non-blocking as before, but rejections are captured through Promise.allSettled
      * so a failing flush never leaks as an unhandled promise rejection. The handler is silent

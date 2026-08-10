@@ -18,11 +18,11 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import {
   defaultCeSiteSettings,
   offlinePluginEnabledSiteSettings,
-} from "../../model/entity/siteSettings/siteSettingsEntity.test.data";
+} from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
 import { defaultOfflineSettingsDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.test.data";
 import OfflineSettingsEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity";
 import FindAndUpdateOfflineSettingsLocalStorageService from "./findAndUpdateOfflineSettingsLocalStorageService";
-import SiteSettingsEntity from "../../model/entity/siteSettings/siteSettingsEntity";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
 
 beforeEach(() => {
   jest.clearAllMocks();

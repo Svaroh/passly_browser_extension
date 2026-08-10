@@ -52,7 +52,7 @@ class SavePasswordExpirySettingsController {
    * @returns {Promise<PasswordExpirySettingsEntity>}
    */
   async exec(passwordExpirySettingsDto) {
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const isAdvancedSettingsEnabled = siteSettings.isPluginEnabled("passwordExpiryPolicies");
     const entity = isAdvancedSettingsEnabled
       ? new PasswordExpiryProSettingsEntity(passwordExpirySettingsDto)
