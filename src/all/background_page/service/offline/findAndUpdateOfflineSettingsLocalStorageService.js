@@ -55,7 +55,7 @@ export default class FindAndUpdateOfflineSettingsLocalStorageService {
 
       // Lock is granted. Skip the API call if the offline plugin is not enabled.
       const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
-      if (!siteSettings.isPluginEnabled("offlineMode")) {
+      if (!siteSettings?.isPluginEnabled("offlineMode")) {
         // Ensure a stale local storage does not keep offline mode appearing enabled.
         await this.offlineSettingsLocalStorage.flush();
         return null;

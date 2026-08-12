@@ -76,7 +76,7 @@ class LocaleModel {
   async getOrganizationLocale() {
     const getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(this.account, this.apiClientOptions);
     const siteSettings = await getOrFindSiteSettingsService.getOrFind();
-    return this.getSupportedLocale(siteSettings.locale);
+    return this.getSupportedLocale(siteSettings?.locale);
   }
 
   /**
@@ -86,7 +86,7 @@ class LocaleModel {
   async getSupportedOrganizationLocales() {
     const getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(this.account, this.apiClientOptions);
     const siteSettings = await getOrFindSiteSettingsService.getOrFind();
-    const localePluginEnabled = siteSettings.isPluginEnabled("locale");
+    const localePluginEnabled = siteSettings?.isPluginEnabled("locale");
 
     if (localePluginEnabled) {
       const localePluginSettings = siteSettings.getPluginSettings("locale");
