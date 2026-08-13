@@ -20,6 +20,8 @@ import GetOrFindMetadataKeysSettingsController from "../controller/metadata/getO
 import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
 import AuthLocalLogoutController from "../controller/auth/authLocalLogoutController";
 import AuthLoginOfflineController from "../controller/auth/authLoginOfflineController";
+import FindAndUpdateResourcesLocalStorageFromOPFSController from "../controller/resourceLocalStorage/findAndUpdateResourcesLocalStorageFromOPFSController";
+import FindSecretByResourceIdFromOPFSController from "../controller/secret/findSecretByResourceIdFromOPFSController";
 
 /**
  * Listens to the quickaccess application events
@@ -190,6 +192,12 @@ const listen = function (worker, apiClientOptions, account) {
   });
 
   /*
+   * ==================================================================================
+   *  Offline events.
+   * ==================================================================================
+   */
+
+  /*
    * Get or find offline settings.
    *
    * QuickAccess now relies on OfflineSettingsLocalStorageContext
@@ -227,6 +235,34 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.auth.login-offline", async (requestId, passphrase, rememberMe) => {
     const controller = new AuthLoginOfflineController(worker, requestId, apiClientOptions, account);
     await controller._exec(passphrase, rememberMe);
+  });
+
+  /*
+   * Find and update resources local storage from offline storage.
+   *
+   * @listens passbolt.offline.resources-update-local-storage
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.offline.resources-update-local-storage", async (requestId) => {
+    const controller = new FindAndUpdateResourcesLocalStorageFromOPFSController(
+      worker,
+      requestId,
+      apiClientOptions,
+      account,
+    );
+    await controller._exec();
+  });
+
+  /*
+   * Find secret by resource id storage from offline storage.
+   *
+   * @listens passbolt.offline.resources-update-local-storage
+   * @param requestId {uuid} The request identifier
+   * @param resourceId {uuid} The resource id
+   */
+  worker.port.on("passbolt.offline.find-secret-by-resource-id", async (requestId, resourceId) => {
+    const controller = new FindSecretByResourceIdFromOPFSController(worker, requestId, apiClientOptions, account);
+    await controller._exec(resourceId);
   });
 };
 

@@ -22,7 +22,7 @@ import { TEST_RESOURCE_TYPE_V5_DEFAULT } from "passbolt-styleguide/src/shared/mo
 import { plaintextSecretPasswordAndDescriptionDto } from "passbolt-styleguide/src/shared/models/entity/plaintextSecret/plaintextSecretEntity.test.data";
 import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
 import MockExtension from "../../../../../test/mocks/mockExtension";
-import FindSecretByResourceIdOPFSController from "./findSecretByResourceIdOPFSController";
+import FindSecretByResourceIdFromOPFSController from "./findSecretByResourceIdFromOPFSController";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
@@ -32,7 +32,7 @@ import PassphraseStorageService from "../../service/session_storage/passphraseSt
 import EncryptMessageService from "../../service/crypto/encryptMessageService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 
-describe("FindSecretByResourceIdOPFSController", () => {
+describe("FindSecretByResourceIdFromOPFSController", () => {
   let account, controller, service, worker;
 
   beforeEach(async () => {
@@ -46,7 +46,7 @@ describe("FindSecretByResourceIdOPFSController", () => {
     };
     account = new AccountEntity(defaultAccountDto());
     await MockExtension.withConfiguredAccount();
-    controller = new FindSecretByResourceIdOPFSController(worker, null, defaultApiClientOptions(), account);
+    controller = new FindSecretByResourceIdFromOPFSController(worker, null, defaultApiClientOptions(), account);
     service = controller.findSecretOPFSService;
     // flush account related storage before each.
     await service.offlineSecretsOPFSStorage.flush();

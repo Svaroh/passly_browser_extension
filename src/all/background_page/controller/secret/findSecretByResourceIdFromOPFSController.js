@@ -13,9 +13,9 @@
  */
 import FindSecretOPFSService from "../../service/secret/findSecretOPFSService";
 
-class FindSecretByResourceIdOPFSController {
+class FindSecretByResourceIdFromOPFSController {
   /**
-   * FindSecretByResourceIdOPFSController constructor
+   * FindSecretByResourceIdFromOPFSController constructor
    *
    * @param {Worker} worker
    * @param {string} requestId
@@ -53,4 +53,4 @@ class FindSecretByResourceIdOPFSController {
   }
 }
 
-export default FindSecretByResourceIdOPFSController;
+export default FindSecretByResourceIdFromOPFSController;
