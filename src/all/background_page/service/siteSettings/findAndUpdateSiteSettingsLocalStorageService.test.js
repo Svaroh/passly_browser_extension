@@ -22,6 +22,7 @@ import FindAndUpdateSiteSettingsLocalStorageService from "./findAndUpdateSiteSet
 import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
+import AuthenticationStatusService from "../authenticationStatusService";
 
 const readBrowserStorage = async (storageKey) => {
   const data = await browser.storage.local.get([storageKey]);
@@ -96,7 +97,9 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       const dto = defaultProSiteSettings();
 
       // An API error occured
-      jest.spyOn(service.checkAuthStatusService, "checkAuthStatus").mockRejectedValue(new PassboltBadResponseError());
+      jest
+        .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
+        .mockRejectedValue(new PassboltBadResponseError());
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
       const result = await service.findAndUpdateAll();

@@ -650,7 +650,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     );
   });
 
-  it("User having online authenticated active session, server is reachable with an error when isAuthenticated is fetched, update is_server_reachable to false and store it into the local storage.", async () => {
+  it("User having online authenticated active session, server is reachable with an error when isAuthenticated is fetched, do not update is_server_reachable and store it into the local storage.", async () => {
     expect.assertions(4);
     const userActiveSession = {
       is_authenticated: true,
@@ -674,7 +674,6 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
     const entity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
 
     const expectedEntity = new UserActiveSessionEntity(userActiveSession);
-    expectedEntity.isServerReachable = false;
     expect(entity).toEqual(expectedEntity);
     const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
     expect(storageValue).toEqual(expectedEntity.toDto());

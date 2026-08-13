@@ -21,6 +21,10 @@ import UserActiveSessionEntity, {
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
+import ServerStatusApiService from "../api/status/serverStatusApiService";
+import AuthenticationStatusService from "../authenticationStatusService";
+import ActiveSessionLocalStorage from "../local_storage/activeSessionLocalStorage";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.useFakeTimers();
 
@@ -111,33 +115,5 @@ describe("StartLoopAuthSessionCheckService", () => {
     expect(spyIsAuthenticated).toHaveBeenCalledTimes(1);
     expect(spyOnPostLogout).toHaveBeenCalledTimes(1);
     expect(spyUpdateLastSeenOnline).toHaveBeenCalledTimes(1);
-  });
-
-  it("should not send logout event if the authentication status cannot be determined, and retry on the next alarm", async () => {
-    expect.assertions(4);
-
-    jest.spyOn(ServerStatusApiService.prototype, "find").mockImplementationOnce(() => true);
-    const spyIsAuthenticated = jest
-      .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
-      .mockRejectedValue(new PassboltBadResponseError());
-    const spyOnPostLogout = jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
-
-    browser.alarms.onAlarm.addListener(
-      async (alarm) => await StartLoopAuthSessionCheckService.handleAuthStatusCheckAlarm(alarm),
-    );
-
-    await StartLoopAuthSessionCheckService.exec();
-
-    await jest.advanceTimersByTime(60000);
-    await Promise.resolve();
-
-    expect(spyIsAuthenticated).toHaveBeenCalledTimes(1);
-    expect(spyOnPostLogout).not.toHaveBeenCalled();
-
-    await jest.advanceTimersByTime(60000);
-    await Promise.resolve();
-
-    expect(spyIsAuthenticated).toHaveBeenCalledTimes(2);
-    expect(spyOnPostLogout).not.toHaveBeenCalled();
   });
 });

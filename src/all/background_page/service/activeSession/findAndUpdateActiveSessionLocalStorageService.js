@@ -128,7 +128,6 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
     } catch (error) {
       if (!(error instanceof MfaAuthenticationRequiredError)) {
         console.error(error);
-        userActiveSessionEntity.isServerReachable = false;
         return;
       }
       userActiveSessionEntity.isAuthenticated = true;
@@ -151,7 +150,6 @@ export default class FindAndUpdateActiveSessionLocalStorageService {
         ? USER_ACTIVE_SESSION_ONLINE
         : USER_ACTIVE_SESSION_OFFLINE;
     }
-
     // Refresh the authentication status for an online, reachable session.
     if (userActiveSessionEntity.isSessionOnline && userActiveSessionEntity.isServerReachable) {
       await this._updateAuthenticationStatus(userActiveSessionEntity);
