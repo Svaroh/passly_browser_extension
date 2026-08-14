@@ -125,7 +125,9 @@ describe("AppBootstrap", () => {
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => new AccountEntity(defaultAccountDto()));
       // An API error occured
       jest.spyOn(ServerStatusApiService.prototype, "find").mockRejectedValue(() => true);
-      jest.spyOn(AuthenticationStatusService.prototype, "isAuthenticated").mockRejectedValue(new PassboltBadResponseError());
+      jest
+        .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
+        .mockRejectedValue(new PassboltBadResponseError());
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
 
       const result = await AppBootstrap.canBeAttachedTo({

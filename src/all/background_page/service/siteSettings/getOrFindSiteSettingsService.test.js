@@ -226,7 +226,9 @@ describe("GetOrFindSiteSettingsService", () => {
     beforeEach(() => {
       // An API error occured
       jest.spyOn(ServerStatusApiService.prototype, "find").mockRejectedValue(() => true);
-      jest.spyOn(AuthenticationStatusService.prototype, "isAuthenticated").mockRejectedValue(new PassboltBadResponseError());
+      jest
+        .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
+        .mockRejectedValue(new PassboltBadResponseError());
     });
 
     it("should return the runtime cache when populated when there is an API error", async () => {

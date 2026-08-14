@@ -16,6 +16,7 @@ import PostLoginService from "./postLoginService";
 import OfflineSessionExpiryAlarmService from "./offlineSessionExpiryAlarmService";
 import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
+import FindAndUpdateMetadataKeysSessionStorageFromOPFSService from "../metadata/findAndUpdateMetadataKeysSessionStorageFromOPFSService";
 
 /**
  * Offline counterpart of PostLoginService.exec().
@@ -31,6 +32,8 @@ class PostLoginOfflineService {
       account,
       apiClientOptions,
     );
+    this.findAndUpdateMetadataKeysSessionStorageFromOPFSService =
+      new FindAndUpdateMetadataKeysSessionStorageFromOPFSService(account);
   }
 
   /**
@@ -42,6 +45,7 @@ class PostLoginOfflineService {
   async exec(passphrase, sessionDuration) {
     await PassphraseStorageService.set(passphrase, sessionDuration);
     await this.findAndUpdateActiveSessionLocalStorageService.authenticateOffline();
+    await this.findAndUpdateMetadataKeysSessionStorageFromOPFSService.findAndUpdateAll();
     await OfflineSessionExpiryAlarmService.scheduleSessionExpiry(this.account, sessionDuration);
     // Safe subset shared with the online flow (no server dependency).
     await PostLoginService.sendLoginEventForWorkers();

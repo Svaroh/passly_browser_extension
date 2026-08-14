@@ -20,6 +20,7 @@ import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import PassphraseStorageService from "../session_storage/passphraseStorageService";
+import FindAndUpdateMetadataKeysSessionStorageFromOPFSService from "../metadata/findAndUpdateMetadataKeysSessionStorageFromOPFSService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -34,6 +35,9 @@ describe("PostLoginOfflineService", () => {
     apiClientOptions = defaultApiClientOptions();
     jest.spyOn(PassphraseStorageService, "set").mockResolvedValue();
     jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "authenticateOffline").mockResolvedValue();
+    jest
+      .spyOn(FindAndUpdateMetadataKeysSessionStorageFromOPFSService.prototype, "findAndUpdateAll")
+      .mockResolvedValue();
     jest.spyOn(OfflineSessionExpiryAlarmService, "scheduleSessionExpiry").mockResolvedValue();
     jest.spyOn(PostLoginService, "sendLoginEventForWorkers").mockResolvedValue();
     jest.spyOn(toolbarService, "handleUserLoggedIn").mockImplementation(() => {});
@@ -41,13 +45,16 @@ describe("PostLoginOfflineService", () => {
 
   describe("::exec", () => {
     it("runs the offline post-login subset: updates the active session, schedules the expiry alarm and notifies the workers", async () => {
-      expect.assertions(5);
+      expect.assertions(6);
       const service = new PostLoginOfflineService(account, apiClientOptions);
 
       await service.exec(passphrase, 300);
 
       expect(PassphraseStorageService.set).toHaveBeenCalledWith(passphrase, 300);
       expect(FindAndUpdateActiveSessionLocalStorageService.prototype.authenticateOffline).toHaveBeenCalledTimes(1);
+      expect(FindAndUpdateMetadataKeysSessionStorageFromOPFSService.prototype.findAndUpdateAll).toHaveBeenCalledTimes(
+        1,
+      );
       expect(OfflineSessionExpiryAlarmService.scheduleSessionExpiry).toHaveBeenCalledWith(account, 300);
       expect(PostLoginService.sendLoginEventForWorkers).toHaveBeenCalledTimes(1);
       expect(toolbarService.handleUserLoggedIn).toHaveBeenCalledTimes(1);

@@ -20,6 +20,7 @@ import GetActiveAccountService from "../../service/account/getActiveAccountServi
 import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import OfflineSessionExpiryAlarmService from "../../service/auth/offlineSessionExpiryAlarmService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -30,9 +31,10 @@ beforeEach(() => {
 describe("AuthLocalLogoutController", () => {
   describe("AuthLocalLogoutController::exec", () => {
     it("flushes the session cookies, marks the active session as signed out then runs the post-logout cleanup", async () => {
-      expect.assertions(3);
+      expect.assertions(4);
       const cookieFlushSpy = jest.spyOn(SessionCookieFlushService, "flush").mockResolvedValue();
       const postLogoutSpy = jest.spyOn(PostLogoutService, "exec").mockResolvedValue();
+      const clearOfflineAlarmSpy = jest.spyOn(OfflineSessionExpiryAlarmService, "clearAlarm").mockResolvedValue();
 
       const controller = new AuthLocalLogoutController(null, null, defaultApiClientOptions());
       await controller.exec();
@@ -40,6 +42,7 @@ describe("AuthLocalLogoutController", () => {
       expect(cookieFlushSpy).toHaveBeenCalledTimes(1);
       expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).toHaveBeenCalledTimes(1);
       expect(postLogoutSpy).toHaveBeenCalledTimes(1);
+      expect(clearOfflineAlarmSpy).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -16,6 +16,7 @@ import PostLogoutService from "../../service/auth/postLogoutService";
 import SessionCookieFlushService from "../../service/auth/sessionCookieFlushService";
 import GetActiveAccountService from "../../service/account/getActiveAccountService";
 import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
+import OfflineSessionExpiryAlarmService from "../../service/auth/offlineSessionExpiryAlarmService";
 
 class AuthLocalLogoutController {
   /**
@@ -53,6 +54,8 @@ class AuthLocalLogoutController {
     // Mark the active session as signed out, before the post-logout cleanup flushes the storages.
     const account = await GetActiveAccountService.get();
     await new FindAndUpdateActiveSessionLocalStorageService(account, this.apiClientOptions).resetAuthentication();
+    // clear offline alarm if any
+    await OfflineSessionExpiryAlarmService.clearAlarm();
     await PostLogoutService.exec();
   }
 }

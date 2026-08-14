@@ -20,11 +20,6 @@ import UserActiveSessionEntity, {
   USER_ACTIVE_SESSION_ONLINE,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
-import PassboltBadResponseError from "../../error/passboltBadResponseError";
-import ServerStatusApiService from "../api/status/serverStatusApiService";
-import AuthenticationStatusService from "../authenticationStatusService";
-import ActiveSessionLocalStorage from "../local_storage/activeSessionLocalStorage";
-import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.useFakeTimers();
 
