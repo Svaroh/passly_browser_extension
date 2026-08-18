@@ -33,6 +33,8 @@
   "Encrypting secret": "Encrypting secret",
   "Encrypting Secret": "Encrypting Secret",
   "Encrypting secrets": "Encrypting secrets",
+  "Encrypting secrets {{count}}/{{total}}_one": "Encrypting one secret",
+  "Encrypting secrets {{count}}/{{total}}_other": "Encrypting secrets {{count}}/{{total}}",
   "Expiring metadata key": "Expiring metadata key",
   "Expiry date will be updated on {{count}} resource._one": "Expiry date will be updated on {{count}} resource.",
   "Expiry date will be updated on {{count}} resource._other": "Expiry date will be updated on {{count}} resources.",

@@ -29,6 +29,14 @@ import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceT
 import PermissionChangesCollection from "../../../model/entity/permission/change/permissionChangesCollection";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../../share/shareResourceService";
 
+/**
+ * Total main steps to update a resource (without updating permissions)
+ *  - Encrypting Metadata
+ *  - Encrypting Secret
+ *  - Saving resource
+ */
+const PROGRESS_STEPS_UPDATE_RESOURCES = 3;
+
 class ResourceUpdateService {
   /**
    *
@@ -60,10 +68,17 @@ class ResourceUpdateService {
    */
   async exec(resourceDto, plaintextDto, passphrase, permissionChanges) {
     const resourceEntity = new ResourceEntity(resourceDto);
-
     permissionChanges = permissionChanges ?? [];
+
+    const shouldUpdatePermission = permissionChanges.length > 0;
+    const progressStepCount = shouldUpdatePermission
+      ? PROGRESS_STEPS_UPDATE_RESOURCES + PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL
+      : PROGRESS_STEPS_UPDATE_RESOURCES;
+
+    this.progressService.updateGoals(progressStepCount);
+
     // Apply the operator-confirmed permission changes (re-share) in the spec-mandated safe order.
-    if (permissionChanges.length > 0) {
+    if (shouldUpdatePermission) {
       // The styleguide emits deltas with aco_foreign_key unset (or null); stamp the resource id
       // before handing them to the share orchestration.
       const stampedChanges = permissionChanges.map((change) => ({
@@ -82,9 +97,6 @@ class ResourceUpdateService {
 
     // Get users ids of those who have access to the resource
     const usersIds = await this.userModel.findAllIdsForResourceUpdate(resourceEntity.id);
-    // Set goals
-    const goals = this.calculateGoals(plaintextDto, resourceTypeEntity, usersIds.length, permissionChanges.length);
-    this.progressService.updateGoals(goals);
 
     // Keep metadata decrypted to update it in the local storage
     const metadataDecrypted = resourceEntity.metadata;
@@ -161,6 +173,7 @@ class ResourceUpdateService {
    */
   async encryptSecrets(plaintextDto, usersIds, privateKey) {
     const secrets = [];
+    await this.progressService.finishStep(i18n.t("Encrypting Secret"), true);
     for (let i = 0; i < usersIds.length; i++) {
       if (Object.prototype.hasOwnProperty.call(usersIds, i)) {
         const userId = usersIds[i];
@@ -168,29 +181,15 @@ class ResourceUpdateService {
         const userPublicKey = await OpenpgpAssertion.readKeyOrFail(userPublicArmoredKey);
         const data = await EncryptMessageService.encrypt(plaintextDto, userPublicKey, [privateKey]);
         secrets.push({ user_id: userId, data: data });
-        await this.progressService.finishStep(i18n.t("Encrypting Secret"), true);
+        await this.progressService.updateStepMessage(
+          i18n.t("Encrypting secrets {{count}}/{{total}}", {
+            count: i + 1,
+            total: usersIds.length,
+          }),
+        );
       }
     }
     return new ResourceSecretsCollection(secrets);
-  }
-
-  /**
-   * Calculate goals
-   * @param {string|object} plaintextDto The secret to encrypt
-   * @param {ResourceTypeEntity} resourceType The resource type
-   * @param {number} usersLength The number of users
-   * @param {number} [permissionChangesLength] The number of permission changes applied after the update
-   * @returns {number}
-   */
-  calculateGoals(plaintextDto, resourceType, usersLength, permissionChangesLength = 0) {
-    const shareSteps = permissionChangesLength > 0 ? PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL : 0;
-    if (resourceType.isV5()) {
-      // encrypt metadata + save + done or encrypt secret * users + encrypt metadata + save + done
-      return (plaintextDto === null ? 3 : usersLength + 3) + shareSteps;
-    } else if (resourceType.isV4()) {
-      // save + done or encrypt secret * users + save + done
-      return (plaintextDto === null ? 2 : usersLength + 2) + shareSteps;
-    }
   }
 }
 
