@@ -16,14 +16,17 @@ import TagEntity from "../../model/entity/tag/tagEntity";
 import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagApiService from "../api/tag/tagApiService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 
 export default class UpdateTagService {
   /**
    * @constructor
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(apiClientOptions) {
+  constructor(apiClientOptions, account) {
     this.tagService = new TagApiService(apiClientOptions);
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
   }
 
   /**
@@ -86,6 +89,10 @@ export default class UpdateTagService {
   async update(tag) {
     const updatedTag = await this._updateTagApi(tag);
     await this._updateTagLocalStorage(tag.id, updatedTag);
+
+    // Mirror the tag change to offline storage. No-op if no offline resource holds the tag.
+    await this.offlineResourcesOPFSStorage.replaceTag(tag.id, updatedTag);
+
     return updatedTag;
   }
 }

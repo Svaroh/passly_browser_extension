@@ -826,7 +826,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param tagDto {object} The tag object
    */
   worker.port.on("passbolt.tags.update", async (requestId, tagDto) => {
-    const updateTagController = new UpdateTagController(worker, requestId, apiClientOptions);
+    const updateTagController = new UpdateTagController(worker, requestId, apiClientOptions, account);
     await updateTagController._exec(tagDto);
   });
 
