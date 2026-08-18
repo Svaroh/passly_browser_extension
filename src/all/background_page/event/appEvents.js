@@ -851,7 +851,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param tagsDto {Object} tags dto
    */
   worker.port.on("passbolt.tags.update-resource-tags", async (requestId, resourceId, tagsDto) => {
-    const updateResourceTagsController = new UpdateResourceTagsController(worker, requestId, apiClientOptions);
+    const updateResourceTagsController = new UpdateResourceTagsController(worker, requestId, apiClientOptions, account);
     await updateResourceTagsController._exec(resourceId, tagsDto);
   });
 
@@ -863,7 +863,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param {object} resourcesTagDto {resources: array of uuids, tag: {object}} the tag to add for the resources
    */
   worker.port.on("passbolt.tags.add-resources-tag", async (requestId, resourcesTagDto) => {
-    const addTagsToResourcesController = new AddTagsToResourcesController(worker, requestId, apiClientOptions);
+    const addTagsToResourcesController = new AddTagsToResourcesController(worker, requestId, apiClientOptions, account);
     await addTagsToResourcesController._exec(resourcesTagDto.resources, [resourcesTagDto.tag]);
   });
 

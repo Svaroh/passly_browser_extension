@@ -58,7 +58,7 @@ class ImportResourcesService {
     this.resourceService = new ResourceService(apiClientOptions);
     this.executeConcurrentlyService = new ExecuteConcurrentlyService();
     this.progressService = progressService;
-    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions);
+    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions, account);
     this.getOrFindMetadataSettingsService = new GetOrFindMetadataSettingsService(account, apiClientOptions);
     this.encryptMetadataService = new EncryptMetadataService(apiClientOptions, account);
     this.decryptMetadataService = new DecryptMetadataService(apiClientOptions, account);
