@@ -24,6 +24,10 @@ import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/met
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import FavoriteEntity from "../../model/entity/favorite/favoriteEntity";
+import TagEntity from "../../model/entity/tag/tagEntity";
+import TagsCollection from "../../model/entity/tag/tagsCollection";
+import { defaultTagDto } from "../../model/entity/tag/tagEntity.test.data";
+import { defaultTagsCollectionDto } from "../../model/entity/tag/tagsCollection.test.data";
 
 describe("OfflineResourcesOPFSStorage", () => {
   let account, storage;
@@ -420,6 +424,203 @@ describe("OfflineResourcesOPFSStorage", () => {
       expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id]).toHaveLength(1);
       expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id][0].favorite).toEqual(favoriteDto);
       expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id][0]).not.toEqual(resourceDto);
+    });
+  });
+
+  describe("::updateResourceTags", () => {
+    it("Should throw if no data passed as parameter", async () => {
+      expect.assertions(1);
+      const promise = storage.updateResourceTags();
+      await expect(promise).rejects.toThrow("The parameter resourceId should be a UUID.");
+    });
+
+    it("Should throw if the resource parameter is not a uuid", async () => {
+      expect.assertions(1);
+      const promise = storage.updateResourceTags(42);
+      await expect(promise).rejects.toThrow("The parameter resourceId should be a UUID.");
+    });
+
+    it("Should throw if the tags parameter is not a TagsCollection", async () => {
+      expect.assertions(1);
+      const promise = storage.updateResourceTags(uuidv4(), {});
+      await expect(promise).rejects.toThrow("The `tagsCollection` parameter should be of type TagsCollection");
+    });
+
+    it("Should not write in the storage if the resource is not cached offline", async () => {
+      expect.assertions(2);
+      const resourceDto = resourceMetadataEncryptedDto();
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto]);
+      jest.spyOn(storage, "_setOPFSStorage");
+      const tags = new TagsCollection(defaultTagsCollectionDto());
+      await storage.updateResourceTags(uuidv4(), tags);
+      expect(storage._setOPFSStorage).not.toHaveBeenCalled();
+      expect(await storage.opfsStorage.get(storage.storageKey)).toEqual([resourceDto]);
+    });
+
+    it("Should update the resource tags", async () => {
+      expect.assertions(3);
+      const tagsDto = defaultTagsCollectionDto();
+      const resourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto]);
+      await storage.updateResourceTags(resourceDto.id, new TagsCollection(tagsDto));
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData).toEqual(expect.any(Array));
+      expect(storageData).toHaveLength(1);
+      expect(storageData[0].tags).toEqual(tagsDto);
+    });
+
+    it("Should update the cache with the updated resource", async () => {
+      expect.assertions(3);
+      const tagsDto = defaultTagsCollectionDto();
+      const resourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto]);
+      expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id]).toBeUndefined();
+      await storage.updateResourceTags(resourceDto.id, new TagsCollection(tagsDto));
+      expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id]).toHaveLength(1);
+      expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id][0].tags).toEqual(tagsDto);
+    });
+  });
+
+  describe("::updateResourcesTags", () => {
+    it("Should throw if no data passed as parameter", async () => {
+      expect.assertions(1);
+      const promise = storage.updateResourcesTags();
+      await expect(promise).rejects.toThrow(
+        "The `resourcesCollection` parameter should be of type ResourcesCollection",
+      );
+    });
+
+    it("Should throw if the resourcesCollection parameter is not a ResourcesCollection", async () => {
+      expect.assertions(1);
+      const promise = storage.updateResourcesTags(42);
+      await expect(promise).rejects.toThrow(
+        "The `resourcesCollection` parameter should be of type ResourcesCollection",
+      );
+    });
+
+    it("Should update the tags of the cached resources and ignore the others", async () => {
+      expect.assertions(4);
+      const tagsDto = defaultTagsCollectionDto();
+      const cachedResourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      const otherCachedResourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      await storage._setOPFSStorage(storage.storageKey, [cachedResourceDto, otherCachedResourceDto]);
+      const resourcesCollection = new ResourcesCollection([
+        defaultResourceDto({ id: cachedResourceDto.id, tags: tagsDto }),
+        // Not cached offline, it should be ignored.
+        defaultResourceDto({ tags: tagsDto }),
+      ]);
+      await storage.updateResourcesTags(resourcesCollection);
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData).toHaveLength(2);
+      expect(storageData[0].tags).toEqual(tagsDto);
+      expect(storageData[1].tags).toEqual(otherCachedResourceDto.tags);
+      expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id][0].tags).toEqual(tagsDto);
+    });
+
+    it("Should empty the tags of a resource having none", async () => {
+      expect.assertions(1);
+      const cachedResourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      await storage._setOPFSStorage(storage.storageKey, [cachedResourceDto]);
+      const resourcesCollection = new ResourcesCollection([defaultResourceDto({ id: cachedResourceDto.id })]);
+      await storage.updateResourcesTags(resourcesCollection);
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData[0].tags).toEqual([]);
+    });
+
+    it("Should not write in the storage if none of the resources is cached offline", async () => {
+      expect.assertions(1);
+      const cachedResourceDto = resourceMetadataEncryptedDto();
+      await storage._setOPFSStorage(storage.storageKey, [cachedResourceDto]);
+      jest.spyOn(storage, "_setOPFSStorage");
+      const resourcesCollection = new ResourcesCollection([defaultResourceDto({ tags: defaultTagsCollectionDto() })]);
+      await storage.updateResourcesTags(resourcesCollection);
+      expect(storage._setOPFSStorage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("::replaceTag", () => {
+    it("Should throw if no data passed as parameter", async () => {
+      expect.assertions(1);
+      const promise = storage.replaceTag();
+      await expect(promise).rejects.toThrow("The parameter tagId should be a UUID.");
+    });
+
+    it("Should throw if the tag parameter is not a uuid", async () => {
+      expect.assertions(1);
+      const promise = storage.replaceTag(42);
+      await expect(promise).rejects.toThrow("The parameter tagId should be a UUID.");
+    });
+
+    it("Should throw if the tag parameter is not a TagEntity", async () => {
+      expect.assertions(1);
+      const promise = storage.replaceTag(uuidv4(), {});
+      await expect(promise).rejects.toThrow("The `tagEntity` parameter should be of type TagEntity");
+    });
+
+    it("Should replace the tag in every resource holding it", async () => {
+      expect.assertions(4);
+      const tagDto = defaultTagDto({ slug: "tag-to-rename" });
+      const untouchedTagDto = defaultTagDto({ slug: "untouched-tag" });
+      const resourceDto = resourceMetadataEncryptedDto({ tags: [untouchedTagDto, tagDto] });
+      const otherResourceDto = resourceMetadataEncryptedDto({ tags: [tagDto] });
+      const resourceWithoutTagDto = resourceMetadataEncryptedDto({ tags: [untouchedTagDto] });
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto, otherResourceDto, resourceWithoutTagDto]);
+      const renamedTagDto = { ...tagDto, slug: "renamed-tag" };
+      await storage.replaceTag(tagDto.id, new TagEntity(renamedTagDto));
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData[0].tags).toEqual([untouchedTagDto, renamedTagDto]);
+      expect(storageData[1].tags).toEqual([renamedTagDto]);
+      expect(storageData[2].tags).toEqual([untouchedTagDto]);
+      expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id][1].tags).toEqual([renamedTagDto]);
+    });
+
+    it("Should not write in the storage if no resource holds the tag", async () => {
+      expect.assertions(1);
+      const resourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto]);
+      jest.spyOn(storage, "_setOPFSStorage");
+      const tagDto = defaultTagDto();
+      await storage.replaceTag(tagDto.id, new TagEntity(tagDto));
+      expect(storage._setOPFSStorage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("::removeTagById", () => {
+    it("Should throw if no data passed as parameter", async () => {
+      expect.assertions(1);
+      const promise = storage.removeTagById();
+      await expect(promise).rejects.toThrow("The parameter tagId should be a UUID.");
+    });
+
+    it("Should throw if the tag parameter is not a uuid", async () => {
+      expect.assertions(1);
+      const promise = storage.removeTagById(42);
+      await expect(promise).rejects.toThrow("The parameter tagId should be a UUID.");
+    });
+
+    it("Should remove the tag from every resource holding it", async () => {
+      expect.assertions(4);
+      const tagDto = defaultTagDto({ slug: "tag-to-delete" });
+      const untouchedTagDto = defaultTagDto({ slug: "untouched-tag" });
+      const resourceDto = resourceMetadataEncryptedDto({ tags: [untouchedTagDto, tagDto] });
+      const otherResourceDto = resourceMetadataEncryptedDto({ tags: [tagDto] });
+      const resourceWithoutTagDto = resourceMetadataEncryptedDto({ tags: [untouchedTagDto] });
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto, otherResourceDto, resourceWithoutTagDto]);
+      await storage.removeTagById(tagDto.id);
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData[0].tags).toEqual([untouchedTagDto]);
+      expect(storageData[1].tags).toEqual([]);
+      expect(storageData[2].tags).toEqual([untouchedTagDto]);
+      expect(OfflineResourcesOPFSStorage._runtimeCachedData[account.id][1].tags).toEqual([]);
+    });
+
+    it("Should not write in the storage if no resource holds the tag", async () => {
+      expect.assertions(1);
+      const resourceDto = resourceMetadataEncryptedDto({ tags: [defaultTagDto()] });
+      await storage._setOPFSStorage(storage.storageKey, [resourceDto]);
+      jest.spyOn(storage, "_setOPFSStorage");
+      await storage.removeTagById(uuidv4());
+      expect(storage._setOPFSStorage).not.toHaveBeenCalled();
     });
   });
 

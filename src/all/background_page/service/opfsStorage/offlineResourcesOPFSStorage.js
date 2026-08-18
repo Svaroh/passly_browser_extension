@@ -18,6 +18,8 @@ import { assertArrayUUID, assertType, assertUuid } from "../../utils/assertions"
 import AccountEntity from "../../model/entity/account/accountEntity";
 import OPFSJSONStore from "passbolt-styleguide/src/shared/utils/opfs/OPFSJsonStore";
 import FavoriteEntity from "../../model/entity/favorite/favoriteEntity";
+import TagEntity from "../../model/entity/tag/tagEntity";
+import TagsCollection from "../../model/entity/tag/tagsCollection";
 
 export const OFFLINE_RESOURCES_OPFS_STORAGE_KEY = "resources_offline";
 
@@ -200,6 +202,114 @@ class OfflineResourcesOPFSStorage {
         throw new Error("The offline resource could not be found in the OPFS storage");
       }
       resources[resourceIndex].favorite = favoriteEntity.toDto();
+      await this._setOPFSStorage(this.storageKey, resources);
+      OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;
+    });
+  }
+
+  /**
+   * Update the tags of a resource in the OPFS storage.
+   * Does nothing if the resource is not cached offline.
+   * @param {string} resourceId The resource id
+   * @param {TagsCollection} tagsCollection The tags collection replacing the resource ones
+   * @returns {Promise<void>}
+   */
+  async updateResourceTags(resourceId, tagsCollection) {
+    assertUuid(resourceId, "The parameter resourceId should be a UUID.");
+    assertType(tagsCollection, TagsCollection, "The `tagsCollection` parameter should be of type TagsCollection");
+    await navigator.locks.request(this.storageKey, async () => {
+      const resources = (await this.get()) || [];
+      const resourceIndex = resources.findIndex((item) => item.id === resourceId);
+      if (resourceIndex === -1) {
+        return;
+      }
+      resources[resourceIndex].tags = tagsCollection.toDto();
+      await this._setOPFSStorage(this.storageKey, resources);
+      OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;
+    });
+  }
+
+  /**
+   * Update the tags of multiple resources in the OPFS storage.
+   * Resources that are not cached offline are ignored.
+   * @param {ResourcesCollection} resourcesCollection The resources carrying the tags collections to apply
+   * @returns {Promise<void>}
+   */
+  async updateResourcesTags(resourcesCollection) {
+    assertType(
+      resourcesCollection,
+      ResourcesCollection,
+      "The `resourcesCollection` parameter should be of type ResourcesCollection",
+    );
+    await navigator.locks.request(this.storageKey, async () => {
+      const resources = (await this.get()) || [];
+      let updated = false;
+      resourcesCollection.items.forEach((resourceEntity) => {
+        const resourceIndex = resources.findIndex((item) => item.id === resourceEntity.id);
+        if (resourceIndex === -1) {
+          return;
+        }
+        resources[resourceIndex].tags = resourceEntity.tags?.toDto() || [];
+        updated = true;
+      });
+      if (!updated) {
+        return;
+      }
+      await this._setOPFSStorage(this.storageKey, resources);
+      OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;
+    });
+  }
+
+  /**
+   * Replace a tag in every offline resource holding it.
+   * @param {string} tagId The id of the tag to replace
+   * @param {TagEntity} tagEntity The replacement tag
+   * @returns {Promise<void>}
+   */
+  async replaceTag(tagId, tagEntity) {
+    assertUuid(tagId, "The parameter tagId should be a UUID.");
+    assertType(tagEntity, TagEntity, "The `tagEntity` parameter should be of type TagEntity");
+    const tagDto = tagEntity.toDto();
+    await navigator.locks.request(this.storageKey, async () => {
+      const resources = (await this.get()) || [];
+      let updated = false;
+      resources.forEach((resource) => {
+        const tagIndex = resource.tags?.findIndex((tag) => tag.id === tagId) ?? -1;
+        if (tagIndex === -1) {
+          return;
+        }
+        resource.tags[tagIndex] = tagDto;
+        updated = true;
+      });
+      if (!updated) {
+        return;
+      }
+      await this._setOPFSStorage(this.storageKey, resources);
+      OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;
+    });
+  }
+
+  /**
+   * Remove a tag from every offline resource holding it.
+   * @param {string} tagId The id of the tag to remove
+   * @returns {Promise<void>}
+   */
+  async removeTagById(tagId) {
+    assertUuid(tagId, "The parameter tagId should be a UUID.");
+    await navigator.locks.request(this.storageKey, async () => {
+      const resources = (await this.get()) || [];
+      let updated = false;
+      resources.forEach((resource) => {
+        const tagIndex = resource.tags?.findIndex((tag) => tag.id === tagId) ?? -1;
+        if (tagIndex === -1) {
+          return;
+        }
+        resource.tags.splice(tagIndex, 1);
+        updated = true;
+      });
+      if (!updated) {
+        return;
+      }
       await this._setOPFSStorage(this.storageKey, resources);
       OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;
     });
