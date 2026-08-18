@@ -35,7 +35,8 @@ import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "
  *  - Encrypting Secret
  *  - Saving resource
  */
-const PROGRESS_STEPS_UPDATE_RESOURCES = 3;
+const PROGRESS_STEPS_UPDATE_RESOURCES_V4 = 2;
+const PROGRESS_STEPS_UPDATE_RESOURCES_V5 = 3;
 
 class ResourceUpdateService {
   /**
@@ -70,10 +71,17 @@ class ResourceUpdateService {
     const resourceEntity = new ResourceEntity(resourceDto);
     permissionChanges = permissionChanges ?? [];
 
+    const resourceTypesCollection = await this.getOrFindResourcetypesService.getOrFindAll();
+    const resourceTypeEntity = resourceTypesCollection.getFirstById(resourceEntity.resourceTypeId);
+
+    const isResourceTypeV5 = resourceTypeEntity.isV5();
+
     const shouldUpdatePermission = permissionChanges.length > 0;
-    const progressStepCount = shouldUpdatePermission
-      ? PROGRESS_STEPS_UPDATE_RESOURCES + PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL
-      : PROGRESS_STEPS_UPDATE_RESOURCES;
+    let progressStepCount = isResourceTypeV5 ? PROGRESS_STEPS_UPDATE_RESOURCES_V5 : PROGRESS_STEPS_UPDATE_RESOURCES_V4;
+
+    if (shouldUpdatePermission) {
+      progressStepCount += PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL;
+    }
 
     this.progressService.updateGoals(progressStepCount);
 
@@ -92,15 +100,12 @@ class ResourceUpdateService {
       );
     }
 
-    const resourceTypesCollection = await this.getOrFindResourcetypesService.getOrFindAll();
-    const resourceTypeEntity = resourceTypesCollection.getFirstById(resourceEntity.resourceTypeId);
-
     // Get users ids of those who have access to the resource
     const usersIds = await this.userModel.findAllIdsForResourceUpdate(resourceEntity.id);
 
     // Keep metadata decrypted to update it in the local storage
     const metadataDecrypted = resourceEntity.metadata;
-    if (resourceTypeEntity.isV5()) {
+    if (isResourceTypeV5) {
       // Encrypt metadata
       await this.progressService.finishStep(i18n.t("Encrypting Metadata"), true);
       await this.encryptMetadataKeysService.encryptOneForForeignModel(resourceEntity, passphrase);
