@@ -45,10 +45,10 @@ const listen = function (worker, apiClientOptions, account) {
   /*
    * Check the user auth status.
    *
-   * @listens passbolt.auth.find-and-update-active-session
+   * @listens passbolt.auth.find-and-update-authentication-status
    * @param requestId {uuid} The request identifier
    */
-  worker.port.on("passbolt.auth.find-and-update-active-session", async (requestId) => {
+  worker.port.on("passbolt.auth.find-and-update-authentication-status", async (requestId) => {
     const controller = new FindAndUpdateActiveSessionLocalStorageController(
       worker,
       requestId,
