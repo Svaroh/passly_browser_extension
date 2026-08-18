@@ -123,14 +123,12 @@ describe("ResourceUpdateService", () => {
       await ResourceLocalStorage.addResource(entity);
 
       let resourceLocalStorageExpected;
-      jest
-        .spyOn(resourceUpdateService.resourceService, "update")
-        .mockImplementation((resourceIdToUpdate, resourceDtoToUpdate) => {
-          const resourceEntity = new ResourceEntity(resourceDto);
-          resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
-          resourceLocalStorageExpected = resourceEntity.toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN);
-          return resourceLocalStorageExpected;
-        });
+      jest.spyOn(resourceUpdateService.resourceService, "update").mockImplementation((_, resourceDtoToUpdate) => {
+        const resourceEntity = new ResourceEntity(resourceDto);
+        resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
+        resourceLocalStorageExpected = resourceEntity.toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN);
+        return resourceLocalStorageExpected;
+      });
       jest.spyOn(ResourceLocalStorage, "updateResource");
 
       await resourceUpdateService.exec(
@@ -140,7 +138,7 @@ describe("ResourceUpdateService", () => {
       );
 
       expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledTimes(1);
-      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(3);
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(2);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledTimes(2);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Secret", true);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Saving resource", true);
@@ -208,6 +206,49 @@ describe("ResourceUpdateService", () => {
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Metadata", true);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Secret", true);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Saving resource", true);
+    });
+
+    it("Should not report the metadata encryption step when the resource type is not v5", async () => {
+      expect.assertions(6);
+
+      // A v4 resource so the update path skips the metadata encryption step.
+      const resourceDto = defaultResourceDto();
+      const plaintextDto = plaintextSecretPasswordAndDescriptionDto();
+      const passphrase = pgpKeys.ada.passphrase;
+      const entity = new ResourceEntity(resourceDto);
+      await ResourceLocalStorage.addResource(entity);
+
+      let resourceUpdated;
+      jest.spyOn(resourceUpdateService.resourceService, "update").mockImplementation((_, resourceDtoToUpdate) => {
+        resourceUpdated = resourceDtoToUpdate;
+        const resourceEntity = new ResourceEntity(resourceDto);
+        resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
+        return resourceEntity.toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN);
+      });
+      jest.spyOn(ResourceLocalStorage, "updateResource");
+      jest.spyOn(resourceUpdateService.shareResourceService, "shareAll").mockImplementation(() => {});
+
+      const permissionChanges = [
+        {
+          aco: "Resource",
+          aro: "User",
+          aro_foreign_key: pgpKeys.betty.userId,
+          aco_foreign_key: null,
+          type: 1,
+          is_new: true,
+        },
+      ];
+
+      await resourceUpdateService.exec(resourceDto, plaintextDto, passphrase, permissionChanges);
+
+      expect(resourceUpdated.secrets.length).toEqual(3);
+      // The goals still reserve 3 update steps plus the 8 share steps.
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledTimes(1);
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(10);
+      // The metadata step is skipped for a v4 resource, so only 2 steps are finished (would be 10 but the share service is mocked for the tests).
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledTimes(2);
+      expect(resourceUpdateService.progressService.finishStep).not.toHaveBeenCalledWith("Encrypting Metadata", true);
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Secret", true);
     });
 
     it("Should apply the permission changes via shareAll after the update, stamping the resource id", async () => {
