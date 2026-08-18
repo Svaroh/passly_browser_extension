@@ -24,8 +24,11 @@ import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import { defaultTagDto } from "../../model/entity/tag/tagEntity.test.data";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import { defaultTagsCollectionDto } from "../../model/entity/tag/tagsCollection.test.data";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("DeleteTagService", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let service,
     unrelatedTag,
     tagsCollectionDto,
@@ -38,7 +41,7 @@ describe("DeleteTagService", () => {
   beforeEach(() => {
     enableFetchMocks();
 
-    service = new DeleteTagService(defaultApiClientOptions());
+    service = new DeleteTagService(defaultApiClientOptions(), account);
 
     unrelatedTag = new TagEntity(defaultTagDto());
 
@@ -159,6 +162,19 @@ describe("DeleteTagService", () => {
 
       expect(ResourceLocalStorage.get).toHaveBeenCalled();
       expect(ResourceLocalStorage.set).toHaveBeenCalledWith(new ResourcesCollection(updatedResourcesCollectionDto));
+    });
+
+    it("should mirror the tag deletion to the offline resources storage", async () => {
+      expect.assertions(1);
+
+      jest.spyOn(service.tagService, "delete").mockResolvedValue(deleteResponse);
+      jest.spyOn(ResourceLocalStorage, "get").mockResolvedValue(resourcesCollectionDto);
+      jest.spyOn(ResourceLocalStorage, "set");
+      jest.spyOn(service.offlineResourcesOPFSStorage, "removeTagById").mockResolvedValue();
+
+      await service.delete(tagToDeleteId);
+
+      expect(service.offlineResourcesOPFSStorage.removeTagById).toHaveBeenCalledWith(tagToDeleteId);
     });
 
     it("should throw an error when given a malformed UUID", async () => {

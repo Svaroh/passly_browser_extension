@@ -838,7 +838,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param tagId {uuid} The tag identifier
    */
   worker.port.on("passbolt.tags.delete", async (requestId, tagId) => {
-    const deleteTagController = new DeleteTagController(worker, requestId, apiClientOptions);
+    const deleteTagController = new DeleteTagController(worker, requestId, apiClientOptions, account);
     await deleteTagController._exec(tagId);
   });
 

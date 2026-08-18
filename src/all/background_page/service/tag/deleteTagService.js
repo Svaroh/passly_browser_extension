@@ -15,14 +15,17 @@ import ResourcesCollection from "../../model/entity/resource/resourcesCollection
 import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagApiService from "../api/tag/tagApiService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 
 export default class DeleteTagService {
   /**
    * @constructor
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(apiClientOptions) {
+  constructor(apiClientOptions, account) {
     this.tagService = new TagApiService(apiClientOptions);
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
   }
 
   /**
@@ -72,5 +75,8 @@ export default class DeleteTagService {
   async delete(tagId) {
     await this._deleteTagApi(tagId);
     await this._deleteTagLocalStorage(tagId);
+
+    // Mirror the tag deletion to offline storage. No-op if no offline resource holds the tag.
+    await this.offlineResourcesOPFSStorage.removeTagById(tagId);
   }
 }
