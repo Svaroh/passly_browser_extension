@@ -14,12 +14,12 @@
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import GetActiveAccountService from "../account/getActiveAccountService";
-import Log from "../../model/log";
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
 import OpenTrustedDomainTabService from "../ui/openTrustedDomainTabService";
 import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import GetOrFindOfflineResourcesService from "../resource/getOrFindOfflineResourcesService";
 
 export const QUICKACCESS_POPUP_URL = "webAccessibleResources/quickaccess.html?passbolt=quickaccess";
 
@@ -164,8 +164,10 @@ class ToolbarService {
     this.tabUrl = null;
     // Should do nothing if the user is not authenticated
     const account = await GetActiveAccountService.get();
+
     const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-    if (!(await this.isUserAuthenticated(account, apiClientOptions))) {
+    const userActiveSessionEntity = await this.getUserActiveSession(account, apiClientOptions);
+    if (!userActiveSessionEntity.isAuthenticated) {
       return;
     }
     BrowserExtensionIconService.setSuggestedResourcesCount(0);
@@ -179,12 +181,15 @@ class ToolbarService {
     try {
       const account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      const userActiveSessionEntity = await this.getUserActiveSession(account, apiClientOptions);
       // Should do nothing if the user is not authenticated
-      if (!(await this.isUserAuthenticated(account, apiClientOptions))) {
+      if (!userActiveSessionEntity.isAuthenticated) {
         return;
       }
-
-      this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
+      // Instantiate the service accordingly to the type of session (online or offline)
+      this.getOrFindResourcesService = userActiveSessionEntity.isSessionOnline
+        ? new GetOrFindResourcesService(account, apiClientOptions)
+        : new GetOrFindOfflineResourcesService(account, apiClientOptions);
 
       const tabs = await browser.tabs.query({ active: true, lastFocusedWindow: true });
       const currentTab = tabs?.[0];
@@ -202,18 +207,8 @@ class ToolbarService {
       if (!this.isUrlPassboltDomain(this.tabUrl, account) && !this.isUrlPassboltExtension(this.tabUrl)) {
         // Get the suggested resources for the current tab
         // As we don't know if the page is using OTP or password, we need to check both
-        const [otpSuggestedResources, passwordSuggestedResources] = await Promise.all([
-          this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl, "otp"),
-          this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl, "password"),
-        ]);
-
-        // De-duplicate the resources
-        const resourcesIds = new Set();
-        [...otpSuggestedResources, ...passwordSuggestedResources].forEach(({ id }) => {
-          resourcesIds.add(id);
-        });
-
-        suggestedResourcesCount = resourcesIds.size;
+        const resourcesCollection = await this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl);
+        suggestedResourcesCount = resourcesCollection.length;
       }
 
       BrowserExtensionIconService.setSuggestedResourcesCount(suggestedResourcesCount);
@@ -225,24 +220,14 @@ class ToolbarService {
 
   /**
    * Is the user authenticated
-   * @returns {Promise<{boolean}|boolean>}
+   * @param {AccountEntity} account
+   * @param {ApiClientOptions} apiClientOptions
+   * @returns {Promise<UserActiveSessionEntity>}
    */
-  async isUserAuthenticated(account, apiClientOptions) {
-    try {
-      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
-      // use the cached data as the worker could wake up every 30 secondes.
-      const activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
-      return activeSessionEntity.isAuthenticated;
-    } catch (error) {
-      console.error(error);
-      // Service is unavailable, do nothing...
-      Log.write({
-        level: "debug",
-        message: "Could not check if the user is authenticated, the service is unavailable.",
-      });
-      // The user is not authenticated
-      return false;
-    }
+  async getUserActiveSession(account, apiClientOptions) {
+    const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+    // use the cached data as the worker could wake up every 30 secondes.
+    return await getOrFindActiveSessionService.getOrFind();
   }
 
   /**
