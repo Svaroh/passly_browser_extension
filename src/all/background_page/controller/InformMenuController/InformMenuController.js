@@ -21,6 +21,8 @@ import WorkerService from "../../service/worker/workerService";
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import { sortResourcesByUriMatchingScore } from "passbolt-styleguide/src/shared/utils/sortUtils";
 import GetOrFindResourcesService from "../../service/resource/getOrFindResourcesService";
+import GetOrFindOfflineResourcesService from "../../service/resource/getOrFindOfflineResourcesService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
 /**
  * Controller related to the in-form call-to-action
@@ -34,8 +36,23 @@ class InformMenuController {
    */
   constructor(worker, apiClientOptions, account) {
     this.worker = worker;
+    this.account = account;
+    this.apiClientOptions = apiClientOptions;
     this.getPassphraseService = new GetPassphraseService(account);
-    this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+  }
+
+  /**
+   * Returns the get or find resources service matching the type of the active session.
+   * @returns {Promise<GetOrFindResourcesService|GetOrFindOfflineResourcesService>}
+   * @private
+   */
+  async _getOrFindResourcesService() {
+    const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+
+    return activeSession.isSessionOnline
+      ? new GetOrFindResourcesService(this.account, this.apiClientOptions)
+      : new GetOrFindOfflineResourcesService(this.account, this.apiClientOptions);
   }
 
   /**
@@ -50,7 +67,8 @@ class InformMenuController {
         "passbolt.web-integration.last-performed-call-to-action-input",
       );
 
-      const suggestedResources = await this.getOrFindResourcesService.getOrFindSuggested(
+      const getOrFindResourcesService = await this._getOrFindResourcesService();
+      const suggestedResources = await getOrFindResourcesService.getOrFindSuggested(
         this.worker.tab.url,
         callToActionInput.type,
       );
