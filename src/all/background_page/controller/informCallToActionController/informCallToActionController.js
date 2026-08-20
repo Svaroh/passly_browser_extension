@@ -15,6 +15,7 @@ import ResourceModel from "../../model/resource/resourceModel";
 import { QuickAccessService } from "../../service/ui/quickAccess.service";
 import WorkerService from "../../service/worker/workerService";
 import GetOrFindResourcesService from "../../service/resource/getOrFindResourcesService";
+import GetOrFindOfflineResourcesService from "../../service/resource/getOrFindOfflineResourcesService";
 import OpenTrustedDomainTabService from "../../service/ui/openTrustedDomainTabService";
 import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
@@ -30,10 +31,24 @@ class InformCallToActionController {
    */
   constructor(worker, apiClientOptions, account) {
     this.worker = worker;
+    this.account = account;
+    this.apiClientOptions = apiClientOptions;
     this.resourceModel = new ResourceModel(apiClientOptions, account);
     this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
-    this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
     this.openTrustedDomainTabService = new OpenTrustedDomainTabService();
+  }
+
+  /**
+   * Returns the get or find resources service matching the type of the active session.
+   * @returns {Promise<GetOrFindResourcesService|GetOrFindOfflineResourcesService>}
+   * @private
+   */
+  async _getOrFindResourcesService() {
+    const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+
+    return activeSession.isSessionOnline
+      ? new GetOrFindResourcesService(this.account, this.apiClientOptions)
+      : new GetOrFindOfflineResourcesService(this.account, this.apiClientOptions);
   }
 
   /**
@@ -43,11 +58,9 @@ class InformCallToActionController {
    */
   async getSuggestedResourcesCount(requestId, fieldType) {
     try {
-      const suggestedResourcesCount = await this.getOrFindResourcesService.getOrFindSuggested(
-        this.worker.tab.url,
-        fieldType,
-      );
-      this.worker.port.emit(requestId, "SUCCESS", suggestedResourcesCount.length);
+      const getOrFindResourcesService = await this._getOrFindResourcesService();
+      const suggestedResources = await getOrFindResourcesService.getOrFindSuggested(this.worker.tab.url, fieldType);
+      this.worker.port.emit(requestId, "SUCCESS", suggestedResources.length);
     } catch (error) {
       console.error(error);
       this.worker.port.emit(requestId, "ERROR", error);

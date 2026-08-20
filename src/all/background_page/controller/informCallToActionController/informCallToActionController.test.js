@@ -25,7 +25,12 @@ import { defaultResourceDtosCollection } from "passbolt-styleguide/src/shared/mo
 import UserActiveSessionEntity, {
   USER_ACTIVE_SESSION_ONLINE,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
-import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import GetOrFindResourcesService from "../../service/resource/getOrFindResourcesService";
+import GetOrFindOfflineResourcesService from "../../service/resource/getOrFindOfflineResourcesService";
 
 describe("InformCallToActionController", () => {
   let requestId, worker, port, controller, suggestedResources;
@@ -46,7 +51,13 @@ describe("InformCallToActionController", () => {
       suggestedResources = defaultResourceDtosCollection();
 
       jest.spyOn(port, "emit");
-      jest.spyOn(controller.getOrFindResourcesService, "getOrFindSuggested").mockResolvedValue(suggestedResources);
+      jest
+        .spyOn(controller.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      jest.spyOn(GetOrFindResourcesService.prototype, "getOrFindSuggested").mockResolvedValue(suggestedResources);
+      jest
+        .spyOn(GetOrFindOfflineResourcesService.prototype, "getOrFindSuggested")
+        .mockResolvedValue(suggestedResources);
     });
 
     it("Should emit SUCCESS with the count of suggested resources", async () => {
@@ -54,8 +65,8 @@ describe("InformCallToActionController", () => {
 
       await controller.getSuggestedResourcesCount(requestId, "username");
 
-      expect(controller.getOrFindResourcesService.getOrFindSuggested).toHaveBeenCalledTimes(1);
-      expect(controller.getOrFindResourcesService.getOrFindSuggested).toHaveBeenCalledWith(worker.tab.url, "username");
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledTimes(1);
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledWith(worker.tab.url, "username");
       expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS", suggestedResources.length);
     });
 
@@ -64,16 +75,33 @@ describe("InformCallToActionController", () => {
 
       await controller.getSuggestedResourcesCount(requestId);
 
-      expect(controller.getOrFindResourcesService.getOrFindSuggested).toHaveBeenCalledTimes(1);
-      expect(controller.getOrFindResourcesService.getOrFindSuggested).toHaveBeenCalledWith(worker.tab.url, undefined);
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledTimes(1);
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledWith(worker.tab.url, undefined);
       expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS", 4);
+    });
+
+    it("Should get the suggested resources from the offline storage when the session is offline", async () => {
+      expect.assertions(3);
+
+      jest
+        .spyOn(controller.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(offlineUserActiveSessionDto()));
+
+      await controller.getSuggestedResourcesCount(requestId, "username");
+
+      expect(GetOrFindOfflineResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledWith(
+        worker.tab.url,
+        "username",
+      );
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).not.toHaveBeenCalled();
+      expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS", suggestedResources.length);
     });
 
     it("Should catch and emit ERROR when getOrFindSuggested throws an error", async () => {
       expect.assertions(1);
 
       const error = new Error();
-      jest.spyOn(controller.getOrFindResourcesService, "getOrFindSuggested").mockRejectedValue(error);
+      jest.spyOn(GetOrFindResourcesService.prototype, "getOrFindSuggested").mockRejectedValue(error);
 
       await controller.getSuggestedResourcesCount(requestId);
 
