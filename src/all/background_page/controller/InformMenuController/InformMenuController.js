@@ -43,13 +43,12 @@ class InformMenuController {
   }
 
   /**
-   * Returns the get or find resources service matching the type of the active session.
-   * @returns {Promise<GetOrFindResourcesService|GetOrFindOfflineResourcesService>}
+   * Returns the get or find resources service matching the type of the given active session.
+   * @param {UserActiveSessionEntity} activeSession The active session
+   * @returns {GetOrFindResourcesService|GetOrFindOfflineResourcesService}
    * @private
    */
-  async _getOrFindResourcesService() {
-    const activeSession = await this.getOrFindActiveSessionService.getOrFind();
-
+  _getOrFindResourcesService(activeSession) {
     return activeSession.isSessionOnline
       ? new GetOrFindResourcesService(this.account, this.apiClientOptions)
       : new GetOrFindOfflineResourcesService(this.account, this.apiClientOptions);
@@ -67,7 +66,9 @@ class InformMenuController {
         "passbolt.web-integration.last-performed-call-to-action-input",
       );
 
-      const getOrFindResourcesService = await this._getOrFindResourcesService();
+      // The session drives the storage the suggested resources are read from.
+      const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+      const getOrFindResourcesService = this._getOrFindResourcesService(activeSession);
       const suggestedResources = await getOrFindResourcesService.getOrFindSuggested(
         this.worker.tab.url,
         callToActionInput.type,

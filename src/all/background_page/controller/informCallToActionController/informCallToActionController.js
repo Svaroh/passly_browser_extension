@@ -78,6 +78,14 @@ class InformCallToActionController {
         const queryParameters = [{ name: "feature", value: "login" }];
         await QuickAccessService.open(queryParameters);
         this.worker.port.emit(requestId, "SUCCESS");
+      } else if (status.isSessionOnline && status.isServerReachable === false) {
+        /*
+         * The session is still online but the server cannot be reached, the menu actions would all fail. Hand
+         * over to the quickaccess, which bootstraps on its server unavailable screen and offers to sign out
+         * locally or to switch to an offline session.
+         */
+        await QuickAccessService.open();
+        this.worker.port.emit(requestId, "SUCCESS");
       } else if (status.isMfaRequired) {
         await this.openTrustedDomainTabService.openTab();
         this.worker.port.emit(requestId, "SUCCESS");

@@ -180,6 +180,14 @@ describe("InformMenuController", () => {
         suggestedResources: sortResourcesByUriMatchingScore(suggestedResourcesDtos, worker.tab.url),
       });
     });
+
+    it("Should resolve the active session only once", async () => {
+      expect.assertions(1);
+
+      await controller.getInitialConfiguration(requestId);
+
+      expect(GetOrFindActiveSessionService.prototype.getOrFind).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("InformMenuController::createNewCredentials", () => {
