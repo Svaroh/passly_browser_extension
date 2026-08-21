@@ -21,7 +21,7 @@ import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permi
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import { defaultPermissionsDtos } from "passbolt-styleguide/src/shared/models/entity/permission/permissionCollection.test.data";
 import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/permission/permissionsCollection";
-import FolderService from "../../service/api/folder/folderService";
+import FolderApiService from "../../service/api/folder/folderApiService";
 
 describe("FindAcoPermissionsForDisplayController", () => {
   const account = new AccountEntity(defaultAccountDto());
@@ -62,7 +62,7 @@ describe("FindAcoPermissionsForDisplayController", () => {
         .spyOn(controller.findPermissionService, "findAllByAcoForeignKeyForDisplay")
         .mockImplementationOnce(jest.fn());
       jest.spyOn(controller.findFolderService, "findById");
-      jest.spyOn(FolderService.prototype, "get").mockImplementation(() => folderDto);
+      jest.spyOn(FolderApiService.prototype, "get").mockImplementation(() => folderDto);
 
       // process
       const permissionsCollection = await controller.exec(folderId, PermissionEntity.ACO_FOLDER);

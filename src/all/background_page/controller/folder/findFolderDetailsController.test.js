@@ -16,7 +16,7 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import FindFolderDetailsController from "./findFolderDetailsController";
 import FolderEntity from "../../model/entity/folder/folderEntity";
-import FolderService from "../../service/api/folder/folderService";
+import FolderApiService from "../../service/api/folder/folderApiService";
 
 describe("FindFolderDetailsController", () => {
   let controller;
@@ -29,7 +29,7 @@ describe("FindFolderDetailsController", () => {
     it("Should call the findAndUpdateFoldersLocalStorageService", async () => {
       expect.assertions(3);
       const folderDto = defaultFolderDto({}, { withCreator: true, withModifier: true });
-      jest.spyOn(FolderService.prototype, "get").mockImplementationOnce(() => folderDto);
+      jest.spyOn(FolderApiService.prototype, "get").mockImplementationOnce(() => folderDto);
       jest.spyOn(controller.findFolderService, "findById");
       jest.spyOn(controller.findFolderService, "findByIdWithCreatorAndModifier");
 

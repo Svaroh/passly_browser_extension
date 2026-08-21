@@ -15,7 +15,7 @@
 import FindFoldersForShareController from "./findFoldersForShareController";
 import FindFoldersService from "../../service/folder/findFoldersService";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
-import FolderService from "../../service/api/folder/folderService";
+import FolderApiService from "../../service/api/folder/folderApiService";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { enableFetchMocks } from "jest-fetch-mock";
@@ -64,7 +64,7 @@ describe("FindFoldersForShareController", () => {
       expect.assertions(2);
       const controller = new FindFoldersForShareController(null, null, defaultApiClientOptions());
       expect(controller.findFoldersService).toBeInstanceOf(FindFoldersService);
-      expect(controller.findFoldersService.folderService).toBeInstanceOf(FolderService);
+      expect(controller.findFoldersService.folderService).toBeInstanceOf(FolderApiService);
     });
   });
 });
