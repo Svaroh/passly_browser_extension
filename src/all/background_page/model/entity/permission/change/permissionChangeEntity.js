@@ -12,29 +12,13 @@
  * @since         2.13.0
  */
 import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
-import Entity from "passbolt-styleguide/src/shared/models/entity/abstract/entity";
-import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
+import EntityV2 from "passbolt-styleguide/src/shared/models/entity/abstract/entityV2";
 
-const ENTITY_NAME = "PermissionChange";
 const PERMISSION_CHANGE_CREATE = "create";
 const PERMISSION_CHANGE_DELETE = "delete";
 const PERMISSION_CHANGE_UPDATE = "update";
 
-class PermissionChangeEntity extends Entity {
-  /**
-   * @inheritDoc
-   */
-  constructor(permissionChangesDto, options = {}) {
-    super(
-      EntitySchema.validate(
-        PermissionChangeEntity.ENTITY_NAME,
-        permissionChangesDto,
-        PermissionChangeEntity.getSchema(),
-      ),
-      options,
-    );
-  }
-
+class PermissionChangeEntity extends EntityV2 {
   /**
    * A permission change is basically a Permission entity
    * Without the dates, without the associated data like user, group, etc.
@@ -108,30 +92,6 @@ class PermissionChangeEntity extends Entity {
 
   /*
    * ==================================================
-   * Copy
-   * ==================================================
-   */
-  /**
-   * Create a permission change to be used by another aco
-   * Useful for example when you want to reuse a permission from a folder
-   * and apply it to a resource. For example on a move or a share operation.
-   *
-   * @param aco
-   * @param acoForeignKey
-   * @returns {PermissionEntity}
-   */
-  copyForAnotherAco(aco, acoForeignKey) {
-    return new PermissionEntity({
-      aro: this.aro,
-      aro_foreign_key: this.aroForeignKey,
-      aco: aco,
-      aco_foreign_key: acoForeignKey,
-      type: this.type,
-    });
-  }
-
-  /*
-   * ==================================================
    * Dynamic properties getters
    * ==================================================
    */
@@ -145,7 +105,7 @@ class PermissionChangeEntity extends Entity {
 
   /**
    * Get ACO - Access Control Object
-   * @returns {string} Group or User
+   * @returns {string} Folder or Resource
    */
   get aco() {
     return this._props.aco;
@@ -153,7 +113,7 @@ class PermissionChangeEntity extends Entity {
 
   /**
    * Get ARO - Access Request Object
-   * @returns {string} Resource or Folder
+   * @returns {string} Group or User
    */
   get aro() {
     return this._props.aro;
@@ -177,7 +137,7 @@ class PermissionChangeEntity extends Entity {
 
   /**
    * Get permission type
-   * @returns {int} 1: read, 5: update, 15: admin
+   * @returns {int} 1: read, 7: update, 15: owner
    */
   get type() {
     return this._props.type;
@@ -214,15 +174,7 @@ class PermissionChangeEntity extends Entity {
    * ==================================================
    */
   /**
-   * PermissionEntity.ENTITY_NAME
-   * @returns {string}
-   */
-  static get ENTITY_NAME() {
-    return ENTITY_NAME;
-  }
-
-  /**
-   * PermissionEntity.PERMISSION_CHANGE_CREATE
+   * PermissionChangeEntity.PERMISSION_CHANGE_CREATE
    * @returns {string}
    */
   static get PERMISSION_CHANGE_CREATE() {
@@ -230,7 +182,7 @@ class PermissionChangeEntity extends Entity {
   }
 
   /**
-   * PermissionEntity.PERMISSION_CHANGE_UPDATE
+   * PermissionChangeEntity.PERMISSION_CHANGE_UPDATE
    * @returns {string}
    */
   static get PERMISSION_CHANGE_UPDATE() {
@@ -238,7 +190,7 @@ class PermissionChangeEntity extends Entity {
   }
 
   /**
-   * PermissionEntity.PERMISSION_CHANGE_DELETE
+   * PermissionChangeEntity.PERMISSION_CHANGE_DELETE
    * @returns {string}
    */
   static get PERMISSION_CHANGE_DELETE() {
