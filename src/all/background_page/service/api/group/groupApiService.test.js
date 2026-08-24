@@ -18,6 +18,9 @@ import GroupApiService from "./groupApiService";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { defaultGroupDto } from "passbolt-styleguide/src/shared/models/entity/group/groupEntity.test.data";
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
+import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/PassboltApiFetchError";
+import PassboltServiceUnavailableError from "passbolt-styleguide/src/shared/lib/Error/PassboltServiceUnavailableError";
+import { defaultPermissionTransferDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionTransferEntity.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -112,6 +115,82 @@ describe("GroupApiService", () => {
       const service = new GroupApiService(defaultApiClientOptions());
 
       await expect(service.get("not-a-uuid")).rejects.toThrow(TypeError);
+    });
+  });
+
+  describe("::delete", () => {
+    it("should delete the group with the given id from the API", async () => {
+      expect.assertions(2);
+      const groupId = uuidv4();
+      fetch.doMockOnceIf(new RegExp(`/groups/${groupId}\\.json`), async (req) => {
+        expect(req.method).toEqual("DELETE");
+        return mockApiResponse({});
+      });
+
+      const service = new GroupApiService(defaultApiClientOptions());
+      await expect(service.delete(groupId, {})).resolves.not.toThrow();
+    });
+
+    it("should send the given transfer instructions in the request body", async () => {
+      expect.assertions(1);
+      const groupId = uuidv4();
+      const transfer = { owners: [defaultPermissionTransferDto()] };
+      let request;
+      fetch.doMockOnceIf(new RegExp(`/groups/${groupId}\\.json`), async (req) => {
+        request = req;
+        return mockApiResponse({});
+      });
+
+      const service = new GroupApiService(defaultApiClientOptions());
+      await service.delete(groupId, transfer);
+
+      await expect(request.json()).resolves.toStrictEqual({ transfer: transfer });
+    });
+
+    it("should request the dry-run endpoint when dry-run is enabled", async () => {
+      expect.assertions(2);
+      const groupId = uuidv4();
+      const transfer = { owners: [defaultPermissionTransferDto()] };
+      fetch.doMockOnceIf(new RegExp(`/groups/${groupId}/dry-run\\.json`), async (req) => {
+        expect(req.method).toEqual("DELETE");
+        return mockApiResponse({});
+      });
+
+      const service = new GroupApiService(defaultApiClientOptions());
+      await expect(service.delete(groupId, transfer, true)).resolves.not.toThrow();
+    });
+
+    it("should throw a TypeError if the id is not a valid uuid", async () => {
+      expect.assertions(1);
+      const service = new GroupApiService(defaultApiClientOptions());
+
+      await expect(service.delete("not-a-uuid")).rejects.toThrow(TypeError);
+    });
+
+    it("should throw an error if the API returns an error response", async () => {
+      expect.assertions(2);
+      const groupId = uuidv4();
+      fetch.doMockOnceIf(/\/groups\//, () => mockApiResponseError(500, "Something went wrong!"));
+
+      const service = new GroupApiService(defaultApiClientOptions());
+      const promise = service.delete(groupId);
+
+      await expect(promise).rejects.toThrow(PassboltApiFetchError);
+      await expect(promise).rejects.toThrow("Something went wrong!");
+    });
+
+    it("should throw an error if the server is unavailable", async () => {
+      expect.assertions(2);
+      const groupId = uuidv4();
+      fetch.doMockOnceIf(/\/groups\//, () => {
+        throw new Error("Service unavailable");
+      });
+
+      const service = new GroupApiService(defaultApiClientOptions());
+      const promise = service.delete(groupId);
+
+      await expect(promise).rejects.toThrow(PassboltServiceUnavailableError);
+      await expect(promise).rejects.toThrow("Unable to reach the server, an unexpected error occurred");
     });
   });
 });
