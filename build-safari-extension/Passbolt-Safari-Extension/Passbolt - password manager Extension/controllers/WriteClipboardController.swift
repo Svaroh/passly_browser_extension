@@ -24,6 +24,12 @@
 import AppKit
 import Foundation
 
+// Marker read by clipboard history managers (Raycast, Alfred, Paste, Maccy) to skip storing an entry.
+// See http://nspasteboard.org
+extension NSPasteboard.PasteboardType {
+    static let concealed = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+}
+
 // Writes the given data to the system pasteboard.
 // Webkit denies programmatic clipboard writes performed without user activation, which the extension
 // background page never has when it processes a port request, hence the delegation to the app.
@@ -41,9 +47,12 @@ class WriteClipboardController: AbstractController {
         }
 
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
+        // Host only keeps the secret out of the Universal Clipboard, it must not reach the other devices.
+        pasteboard.prepareForNewContents(with: .currentHostOnly)
 
         if pasteboard.setString(data, forType: .string) {
+            // Best effort hint, a refusal must not fail the copy itself.
+            pasteboard.setString(data, forType: .concealed)
             self.respondAsSuccess(context, nil)
         } else {
             self.respondAsError(context, locatedNSError(
