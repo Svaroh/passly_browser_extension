@@ -38,7 +38,7 @@ import DecryptMessageService from "../../crypto/decryptMessageService";
 import BinaryConvert from "../../../utils/format/binaryConvert";
 import ImportError from "../../../error/importError";
 import EntityValidationError from "passbolt-styleguide/src/shared/models/entity/abstract/entityValidationError";
-import FolderService from "../../api/folder/folderService";
+import FolderApiService from "../../api/folder/folderApiService";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import TagApiService from "../../api/tag/tagApiService";
 import { defaultTagDto } from "../../../model/entity/tag/tagEntity.test.data";
@@ -135,7 +135,7 @@ describe("ImportResourcesService", () => {
   describe("::importFile", () => {
     beforeEach(async () => {
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => defaultResourceDto());
-      jest.spyOn(FolderService.prototype, "create").mockImplementation(() => defaultFolderDto());
+      jest.spyOn(FolderApiService.prototype, "create").mockImplementation(() => defaultFolderDto());
       jest
         .spyOn(TagApiService.prototype, "updateResourceTags")
         .mockResolvedValue(new PassboltResponseEntity({ header: {}, body: [defaultTagDto({ slug: "import-ref" })] }));

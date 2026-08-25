@@ -14,7 +14,7 @@ import AbstractService from "../abstract/abstractService";
 
 const FOLDER_SERVICE_RESOURCE_NAME = "folders";
 
-class FolderService extends AbstractService {
+class FolderApiService extends AbstractService {
   /**
    * Constructor
    *
@@ -22,7 +22,7 @@ class FolderService extends AbstractService {
    * @public
    */
   constructor(apiClientOptions) {
-    super(apiClientOptions, FolderService.RESOURCE_NAME);
+    super(apiClientOptions, FolderApiService.RESOURCE_NAME);
   }
 
   /**
@@ -78,7 +78,9 @@ class FolderService extends AbstractService {
    */
   async get(id, contains) {
     this.assertValidId(id);
-    const options = contains ? this.formatContainOptions(contains, FolderService.getSupportedContainOptions()) : null;
+    const options = contains
+      ? this.formatContainOptions(contains, FolderApiService.getSupportedContainOptions())
+      : null;
     const response = await this.apiClient.get(id, options);
     return response.body;
   }
@@ -98,8 +100,8 @@ class FolderService extends AbstractService {
    * @public
    */
   async findAll(contains, filters) {
-    contains = contains ? this.formatContainOptions(contains, FolderService.getSupportedContainOptions()) : null;
-    filters = filters ? this.formatFilterOptions(filters, FolderService.getSupportedFiltersOptions()) : null;
+    contains = contains ? this.formatContainOptions(contains, FolderApiService.getSupportedContainOptions()) : null;
+    filters = filters ? this.formatFilterOptions(filters, FolderApiService.getSupportedFiltersOptions()) : null;
     const options = { ...contains, ...filters };
     const response = await this.apiClient.findAll(options);
     if (!response.body || !response.body.length) {
@@ -119,7 +121,9 @@ class FolderService extends AbstractService {
    */
   async create(data, contains) {
     this.assertNonEmptyData(data);
-    const options = contains ? this.formatContainOptions(contains, FolderService.getSupportedContainOptions()) : null;
+    const options = contains
+      ? this.formatContainOptions(contains, FolderApiService.getSupportedContainOptions())
+      : null;
     const response = await this.apiClient.create(data, options);
     return response.body;
   }
@@ -137,7 +141,9 @@ class FolderService extends AbstractService {
   async update(folderId, folderData, contains) {
     this.assertValidId(folderId);
     this.assertNonEmptyData(folderData);
-    const options = contains ? this.formatContainOptions(contains, FolderService.getSupportedContainOptions()) : null;
+    const options = contains
+      ? this.formatContainOptions(contains, FolderApiService.getSupportedContainOptions())
+      : null;
     const response = await this.apiClient.update(folderId, folderData, options);
     return response.body;
   }
@@ -195,4 +201,4 @@ class FolderService extends AbstractService {
   }
 }
 
-export default FolderService;
+export default FolderApiService;

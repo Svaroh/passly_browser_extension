@@ -16,7 +16,7 @@ import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/
 import FolderEntity from "../entity/folder/folderEntity";
 import FoldersCollection from "../entity/folder/foldersCollection";
 import PermissionChangesCollection from "../entity/permission/change/permissionChangesCollection";
-import FolderService from "../../service/api/folder/folderService";
+import FolderApiService from "../../service/api/folder/folderApiService";
 import ShareApiService from "../../service/api/share/shareApiService";
 import splitBySize from "../../utils/array/splitBySize";
 import FindAndUpdateFoldersLocalStorageService from "../../service/folder/findAndUpdateFoldersLocalStorageService";
@@ -32,7 +32,7 @@ class FolderModel {
    * @public
    */
   constructor(apiClientOptions, account) {
-    this.folderService = new FolderService(apiClientOptions);
+    this.folderService = new FolderApiService(apiClientOptions);
     this.shareApiService = new ShareApiService(apiClientOptions);
     this.findAndUpdateFoldersLocalStorageService = new FindAndUpdateFoldersLocalStorageService(
       account,
