@@ -13,8 +13,8 @@
  */
 
 import FolderModel from "../model/folder/folderModel";
-import UpdateFolderService from "../service/folder/updateFolderService";
 import FolderCreateController from "../controller/folder/folderCreateController";
+import UpdateFolderController from "../controller/folder/updateFolderController";
 import FolderEntity from "../model/entity/folder/folderEntity";
 import FindAndUpdateResourcesLocalStorage from "../service/resource/findAndUpdateResourcesLocalStorageService";
 import UpdateAllFolderLocalStorageController from "../controller/folderLocalStorage/updateAllFoldersLocalStorageController";
@@ -54,13 +54,8 @@ const listen = function (worker, apiClientOptions, account) {
    * @param folder {array} The folder
    */
   worker.port.on("passbolt.folders.update", async (requestId, folderDto) => {
-    try {
-      const updateFolderService = new UpdateFolderService(apiClientOptions);
-      const folderEntity = await updateFolderService.update(new FolderEntity(folderDto));
-      worker.port.emit(requestId, "SUCCESS", folderEntity);
-    } catch (error) {
-      worker.port.emit(requestId, "ERROR", error);
-    }
+    const controller = new UpdateFolderController(worker, requestId, apiClientOptions);
+    await controller._exec(folderDto);
   });
 
   /*
