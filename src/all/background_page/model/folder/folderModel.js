@@ -136,20 +136,7 @@ class FolderModel {
   }
 
   /**
-   * Update a folder using Passbolt API
-   *
-   * @param {FolderEntity} folderEntity
-   * @returns {Promise<FolderEntity>}
-   */
-  async update(folderEntity) {
-    const folderDto = await this.folderService.update(folderEntity.id, folderEntity.toDto(), { permission: true });
-    const updatedFolderEntity = new FolderEntity(folderDto);
-    await FolderLocalStorage.updateFolder(updatedFolderEntity);
-    return updatedFolderEntity;
-  }
-
-  /**
-   * Update a folder using Passbolt API
+   * Share a folder using Passbolt API
    *
    * @param {FolderEntity} folderEntity
    * @param {PermissionChangesCollection} changesCollection
