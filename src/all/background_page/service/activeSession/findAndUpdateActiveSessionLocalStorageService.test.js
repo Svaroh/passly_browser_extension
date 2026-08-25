@@ -448,8 +448,8 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
   });
 
   describe("::authenticateOffline", () => {
-    it("creates an offline authenticated session when none exists", async () => {
-      expect.assertions(3);
+    it("creates an offline authenticated session stamped with the login date when none exists", async () => {
+      expect.assertions(4);
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find");
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
@@ -458,11 +458,12 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
       expect(storageValue.is_authenticated).toBe(true);
       expect(storageValue.type).toBe(USER_ACTIVE_SESSION_OFFLINE);
+      expect(typeof storageValue.last_logged_in).toBe("string");
       expect(findAndUpdateActiveSessionLocalStorageService.findServerStatusService.find).not.toHaveBeenCalled();
     });
 
-    it("asserts offline authenticated while preserving durable fields of the stored session", async () => {
-      expect.assertions(6);
+    it("asserts offline authenticated and refreshes the login date while preserving other durable fields", async () => {
+      expect.assertions(7);
       const existing = {
         is_authenticated: false,
         is_mfa_required: false,
@@ -483,14 +484,15 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect(storageValue.type).toBe(USER_ACTIVE_SESSION_OFFLINE);
       expect(storageValue.last_seen_online).toBe("2025-08-06T10:05:46+00:00");
       expect(storageValue.is_server_reachable).toBe(false);
-      expect(storageValue.last_logged_in).toBe("2025-08-06T09:00:00+00:00");
+      expect(storageValue.last_logged_in).not.toBe("2025-08-06T09:00:00+00:00");
+      expect(typeof storageValue.last_logged_in).toBe("string");
       expect(
         findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
       ).not.toHaveBeenCalled();
     });
 
     it("fails safe to a minimal authenticated offline session when the write errors, so the user stays signed in offline", async () => {
-      expect.assertions(2);
+      expect.assertions(3);
       const corrupt = {
         is_authenticated: false,
         type: USER_ACTIVE_SESSION_ONLINE,
@@ -508,6 +510,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
       expect(storageValue.is_authenticated).toBe(true);
       expect(storageValue.type).toBe(USER_ACTIVE_SESSION_OFFLINE);
+      expect(typeof storageValue.last_logged_in).toBe("string");
     });
   });
 
