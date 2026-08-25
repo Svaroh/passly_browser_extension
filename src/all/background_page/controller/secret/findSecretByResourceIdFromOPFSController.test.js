@@ -47,6 +47,7 @@ describe("FindSecretByResourceIdFromOPFSController", () => {
     account = new AccountEntity(defaultAccountDto());
     await MockExtension.withConfiguredAccount();
     controller = new FindSecretByResourceIdFromOPFSController(worker, null, defaultApiClientOptions(), account);
+    jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => pgpKeys.ada.passphrase);
     service = controller.findSecretOPFSService;
     // flush account related storage before each.
     await service.offlineSecretsOPFSStorage.flush();
@@ -64,7 +65,7 @@ describe("FindSecretByResourceIdFromOPFSController", () => {
       await controller._exec(resourceId);
 
       expect(service.findByResourceId).toHaveBeenCalledTimes(1);
-      expect(service.findByResourceId).toHaveBeenCalledWith(resourceId);
+      expect(service.findByResourceId).toHaveBeenCalledWith(resourceId, pgpKeys.ada.passphrase);
       expect(worker.port.emit).toHaveBeenCalledWith(null, "SUCCESS", plaintextSecret);
     });
 
@@ -112,8 +113,6 @@ describe("FindSecretByResourceIdFromOPFSController", () => {
       jest
         .spyOn(service.getSecretSchemaResourceTypeService.getOrFindResourceTypesService, "getOrFindAll")
         .mockImplementation(async () => new ResourceTypesCollection(resourceTypesCollectionDto()));
-      jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => pgpKeys.ada.passphrase);
-
       const plaintextSecret = await controller.exec(resourceId);
 
       expect(plaintextSecret).toBeInstanceOf(PlaintextEntity);

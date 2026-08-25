@@ -14,7 +14,6 @@
 import SecretEntity from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity";
 import { assertUuid } from "../../utils/assertions";
 import GetSecretSchemaResourceTypeService from "../resourceType/getSecretSchemaResourceTypeService";
-import GetPassphraseService from "../passphrase/getPassphraseService";
 import GetDecryptedUserPrivateKeyService from "../account/getDecryptedUserPrivateKeyService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
@@ -29,14 +28,11 @@ class FindSecretOPFSService {
    * @constructor
    * @param {AccountEntity} account The user account
    * @param {ApiClientOptions} apiClientOptions The api client options
-   * @param {Worker} worker The worker from which the request comes from, used to prompt the user passphrase
    * whenever it is not in the session storage.
    */
-  constructor(account, apiClientOptions, worker) {
+  constructor(account, apiClientOptions) {
     this.account = account;
-    this.worker = worker;
     this.getSecretSchemaResourceTypeService = new GetSecretSchemaResourceTypeService(account, apiClientOptions);
-    this.getPassphraseService = new GetPassphraseService(account);
     this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
   }
 
@@ -44,13 +40,14 @@ class FindSecretOPFSService {
    * Find a secret by its resource id in the OPFS store and return the decrypted secret.
    *
    * @param {string} resourceId The resource uuid
+   * @param {string} passphrase The passphrase
    * @returns {Promise<PlaintextEntity>}
    * @throws {Error} if the resource id is not a valid uuid
    * @throws {Error} if the secret cannot be found in the OPFS store
    * @throws {Error} if the resource cannot be found in the local storage
    * @throws {Error} if the secret cannot be decrypted or parsed
    */
-  async findByResourceId(resourceId) {
+  async findByResourceId(resourceId, passphrase) {
     assertUuid(resourceId, "The resource id should be a valid UUID");
 
     const secretDto = await this.offlineSecretsOPFSStorage.getOfflineSecretByResourceId(resourceId);
@@ -65,7 +62,6 @@ class FindSecretOPFSService {
     const resource = new ResourceEntity(resourceDto);
     const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(resource.resourceTypeId);
 
-    const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
     const decryptedPrivateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
 
     return DecryptAndParseResourceSecretService.decryptAndParse(secret, secretSchema, decryptedPrivateKey);

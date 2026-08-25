@@ -28,13 +28,11 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import PlaintextEntity from "../../model/entity/plaintext/plaintextEntity";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
-import PassphraseStorageService from "../session_storage/passphraseStorageService";
-import GetPassphraseService from "../passphrase/getPassphraseService";
 import EncryptMessageService from "../crypto/encryptMessageService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 
 describe("FindSecretOPFSService", () => {
-  let account, service, worker;
+  let account, service;
 
   /**
    * Store a resource in the resource local storage and its secret, encrypted for ada, in the OPFS store.
@@ -63,10 +61,9 @@ describe("FindSecretOPFSService", () => {
   beforeEach(async () => {
     // Restore and not only clear, the spied implementations must not leak from one test to another.
     jest.restoreAllMocks();
-    worker = { port: { request: jest.fn() } };
     account = new AccountEntity(defaultAccountDto());
     await MockExtension.withConfiguredAccount();
-    service = new FindSecretOPFSService(account, defaultApiClientOptions(), worker);
+    service = new FindSecretOPFSService(account, defaultApiClientOptions());
     // flush account related storage before each.
     await service.offlineSecretsOPFSStorage.flush();
     await ResourceLocalStorage.flush();
@@ -74,7 +71,6 @@ describe("FindSecretOPFSService", () => {
     jest
       .spyOn(service.getSecretSchemaResourceTypeService.getOrFindResourceTypesService, "getOrFindAll")
       .mockImplementation(async () => new ResourceTypesCollection(resourceTypesCollectionDto()));
-    jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => pgpKeys.ada.passphrase);
   });
 
   describe("::findByResourceId", () => {
@@ -95,7 +91,7 @@ describe("FindSecretOPFSService", () => {
         JSON.stringify(plaintextSecretDto),
       );
 
-      const plaintextSecret = await service.findByResourceId(resourceId);
+      const plaintextSecret = await service.findByResourceId(resourceId, pgpKeys.ada.passphrase);
 
       expect(plaintextSecret).toBeInstanceOf(PlaintextEntity);
       expect(plaintextSecret.password).toEqual(plaintextSecretDto.password);
@@ -128,19 +124,16 @@ describe("FindSecretOPFSService", () => {
     });
 
     it("prompts the user passphrase with the worker whenever it is not in the session storage.", async () => {
-      expect.assertions(2);
+      expect.assertions(1);
 
       const plaintextSecretDto = plaintextSecretPasswordAndDescriptionDto();
       const resourceId = await mockOfflineResourceWithSecret(
         TEST_RESOURCE_TYPE_V5_DEFAULT,
         JSON.stringify(plaintextSecretDto),
       );
-      jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => null);
-      jest.spyOn(GetPassphraseService.prototype, "requestPassphrase").mockImplementation(() => pgpKeys.ada.passphrase);
 
-      const plaintextSecret = await service.findByResourceId(resourceId);
+      const plaintextSecret = await service.findByResourceId(resourceId, pgpKeys.ada.passphrase);
 
-      expect(GetPassphraseService.prototype.requestPassphrase).toHaveBeenCalledWith(worker);
       expect(plaintextSecret.password).toEqual(plaintextSecretDto.password);
     });
 
@@ -151,9 +144,7 @@ describe("FindSecretOPFSService", () => {
         TEST_RESOURCE_TYPE_V5_DEFAULT,
         JSON.stringify(plaintextSecretPasswordAndDescriptionDto()),
       );
-      jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => "wrong-passphrase");
-
-      await expect(() => service.findByResourceId(resourceId)).rejects.toThrow();
+      await expect(() => service.findByResourceId(resourceId, "wrong-passphrase")).rejects.toThrow();
     });
   });
 });

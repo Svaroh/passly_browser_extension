@@ -32,6 +32,13 @@ import { defaultTotpDto } from "../../model/entity/totp/totpDto.test.data";
 import EncryptMessageService from "../../service/crypto/encryptMessageService";
 import { resourceTypePasswordDescriptionTotpDto } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypeEntity.test.data";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import PlaintextEntity from "../../model/entity/plaintext/plaintextEntity";
 
 describe("AutofillController", () => {
   const account = new AccountEntity(defaultAccountDto());
@@ -57,6 +64,9 @@ describe("AutofillController", () => {
       });
 
       jest.spyOn(GetDecryptedUserPrivateKeyService, "getKey").mockResolvedValue(privateKey);
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     });
 
     it("Should autofill from inform menu.", async () => {
@@ -150,6 +160,111 @@ describe("AutofillController", () => {
         tab.url,
       );
       expect(portWrapper.emit).not.toHaveBeenCalledWith("passbolt.in-form-menu.close");
+    });
+
+    it("Should autofill from quickaccess with offline session.", async () => {
+      expect.assertions(11);
+
+      const requestId = uuidv4();
+      const worker = readWorker({ name: QuickAccessPagemod.appName });
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(offlineUserActiveSessionDto()));
+      const controller = new AutofillController(worker, requestId, defaultApiClientOptions(), account);
+      const port = mockPort({ name: worker.id, tabId: worker.tabId, frameId: worker.frameId, url: "https://url.com" });
+      const portWrapper = new Port(port);
+      const tab = { url: "https://url.com" };
+
+      jest.spyOn(WorkerService, "get").mockResolvedValueOnce({ port: portWrapper });
+      jest.spyOn(portWrapper, "emit");
+      jest.spyOn(portWrapper, "request");
+      jest
+        .spyOn(controller.getPassphraseService, "requestPassphraseFromQuickAccess")
+        .mockResolvedValue(pgpKeys.ada.passphrase);
+      jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue(pgpKeys.ada.passphrase);
+      jest.spyOn(controller.resourceModel, "getById");
+      jest.spyOn(controller.findSecretService, "findByResourceId");
+      jest.spyOn(controller.offlineResourcesOPFSStorage, "getOfflineResourceById").mockResolvedValue(resource);
+      jest
+        .spyOn(controller.findSecretOPFSService, "findByResourceId")
+        .mockResolvedValue(new PlaintextEntity(plaintextSecretDto, { schema }));
+
+      await controller.exec(resource.id, worker.tabId);
+
+      expect(controller.getPassphraseService.requestPassphraseFromQuickAccess).not.toHaveBeenCalled();
+      expect(controller.getPassphraseService.getPassphrase).toHaveBeenCalledTimes(1);
+      expect(controller.getPassphraseService.getPassphrase).toHaveBeenCalledWith(worker);
+
+      expect(controller.resourceModel.getById).not.toHaveBeenCalled();
+
+      expect(controller.findSecretService.findByResourceId).not.toHaveBeenCalled();
+
+      expect(controller.offlineResourcesOPFSStorage.getOfflineResourceById).toHaveBeenNthCalledWith(1, resource.id);
+      expect(controller.findSecretOPFSService.findByResourceId).toHaveBeenNthCalledWith(
+        1,
+        resource.id,
+        pgpKeys.ada.passphrase,
+      );
+
+      expect(portWrapper.emit).toHaveBeenCalledTimes(1);
+      expect(portWrapper.request).toHaveBeenCalledTimes(1);
+      expect(portWrapper.request).toHaveBeenCalledWith(
+        "passbolt.quickaccess.fill-form",
+        resource.metadata.username,
+        plaintextSecretDto.password,
+        plaintextSecretDto.totp,
+        tab.url,
+      );
+      expect(portWrapper.emit).not.toHaveBeenCalledWith("passbolt.in-form-menu.close");
+    });
+
+    it("Should autofill from inform menu with offline session.", async () => {
+      expect.assertions(8);
+
+      const requestId = uuidv4();
+      const worker = readWorker({ name: InformMenuPagemod.appName });
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(offlineUserActiveSessionDto()));
+      const controller = new AutofillController(worker, requestId, defaultApiClientOptions(), account);
+      const port = mockPort({ name: worker.id, tabId: worker.tabId, frameId: worker.frameId });
+      const portWrapper = new Port(port);
+
+      jest.spyOn(WorkerService, "get").mockResolvedValueOnce({ port: portWrapper });
+      jest.spyOn(portWrapper, "emit");
+      jest
+        .spyOn(controller.getPassphraseService, "requestPassphraseFromQuickAccess")
+        .mockResolvedValue(pgpKeys.ada.passphrase);
+      jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue(pgpKeys.ada.passphrase);
+      jest.spyOn(controller.resourceModel, "getById");
+      jest.spyOn(controller.findSecretService, "findByResourceId");
+      jest.spyOn(controller.offlineResourcesOPFSStorage, "getOfflineResourceById").mockResolvedValue(resource);
+      jest
+        .spyOn(controller.findSecretOPFSService, "findByResourceId")
+        .mockResolvedValue(new PlaintextEntity(plaintextSecretDto, { schema }));
+
+      await controller.exec(resource.id, worker.tabId);
+
+      expect(controller.getPassphraseService.requestPassphraseFromQuickAccess).toHaveBeenCalledTimes(1);
+
+      expect(controller.resourceModel.getById).not.toHaveBeenCalled();
+
+      expect(controller.findSecretService.findByResourceId).not.toHaveBeenCalled();
+
+      expect(controller.offlineResourcesOPFSStorage.getOfflineResourceById).toHaveBeenNthCalledWith(1, resource.id);
+      expect(controller.findSecretOPFSService.findByResourceId).toHaveBeenNthCalledWith(
+        1,
+        resource.id,
+        pgpKeys.ada.passphrase,
+      );
+
+      expect(portWrapper.emit).toHaveBeenCalledTimes(2);
+      expect(portWrapper.emit).toHaveBeenCalledWith("passbolt.web-integration.fill-credentials", {
+        username: resource.metadata.username,
+        password: plaintextSecretDto.password,
+        totp: plaintextSecretDto.totp,
+      });
+      expect(portWrapper.emit).toHaveBeenCalledWith("passbolt.in-form-menu.close");
     });
 
     it("Should not autofill from a worker that is not inform menu or quickaccess.", async () => {

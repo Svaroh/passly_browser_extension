@@ -12,6 +12,7 @@
  * @since         6.0.0
  */
 import FindSecretOPFSService from "../../service/secret/findSecretOPFSService";
+import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 
 class FindSecretByResourceIdFromOPFSController {
   /**
@@ -25,7 +26,8 @@ class FindSecretByResourceIdFromOPFSController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.findSecretOPFSService = new FindSecretOPFSService(account, apiClientOptions, worker);
+    this.getPassphraseService = new GetPassphraseService(account);
+    this.findSecretOPFSService = new FindSecretOPFSService(account, apiClientOptions);
   }
 
   /**
@@ -49,7 +51,8 @@ class FindSecretByResourceIdFromOPFSController {
    * @returns {Promise<PlaintextEntity>}
    */
   async exec(resourceId) {
-    return await this.findSecretOPFSService.findByResourceId(resourceId);
+    const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
+    return await this.findSecretOPFSService.findByResourceId(resourceId, passphrase);
   }
 }
 
