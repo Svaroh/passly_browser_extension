@@ -12,6 +12,7 @@
  * @since         2.0.0
  */
 import GroupModel from "../model/group/groupModel";
+import DeleteGroupService from "../service/group/deleteGroupService";
 import GroupsUpdateController from "../controller/group/groupUpdateController";
 import GroupCreateController from "../controller/group/groupCreateController";
 import GroupDeleteTransferEntity from "../model/entity/group/transfer/groupDeleteTransferEntity";
@@ -122,9 +123,9 @@ const listen = function (worker, apiClientOptions, account) {
    */
   worker.port.on("passbolt.groups.delete", async (requestId, groupId, transferDto) => {
     try {
-      const groupModel = new GroupModel(apiClientOptions, account);
+      const deleteGroupService = new DeleteGroupService(apiClientOptions, account);
       const transferEntity = transferDto ? new GroupDeleteTransferEntity(transferDto) : null;
-      await groupModel.delete(groupId, transferEntity);
+      await deleteGroupService.delete(groupId, transferEntity);
       worker.port.emit(requestId, "SUCCESS");
     } catch (error) {
       console.error(error);

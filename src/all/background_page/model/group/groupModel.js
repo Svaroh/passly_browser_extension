@@ -100,33 +100,6 @@ class GroupModel {
       throw error;
     }
   }
-
-  /**
-   * Delete a group and transfer ownership if needed
-   *
-   * @param {string} groupId The group id
-   * @param {GroupDeleteTransferEntity} [transfer] optional ownership transfer information if needed
-   * @returns {Promise<void>}
-   * @public
-   */
-  async delete(groupId, transfer) {
-    try {
-      const deleteData = transfer && transfer instanceof GroupDeleteTransferEntity ? transfer.toDto() : {};
-      await this.groupApiService.delete(groupId, deleteData);
-    } catch (error) {
-      if (error instanceof PassboltApiFetchError && error.data.code === 400 && error.data.body.errors) {
-        /*
-         * recast generic 400 error into a delete dry run error
-         * allowing validation of the returned entities and reuse down the line to transfer permissions
-         */
-        throw new DeleteDryRunError(error.message, error.data.body.errors);
-      }
-      throw error;
-    }
-
-    // Update local storage
-    await this.groupLocalStorage.delete(groupId);
-  }
 }
 
 export default GroupModel;
