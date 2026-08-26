@@ -49,10 +49,11 @@ export default class OfflineRetentionDataFlushService {
         return;
       }
 
-      const isExpired =
-        new Date(userActiveSessionEntity.lastSeenOnline).getTime() +
-          offlineSettingsEntity.maximumRetentionPeriod * 1000 <
-        Date.now();
+      // Create the date (last seen online + maximum retention period in days) to compare with now
+      const retentionPeriodDate = new Date(userActiveSessionEntity.lastSeenOnline);
+      retentionPeriodDate.setDate(retentionPeriodDate.getDate() + offlineSettingsEntity.maximumRetentionPeriod);
+
+      const isExpired = retentionPeriodDate.getTime() < Date.now();
       if (isExpired) {
         // Keep a trace if any error happen during the flush
         const logErrorFlushOPFSStorage = (settledResults) => {
