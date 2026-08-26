@@ -33,6 +33,49 @@ describe("DeleteGroupService", () => {
     jest.spyOn(deleteGroupService.groupLocalStorage, "delete").mockResolvedValue();
   });
 
+  describe("::deleteDryRun", () => {
+    it("requests the API delete dry run with the group id and no transfer", async () => {
+      expect.assertions(2);
+      const groupId = uuidv4();
+      jest.spyOn(deleteGroupService.groupApiService, "delete").mockResolvedValue();
+      await deleteGroupService.deleteDryRun(groupId);
+      expect(deleteGroupService.groupApiService.delete).toHaveBeenCalledWith(groupId, {}, true);
+      expect(deleteGroupService.groupLocalStorage.delete).not.toHaveBeenCalled();
+    });
+
+    it("throws a DeleteDryRunError if ownership needs to be transferred", async () => {
+      expect.assertions(2);
+      const groupId = uuidv4();
+      const resourceDto = defaultResourceDto();
+      const error = {
+        code: 400,
+        body: { errors: { resources: { sole_owner: [resourceDto] } } },
+      };
+      jest
+        .spyOn(deleteGroupService.groupApiService, "delete")
+        .mockRejectedValue(new PassboltApiFetchError("Error", error));
+
+      const promise = deleteGroupService.deleteDryRun(groupId);
+
+      await expect(promise).rejects.toThrow(DeleteDryRunError);
+      const thrownError = await promise.catch((e) => e);
+      expect(thrownError.errors.resources.sole_owner.items.map((r) => r.id)).toEqual([resourceDto.id]);
+    });
+
+    it("rethrows any unexpected error", async () => {
+      expect.assertions(1);
+      jest
+        .spyOn(deleteGroupService.groupApiService, "delete")
+        .mockRejectedValue(new PassboltApiFetchError("Error", { code: 404 }));
+      await expect(deleteGroupService.deleteDryRun(uuidv4())).rejects.toThrow(PassboltApiFetchError);
+    });
+
+    it("throws if the group id is not a uuid", async () => {
+      expect.assertions(1);
+      await expect(deleteGroupService.deleteDryRun({})).rejects.toThrow('The parameter "groupId" should be a UUID');
+    });
+  });
+
   describe("::delete", () => {
     it("deletes a group with no transfer", async () => {
       expect.assertions(2);
