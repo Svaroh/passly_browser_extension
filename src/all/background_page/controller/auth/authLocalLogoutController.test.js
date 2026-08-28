@@ -32,7 +32,7 @@ describe("AuthLocalLogoutController", () => {
   describe("AuthLocalLogoutController::exec", () => {
     it("flushes the session cookies, marks the active session as signed out then runs the post-logout cleanup", async () => {
       expect.assertions(4);
-      const cookieFlushSpy = jest.spyOn(SessionCookieFlushService, "flush").mockResolvedValue();
+      const cookieFlushSpy = jest.spyOn(SessionCookieFlushService.prototype, "flush").mockResolvedValue();
       const postLogoutSpy = jest.spyOn(PostLogoutService, "exec").mockResolvedValue();
       const clearOfflineAlarmSpy = jest.spyOn(OfflineSessionExpiryAlarmService, "clearAlarm").mockResolvedValue();
 
@@ -49,7 +49,7 @@ describe("AuthLocalLogoutController", () => {
   describe("AuthLocalLogoutController::_exec", () => {
     it("emits SUCCESS once exec resolves", async () => {
       expect.assertions(1);
-      jest.spyOn(SessionCookieFlushService, "flush").mockResolvedValue();
+      jest.spyOn(SessionCookieFlushService.prototype, "flush").mockResolvedValue();
       jest.spyOn(PostLogoutService, "exec").mockResolvedValue();
       const requestId = uuid();
       const worker = { port: { emit: jest.fn() } };
@@ -62,7 +62,7 @@ describe("AuthLocalLogoutController", () => {
 
     it("emits ERROR when PostLogoutService throws", async () => {
       expect.assertions(1);
-      jest.spyOn(SessionCookieFlushService, "flush").mockResolvedValue();
+      jest.spyOn(SessionCookieFlushService.prototype, "flush").mockResolvedValue();
       const error = new Error("flush failed");
       jest.spyOn(PostLogoutService, "exec").mockRejectedValue(error);
       jest.spyOn(console, "error").mockImplementation(() => {});

@@ -23,7 +23,7 @@ import FindSecretService from "../../service/secret/findSecretService";
 import GetSecretSchemaResourceTypeService from "../../service/resourceType/getSecretSchemaResourceTypeService";
 import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 import FindSecretOPFSService from "../../service/secret/findSecretOPFSService";
-import OfflineResourcesOPFSStorage from "../../service/opfsStorage/offlineResourcesOPFSStorage";
+import ResourceLocalStorage from "../../service/local_storage/resourceLocalStorage";
 
 class AutofillController {
   /**
@@ -41,7 +41,6 @@ class AutofillController {
     this.getSecretSchemaResourceTypeService = new GetSecretSchemaResourceTypeService(account, apiClientOptions);
     this.getPassphraseService = new GetPassphraseService(account);
     this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
-    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
     this.findSecretOPFSService = new FindSecretOPFSService(account, apiClientOptions);
   }
 
@@ -91,8 +90,8 @@ class AutofillController {
           privateKey,
         );
       } else {
-        // Get information from OPFS if offline
-        resourceEntity = await this.offlineResourcesOPFSStorage.getOfflineResourceById(resourceId);
+        // Get information from resource local storage
+        resourceEntity = await ResourceLocalStorage.getResourceById(resourceId);
         plaintextSecretEntity = await this.findSecretOPFSService.findByResourceId(resourceId, passphrase);
       }
       const username = resourceEntity.metadata?.username || "";

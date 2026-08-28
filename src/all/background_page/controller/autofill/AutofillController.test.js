@@ -39,6 +39,7 @@ import {
   offlineUserActiveSessionDto,
 } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import PlaintextEntity from "../../model/entity/plaintext/plaintextEntity";
+import ResourceLocalStorage from "../../service/local_storage/resourceLocalStorage";
 
 describe("AutofillController", () => {
   const account = new AccountEntity(defaultAccountDto());
@@ -184,7 +185,7 @@ describe("AutofillController", () => {
       jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue(pgpKeys.ada.passphrase);
       jest.spyOn(controller.resourceModel, "getById");
       jest.spyOn(controller.findSecretService, "findByResourceId");
-      jest.spyOn(controller.offlineResourcesOPFSStorage, "getOfflineResourceById").mockResolvedValue(resource);
+      jest.spyOn(ResourceLocalStorage, "getResourceById").mockResolvedValue(resource);
       jest
         .spyOn(controller.findSecretOPFSService, "findByResourceId")
         .mockResolvedValue(new PlaintextEntity(plaintextSecretDto, { schema }));
@@ -199,7 +200,7 @@ describe("AutofillController", () => {
 
       expect(controller.findSecretService.findByResourceId).not.toHaveBeenCalled();
 
-      expect(controller.offlineResourcesOPFSStorage.getOfflineResourceById).toHaveBeenNthCalledWith(1, resource.id);
+      expect(ResourceLocalStorage.getResourceById).toHaveBeenCalledWith(resource.id);
       expect(controller.findSecretOPFSService.findByResourceId).toHaveBeenNthCalledWith(
         1,
         resource.id,
@@ -238,7 +239,7 @@ describe("AutofillController", () => {
       jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue(pgpKeys.ada.passphrase);
       jest.spyOn(controller.resourceModel, "getById");
       jest.spyOn(controller.findSecretService, "findByResourceId");
-      jest.spyOn(controller.offlineResourcesOPFSStorage, "getOfflineResourceById").mockResolvedValue(resource);
+      jest.spyOn(ResourceLocalStorage, "getResourceById").mockResolvedValue(resource);
       jest
         .spyOn(controller.findSecretOPFSService, "findByResourceId")
         .mockResolvedValue(new PlaintextEntity(plaintextSecretDto, { schema }));
@@ -251,7 +252,7 @@ describe("AutofillController", () => {
 
       expect(controller.findSecretService.findByResourceId).not.toHaveBeenCalled();
 
-      expect(controller.offlineResourcesOPFSStorage.getOfflineResourceById).toHaveBeenNthCalledWith(1, resource.id);
+      expect(ResourceLocalStorage.getResourceById).toHaveBeenCalledWith(resource.id);
       expect(controller.findSecretOPFSService.findByResourceId).toHaveBeenNthCalledWith(
         1,
         resource.id,
