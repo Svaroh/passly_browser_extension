@@ -385,7 +385,7 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
 
   describe("::authenticateOnline", () => {
     it("creates an online authenticated session stamped with the login date when none exists", async () => {
-      expect.assertions(4);
+      expect.assertions(5);
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.findServerStatusService, "find");
       jest.spyOn(findAndUpdateActiveSessionLocalStorageService.authenticationStatusService, "isAuthenticated");
 
@@ -395,11 +395,12 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       expect(storageValue.is_authenticated).toBe(true);
       expect(storageValue.type).toBe(USER_ACTIVE_SESSION_ONLINE);
       expect(typeof storageValue.last_logged_in).toBe("string");
+      expect(typeof storageValue.last_seen_online).toBe("string");
       expect(findAndUpdateActiveSessionLocalStorageService.findServerStatusService.find).not.toHaveBeenCalled();
     });
 
     it("asserts online authenticated and refreshes the login date while preserving other durable fields", async () => {
-      expect.assertions(6);
+      expect.assertions(7);
       const existing = {
         is_authenticated: false,
         is_mfa_required: false,
@@ -418,10 +419,11 @@ describe("FindAndUpdateActiveSessionLocalStorageService", () => {
       const storageValue = await findAndUpdateActiveSessionLocalStorageService.activeSessionLocalStorage.get();
       expect(storageValue.is_authenticated).toBe(true);
       expect(storageValue.type).toBe(USER_ACTIVE_SESSION_ONLINE);
-      expect(storageValue.last_seen_online).toBe("2025-08-06T10:05:46+00:00");
-      // The login date is refreshed to the current login, not kept from the previous session.
+      // The login date and last seen online date are refreshed to the current date, not kept from the previous session.
       expect(storageValue.last_logged_in).not.toBe("2025-08-06T09:00:00+00:00");
       expect(typeof storageValue.last_logged_in).toBe("string");
+      expect(storageValue.last_seen_online).not.toBe("2025-08-06T09:00:00+00:00");
+      expect(typeof storageValue.last_seen_online).toBe("string");
       expect(
         findAndUpdateActiveSessionLocalStorageService.authenticationStatusService.isAuthenticated,
       ).not.toHaveBeenCalled();
