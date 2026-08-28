@@ -12,7 +12,6 @@
  * @since         3.10.0
  */
 import {
-  assertUuid,
   assertBase64String,
   assertPassphrase,
   assertNonExtractableSsoKey,
@@ -21,12 +20,10 @@ import {
   assertBoolean,
   assertType,
   assertNumber,
-  assertArrayUUID,
   assertAnyTypeOf,
   assertArray,
   assertNonEmptyArray,
 } from "./assertions";
-import { v4 as uuid } from "uuid";
 import GenerateSsoIvService from "../service/crypto/generateSsoIvService";
 import { buildMockedCryptoKey } from "./assertions.test.data";
 import PasswordGeneratorSettingsEntity from "../model/entity/passwordPolicies/passwordGeneratorSettingsEntity";
@@ -37,29 +34,6 @@ import FolderEntity from "../model/entity/folder/folderEntity";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 
 describe("Assertions", () => {
-  describe("Assertions::assertUuid", () => {
-    it("Should not throw an error if the parameter is valid", () => {
-      expect.assertions(1);
-
-      expect(() => assertUuid(uuid())).not.toThrow();
-    });
-
-    it("Should throw an error if the parameter is not valid", () => {
-      const scenarios = [
-        {},
-        "",
-        false,
-        12,
-        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", // looks like a UUID but, it's not
-      ];
-
-      expect.assertions(scenarios.length);
-      for (let i = 0; i < scenarios.length; i++) {
-        expect(() => assertUuid(scenarios[i])).toThrow();
-      }
-    });
-  });
-
   describe("Assertions::assertBase64String", () => {
     it("Should not throw an error if the parameter is valid", () => {
       expect.assertions(1);
@@ -68,11 +42,11 @@ describe("Assertions", () => {
     });
 
     it("Should throw an error if the parameter is not valid", () => {
-      const scenarios = [{}, "", false, 12, "aH+"];
+      const scenarios = [{}, false, 12, "aH+"];
 
       expect.assertions(scenarios.length);
       for (let i = 0; i < scenarios.length; i++) {
-        expect(() => assertUuid(scenarios[i])).toThrow();
+        expect(() => assertBase64String(scenarios[i])).toThrow();
       }
     });
   });
@@ -260,30 +234,6 @@ describe("Assertions", () => {
       it(`Scenario: ${props.scenario}`, () => {
         expect.assertions(1);
         expect(() => assertNumber(props.value)).toThrow();
-      });
-    });
-  });
-
-  describe("Assertions::assertArrayUUID", () => {
-    describe.each([
-      { scenario: "Array of uuid", value: [uuid(), uuid()] },
-      { scenario: "Empty array", value: [] },
-    ])(`Should not throw an error if the parameter is valid`, (props) => {
-      it(`Scenario: ${props.scenario}`, () => {
-        expect.assertions(1);
-        expect(() => assertArrayUUID(props.value)).not.toThrow();
-      });
-    });
-
-    describe.each([
-      { scenario: "object", value: {} },
-      { scenario: "null", value: null },
-      { scenario: "array of number", value: [1, 2] },
-      { scenario: "array of string", value: ["1", "2"] },
-    ])(`Should throw an error if the parameter is not valid`, (props) => {
-      it(`Scenario: ${props.scenario}`, () => {
-        expect.assertions(1);
-        expect(() => assertArrayUUID(props.value)).toThrow();
       });
     });
   });

@@ -13,7 +13,7 @@
  */
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import TagEntity from "../../model/entity/tag/tagEntity";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagApiService from "../api/tag/tagApiService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 

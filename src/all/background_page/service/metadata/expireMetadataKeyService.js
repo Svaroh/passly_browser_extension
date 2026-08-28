@@ -12,7 +12,7 @@
  * @since         5.5.0
  */
 
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import MetadataKeysApiService from "../api/metadata/metadataKeysApiService";
 import RevokeGpgKeyService from "../crypto/revokeGpgKeyService";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";

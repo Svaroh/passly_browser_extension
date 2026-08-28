@@ -12,7 +12,7 @@
  * @since         5.14.0
  */
 import FindResourcesService from "../../service/resource/findResourcesService";
-import { assertArrayUUID } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 
 /**
  * Controller for the `passbolt.permissions.find-by-ids-for-share` event.

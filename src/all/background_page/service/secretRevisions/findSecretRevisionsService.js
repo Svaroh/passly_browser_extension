@@ -14,7 +14,8 @@
 
 import ResourceSecretRevisionApiService from "../api/secretRevision/resourceSecretRevisionApiService";
 import ResourceSecretRevisionsCollection from "passbolt-styleguide/src/shared/models/entity/secretRevision/resourceSecretRevisionsCollection";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 export default class FindSecretRevisionsService {
   /**

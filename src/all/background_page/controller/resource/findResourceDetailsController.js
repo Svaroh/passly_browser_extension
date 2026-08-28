@@ -12,7 +12,7 @@
  * @since         4.9.0
  */
 import FindResourcesService from "../../service/resource/findResourcesService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class FindResourceDetailsController {
   /**

@@ -13,7 +13,8 @@
  */
 
 import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
-import { assertArrayUUID, assertBoolean, assertType } from "../../utils/assertions";
+import { assertBoolean, assertType } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import GroupApiService from "../api/group/groupApiService";
 import User from "../../model/user";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";

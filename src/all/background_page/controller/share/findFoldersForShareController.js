@@ -13,7 +13,7 @@
  */
 
 import FindFoldersService from "../../service/folder/findFoldersService";
-import { assertArrayUUID } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class FindFoldersForShareController {
   /**

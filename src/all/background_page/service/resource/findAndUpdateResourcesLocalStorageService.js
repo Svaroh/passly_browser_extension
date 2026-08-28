@@ -12,7 +12,8 @@
  * @since         4.6.0
  */
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
-import { assertNumber, assertUuid } from "../../utils/assertions";
+import { assertNumber } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FindResourcesService from "./findResourcesService";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import DecryptMetadataService from "../metadata/decryptMetadataService";

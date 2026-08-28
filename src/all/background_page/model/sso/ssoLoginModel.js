@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.9.0
  */
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import SsoLoginUrlEntity from "../entity/sso/ssoLoginUrlEntity";
 import SsoLoginService from "../../service/api/sso/ssoLoginService";
 

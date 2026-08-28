@@ -11,7 +11,8 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  */
 import ActionLogsCollection from "../entity/actionLog/actionLogsCollection";
-import { assertUuid, assertNonEmptyString, assertNumber } from "../../utils/assertions";
+import { assertNonEmptyString, assertNumber } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AbstractActionLogEntity from "../entity/actionLog/abstractActionLogEntity";
 import ActionLogApiService from "../../service/api/actionLog/actionLogApiService";
 

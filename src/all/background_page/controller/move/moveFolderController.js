@@ -16,7 +16,7 @@ import i18n from "../../sdk/i18n";
 import ProgressService from "../../service/progress/progressService";
 import MoveOneFolderService, { PROGRESS_STEPS_MOVE_FOLDER_MOVE_ONE } from "../../service/move/moveOneFolderService";
 import ConfirmMoveStrategyService from "../../service/move/confirmMoveStrategyService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import VerifyOrTrustMetadataKeyService from "../../service/metadata/verifyOrTrustMetadataKeyService";
 
 class MoveFolderController {

@@ -12,7 +12,7 @@
  * @since         5.13.0
  */
 import GetOrFindUsersService from "../../service/user/getOrFindUsersService";
-import { assertArrayUUID } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 
 /**
  * Controller for the `passbolt.users.get-by-ids` event. Returns the users matching the given ids,

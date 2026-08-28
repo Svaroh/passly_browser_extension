@@ -14,12 +14,11 @@
 import ResourceService from "../api/resource/resourceService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
-import { assertArrayUUID, assertUuid } from "../../utils/assertions";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
 import splitBySize from "../../utils/array/splitBySize";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
-import { assertNumber } from "passbolt-styleguide/src/shared/utils/assertions";
+import { assertArrayUUID, assertNumber, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 const DEFAULT_PAGE_SIZE = 10_000;
