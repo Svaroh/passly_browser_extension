@@ -32,9 +32,8 @@ class AuthLoginOfflineController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.apiClientOptions = apiClientOptions;
-    this.account = account;
     this.checkPassphraseService = new CheckPassphraseService(new Keyring());
+    this.postLoginOfflineService = new PostLoginOfflineService(account, apiClientOptions);
   }
 
   /**
@@ -63,7 +62,7 @@ class AuthLoginOfflineController {
     assertPassphrase(passphrase);
     assertNumber(sessionDuration, "The session duration should be a number.");
     await this.checkPassphraseService.checkPassphrase(passphrase);
-    await new PostLoginOfflineService(this.account, this.apiClientOptions).exec(passphrase, sessionDuration);
+    await this.postLoginOfflineService.exec(passphrase, sessionDuration);
   }
 }
 

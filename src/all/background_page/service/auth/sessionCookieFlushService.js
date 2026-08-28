@@ -11,10 +11,6 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.13.0
  */
-import GetActiveAccountService from "../account/getActiveAccountService";
-
-const SESSION_COOKIE_NAME = "passbolt_session";
-const CSRF_TOKEN_COOKIE_NAME = "csrfToken";
 
 /**
  * Remove the API session cookies stored locally by the browser.
@@ -25,15 +21,27 @@ const CSRF_TOKEN_COOKIE_NAME = "csrfToken";
  */
 class SessionCookieFlushService {
   /**
+   * @constructor
+   * @param {AccountEntity} account The user account
+   */
+  constructor(account) {
+    this.account = account;
+  }
+
+  /**
    * Flush the session and CSRF cookies for the configured account.
    * @return {Promise<void>}
    */
-  static async flush() {
+  async flush() {
     try {
-      const account = await GetActiveAccountService.get();
-      const url = account.domain;
-      await browser.cookies.remove({ url, name: SESSION_COOKIE_NAME });
-      await browser.cookies.remove({ url, name: CSRF_TOKEN_COOKIE_NAME });
+      const url = this.account.domain;
+      // As the session cookie name is customizable get all passbolt cookies and remove session cookies
+      const passboltCookies = await browser.cookies.getAll({ url });
+      passboltCookies.forEach((cookie) => {
+        if (cookie.session) {
+          browser.cookies.remove({ url, name: cookie.name });
+        }
+      });
     } catch (error) {
       console.error("SessionCookieFlushService::flush failed", error);
     }

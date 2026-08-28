@@ -16,7 +16,6 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import AuthLocalLogoutController from "./authLocalLogoutController";
 import PostLogoutService from "../../service/auth/postLogoutService";
 import SessionCookieFlushService from "../../service/auth/sessionCookieFlushService";
-import GetActiveAccountService from "../../service/account/getActiveAccountService";
 import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
@@ -24,11 +23,12 @@ import OfflineSessionExpiryAlarmService from "../../service/auth/offlineSessionE
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(GetActiveAccountService, "get").mockResolvedValue(new AccountEntity(defaultAccountDto()));
   jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "resetAuthentication").mockResolvedValue();
 });
 
 describe("AuthLocalLogoutController", () => {
+  const account = new AccountEntity(defaultAccountDto());
+
   describe("AuthLocalLogoutController::exec", () => {
     it("flushes the session cookies, marks the active session as signed out then runs the post-logout cleanup", async () => {
       expect.assertions(4);
@@ -36,7 +36,7 @@ describe("AuthLocalLogoutController", () => {
       const postLogoutSpy = jest.spyOn(PostLogoutService, "exec").mockResolvedValue();
       const clearOfflineAlarmSpy = jest.spyOn(OfflineSessionExpiryAlarmService, "clearAlarm").mockResolvedValue();
 
-      const controller = new AuthLocalLogoutController(null, null, defaultApiClientOptions());
+      const controller = new AuthLocalLogoutController(null, null, defaultApiClientOptions(), account);
       await controller.exec();
 
       expect(cookieFlushSpy).toHaveBeenCalledTimes(1);
@@ -54,7 +54,7 @@ describe("AuthLocalLogoutController", () => {
       const requestId = uuid();
       const worker = { port: { emit: jest.fn() } };
 
-      const controller = new AuthLocalLogoutController(worker, requestId, defaultApiClientOptions());
+      const controller = new AuthLocalLogoutController(worker, requestId, defaultApiClientOptions(), account);
       await controller._exec();
 
       expect(worker.port.emit).toHaveBeenCalledWith(requestId, "SUCCESS");
@@ -69,7 +69,7 @@ describe("AuthLocalLogoutController", () => {
       const requestId = uuid();
       const worker = { port: { emit: jest.fn() } };
 
-      const controller = new AuthLocalLogoutController(worker, requestId, defaultApiClientOptions());
+      const controller = new AuthLocalLogoutController(worker, requestId, defaultApiClientOptions(), account);
       await controller._exec();
 
       expect(worker.port.emit).toHaveBeenCalledWith(requestId, "ERROR", error);

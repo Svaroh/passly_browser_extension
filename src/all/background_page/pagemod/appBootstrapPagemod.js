@@ -102,7 +102,7 @@ class AppBootstrap extends Pagemod {
       apiClientOptions,
     );
     const activeSessionEntity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
-    return activeSessionEntity.isAuthenticated;
+    return activeSessionEntity.isSessionOnline && activeSessionEntity.isAuthenticated;
   }
 }
 

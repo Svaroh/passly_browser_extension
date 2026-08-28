@@ -220,7 +220,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.auth.local-logout", async (requestId) => {
-    const controller = new AuthLocalLogoutController(worker, requestId, apiClientOptions);
+    const controller = new AuthLocalLogoutController(worker, requestId, apiClientOptions, account);
     await controller._exec();
   });
 

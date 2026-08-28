@@ -13,7 +13,6 @@
  */
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import GetActiveAccountService from "../account/getActiveAccountService";
 import SessionCookieFlushService from "./sessionCookieFlushService";
 
 beforeEach(() => {
@@ -23,20 +22,28 @@ beforeEach(() => {
 describe("SessionCookieFlushService", () => {
   describe("SessionCookieFlushService::flush", () => {
     it("removes the session and CSRF cookies for the configured account domain", async () => {
-      expect.assertions(3);
+      expect.assertions(4);
       const account = new AccountEntity(defaultAccountDto({ domain: "https://passbolt.example.com" }));
-      jest.spyOn(GetActiveAccountService, "get").mockResolvedValue(account);
+      jest.spyOn(browser.cookies, "getAll").mockImplementationOnce(() =>
+        Promise.resolve([
+          { name: "cookie1", url: account.domain, session: false },
+          { name: "cookie2", url: account.domain, session: true },
+          { name: "cookie3", url: account.domain, session: true },
+        ]),
+      );
 
-      await SessionCookieFlushService.flush();
+      const service = new SessionCookieFlushService(account);
+      await service.flush();
 
+      expect(browser.cookies.getAll).toHaveBeenCalledTimes(1);
       expect(browser.cookies.remove).toHaveBeenCalledTimes(2);
       expect(browser.cookies.remove).toHaveBeenCalledWith({
         url: "https://passbolt.example.com",
-        name: "passbolt_session",
+        name: "cookie2",
       });
       expect(browser.cookies.remove).toHaveBeenCalledWith({
         url: "https://passbolt.example.com",
-        name: "csrfToken",
+        name: "cookie3",
       });
     });
   });

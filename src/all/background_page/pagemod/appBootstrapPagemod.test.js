@@ -22,7 +22,10 @@ import GetActiveAccountService from "../service/account/getActiveAccountService"
 import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import AccountEntity from "../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../model/entity/account/accountEntity.test.data";
-import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import PassboltBadResponseError from "../error/passboltBadResponseError";
 import AuthenticationStatusService from "../service/authenticationStatusService";
@@ -111,6 +114,22 @@ describe("AppBootstrap", () => {
         .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
         .mockImplementation(
           async () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
+        );
+      jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt");
+      // process
+      const constraint = await AppBootstrap.canBeAttachedTo({ frameId: 0 });
+      // expectations
+      expect(constraint).toBeFalsy();
+    });
+
+    it("Should not be able to attach a pagemod if the user is authenticated offline", async () => {
+      expect.assertions(1);
+      // mock functions
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(offlineUserActiveSessionDto({ is_authenticated: false })),
         );
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt");
       // process
