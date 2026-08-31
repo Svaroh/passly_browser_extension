@@ -9,10 +9,19 @@ on:
   schedule:
     - cron: '0 14 * * 3'
 
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    permissions:
+      # Required by github/codeql-action/init to read the Actions workflow runs.
+      actions: read
+      contents: read
+      # Required by github/codeql-action/analyze to upload the SARIF results.
+      security-events: write
 
     steps:
     - name: Checkout repository
