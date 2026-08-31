@@ -84,6 +84,16 @@ import { defaultCustomFieldsCollection } from "passbolt-styleguide/src/shared/mo
 import * as kdbxweb from "kdbxweb";
 import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
 import { defaultPasskeySecretDto, passkeyResourceTypeDto } from "../../../../passkey/passkeySecretDto.test.data";
+import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
+import DecryptAndParseResourceSecretService from "../../secret/decryptAndParseResourceSecretService";
+import PlaintextEntity from "../../../model/entity/plaintext/plaintextEntity";
+import ExternalResourceEntity from "../../../model/entity/resource/external/externalResourceEntity";
+import { defaultResourcesSecretsDtos } from "../../../model/entity/secret/resource/resourceSecretsCollection.test.data";
+import {
+  buildRoundTripResourceDto,
+  extractSecretContent,
+  KDBX_ROUND_TRIP_CASES,
+} from "../../../model/resourcesKdbxRoundTrip.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -454,6 +464,58 @@ describe("ExportResourcesService", () => {
       expect(service.progressService.updateGoals).toHaveBeenCalledWith(3);
       expect(service.progressService.finishStep).toHaveBeenCalledTimes(2);
       expect(service.progressService.finishStep).toHaveBeenCalledWith("Decrypting 1/1");
+    });
+  });
+
+  /**
+   * The export reads the secret of a resource out of its decrypted plaintext. A content type whose
+   * secret is not extracted here is exported empty, so every resource type is covered.
+   */
+  describe("::decryptSecrets", () => {
+    it.each(KDBX_ROUND_TRIP_CASES)("keeps the secret content of a $slug resource", async (roundTripCase) => {
+      expect.assertions(1);
+      resourceTypeCollection.push(passkeyResourceTypeDto());
+      const resourceTypes = new ResourceTypesCollection(resourceTypeCollection);
+      const resourceType = resourceTypes.getFirst("slug", roundTripCase.slug);
+      const plaintextSecret =
+        typeof roundTripCase.plaintextSecret === "string"
+          ? PlaintextEntity.createFromLegacyPlaintextSecret(roundTripCase.plaintextSecret)
+          : new PlaintextEntity(roundTripCase.plaintextSecret, { schema: resourceType.definition.secret });
+      jest
+        .spyOn(DecryptAndParseResourceSecretService, "decryptAndParse")
+        .mockImplementation(() => Promise.resolve(plaintextSecret));
+
+      // The resource as it is read from the API: metadata in clear, secret still encrypted.
+      const secretsDto = defaultResourcesSecretsDtos();
+      const expectedResourceDto = buildRoundTripResourceDto(roundTripCase);
+      const encryptedResourceDto = {
+        ...expectedResourceDto,
+        id: secretsDto[0].resource_id,
+        resource_type_id: resourceType.id,
+        secrets: secretsDto,
+        secret_clear: "",
+        description: null,
+        totp: undefined,
+        // Custom fields metadata is in clear, their values are in the secret.
+        custom_fields: expectedResourceDto.custom_fields?.map((customField) => ({
+          ...customField,
+          secret_value: "",
+        })),
+        passkey: undefined,
+      };
+      const exportEntity = new ExportResourcesFileEntity({
+        format: FORMAT_KDBX,
+        resources_ids: [encryptedResourceDto.id],
+        folders_ids: [],
+      });
+      exportEntity.exportResources = new ExternalResourcesCollection([encryptedResourceDto]);
+
+      await service.decryptSecrets(exportEntity, null);
+
+      expect(extractSecretContent(exportEntity.exportResources.items[0])).toStrictEqual({
+        ...extractSecretContent(new ExternalResourceEntity(expectedResourceDto)),
+        ...roundTripCase.expectedDecryptedContent,
+      });
     });
   });
 
