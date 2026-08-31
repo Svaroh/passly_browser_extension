@@ -81,6 +81,9 @@ import EncryptMetadataService from "../../metadata/encryptMetadataService";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
 import CustomFieldsCollection from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection";
 import { defaultCustomFieldsCollection } from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection.test.data";
+import * as kdbxweb from "kdbxweb";
+import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
+import { defaultPasskeySecretDto, passkeyResourceTypeDto } from "../../../../passkey/passkeySecretDto.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -258,6 +261,43 @@ describe("ExportResourcesService", () => {
         expect(exportResourcesFileEntity.file).toEqual(chromiumCsvWithPinCodeFile);
       });
     });
+    describe("Should export the KDBX file with the passkey secret.", () => {
+      it("v5 passkey", async () => {
+        expect.assertions(3);
+        const resourceType = passkeyResourceTypeDto();
+        resourceTypeCollection.push(resourceType);
+        const passkey = defaultPasskeySecretDto();
+        const file = {
+          format: FORMAT_KDBX,
+          resources_ids: [uuidv4()],
+          folders_ids: [foldersDto[0].id],
+        };
+        const exportResourcesFileEntity = new ExportResourcesFileEntity(file);
+        const resourceCollectionDto = await resourceCollectionV5ToExport({
+          resourceType: resourceType,
+          folder_parent_id: foldersDto[0].id,
+          passkey: passkey,
+        });
+
+        const resourceCollection = new ResourcesCollection(resourceCollectionDto);
+        await encryptMetadataService.encryptAllFromForeignModels(resourceCollection, pgpKeys.ada.passphrase);
+        jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollection.resources);
+
+        await service.prepareExportContent(exportResourcesFileEntity);
+        await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);
+
+        const kdbxDb = await kdbxweb.Kdbx.load(exportResourcesFileEntity.file, new kdbxweb.Credentials(null, null));
+        const findFirstEntry = (kdbxGroup) =>
+          kdbxGroup.entries[0] || kdbxGroup.groups.map(findFirstEntry).find(Boolean);
+        const kdbxEntry = findFirstEntry(kdbxDb.getDefaultGroup());
+        const passkeyField = kdbxEntry.fields.get(PASSKEY_KDBX_FIELD_NAME);
+
+        expect(passkeyField).toBeInstanceOf(kdbxweb.ProtectedValue);
+        expect(JSON.parse(passkeyField.getText())).toStrictEqual(passkey);
+        expect(kdbxEntry.fields.get("Password")).toBeFalsy();
+      });
+    });
+
     describe("Should export the KDBX file.", () => {
       describe.each([{ format: FORMAT_KDBX }, { format: FORMAT_KDBX_OTHERS }])(
         "Should export the KDBX file.",

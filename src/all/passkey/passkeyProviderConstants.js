@@ -48,3 +48,9 @@ export const PASSKEY_PROVIDER_RUNTIME_MESSAGES = Object.freeze([
   PASSKEY_PROVIDER_MESSAGES.CONTENT_GET,
   PASSKEY_PROVIDER_MESSAGES.CONTENT_UVPAA,
 ]);
+
+/**
+ * Name of the KDBX entry field carrying the serialized passkey secret on export / import.
+ * The field is user visible in KeePass compatible clients, hence the branded name.
+ */
+export const PASSKEY_KDBX_FIELD_NAME = "Passly-Passkey";

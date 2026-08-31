@@ -21,6 +21,8 @@ import fs from "fs";
 import { defaultTotpDto } from "../../entity/totp/totpDto.test.data";
 import { defaultIconDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/iconEntity.test.data";
 import { defaultCustomFieldsCollection } from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection.test.data";
+import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
+import { defaultPasskeySecretDto } from "../../../../passkey/passkeySecretDto.test.data";
 
 global.kdbxweb = kdbxweb;
 kdbxweb.CryptoEngine.argon2 = argon2;
@@ -397,5 +399,56 @@ describe("ResourcesKdbxExporter", () => {
 
     const kdbxCredentials = new kdbxweb.Credentials(null, kdbxweb.ByteUtils.base64ToBytes(exportEntity.keyfile));
     await kdbxweb.Kdbx.load(exportEntity.file, kdbxCredentials);
+  });
+  it("should export a passkey resource with its secret in a protected field", async () => {
+    expect.assertions(5);
+
+    const passkey = defaultPasskeySecretDto();
+    const exportResource = buildImportResourceDto(1, {
+      secret_clear: "",
+      totp: undefined,
+      custom_fields: undefined,
+      passkey: passkey,
+    });
+    const exportDto = {
+      format: "kdbx",
+      export_resources: [exportResource],
+      export_folders: [],
+    };
+
+    const exportEntity = new ExportResourcesFileEntity(exportDto);
+    const exporter = new ResourcesKdbxExporter(exportEntity);
+    await exporter.export();
+
+    const kdbxCredentials = new kdbxweb.Credentials(null, null);
+    const kdbxDb = await kdbxweb.Kdbx.load(exportEntity.file, kdbxCredentials);
+    const entry = kdbxDb.groups[0].entries[0];
+    const passkeyField = entry.fields.get(PASSKEY_KDBX_FIELD_NAME);
+
+    expect(entry.fields.get("Title")).toEqual("Password 1");
+    expect(entry.fields.get("Password")).toBeFalsy();
+    expect(passkeyField).toBeInstanceOf(kdbxweb.ProtectedValue);
+    expect(JSON.parse(passkeyField.getText())).toStrictEqual(passkey);
+    // The passkey must not leak in a non protected field.
+    expect(entry.fields.get("Notes")).toEqual("Description 1");
+  });
+
+  it("should not export a passkey field for a resource without passkey", async () => {
+    expect.assertions(1);
+
+    const exportDto = {
+      format: "kdbx",
+      export_resources: [buildImportResourceDto(1)],
+      export_folders: [],
+    };
+
+    const exportEntity = new ExportResourcesFileEntity(exportDto);
+    const exporter = new ResourcesKdbxExporter(exportEntity);
+    await exporter.export();
+
+    const kdbxCredentials = new kdbxweb.Credentials(null, null);
+    const kdbxDb = await kdbxweb.Kdbx.load(exportEntity.file, kdbxCredentials);
+
+    expect(kdbxDb.groups[0].entries[0].fields.get(PASSKEY_KDBX_FIELD_NAME)).toBeUndefined();
   });
 });

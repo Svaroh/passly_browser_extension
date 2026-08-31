@@ -77,6 +77,14 @@ import {
 } from "../../../model/entity/organizationSettings/organizationSettingsEntity.test.data";
 import OrganizationSettingsService from "../../api/organizationSettings/organizationSettingsService";
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
+import * as kdbxweb from "kdbxweb";
+import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
+import {
+  defaultPasskeySecretDto,
+  keepassPasskeyFieldsDto,
+  passkeyResourceTypeDto,
+} from "../../../../passkey/passkeySecretDto.test.data";
+import { KEEPASS_PASSKEY_FIELDS } from "../../../../passkey/passkeyKeepassImportService";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -397,6 +405,116 @@ describe("ImportResourcesService", () => {
         );
 
         expect(importedResources[0].toDto()).toEqual(externalEntity.toDto());
+      });
+
+      it(`Should import a passkey exported by Passly - <${test.scenario}>`, async () => {
+        expect.assertions(4);
+        if (test.metadataTypesSettings.default_resource_types === "v4") {
+          // Passkeys are v5 only.
+          expect.assertions(1);
+        }
+
+        const resourceTypes = [...resourceTypesCollectionDto(), passkeyResourceTypeDto()];
+        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypes);
+        const passkey = defaultPasskeySecretDto();
+        const kdbxDb = kdbxweb.Kdbx.create(new kdbxweb.Credentials(null, null), "passbolt export");
+        kdbxDb.setVersion(3);
+        const kdbxEntry = kdbxDb.createEntry(kdbxDb.getDefaultGroup());
+        kdbxEntry.fields.set("Title", "Spaceship passkey");
+        kdbxEntry.fields.set("UserName", "66Ton99");
+        kdbxEntry.fields.set("URL", "https://www.spaceship.com");
+        kdbxEntry.fields.set(PASSKEY_KDBX_FIELD_NAME, kdbxweb.ProtectedValue.fromString(JSON.stringify(passkey)));
+        const importResourceFileKdbx = new ImportResourcesFileEntity({
+          ref: "import-ref",
+          file_type: "kdbx",
+          file: kdbxweb.ByteUtils.bytesToBase64(new Uint8Array(await kdbxDb.save())),
+        });
+
+        await importResourcesService.parseFile(importResourceFileKdbx);
+        const result = await importResourcesService.importFile(importResourceFileKdbx, passphrase);
+
+        const importedResource = result.importResources.items[0];
+        if (test.metadataTypesSettings.default_resource_types === "v4") {
+          // The organization does not support v5 content types, the passkey is not imported.
+          expect(importedResource.resourceTypeId).not.toStrictEqual(passkeyResourceTypeDto().id);
+          return;
+        }
+
+        expect(result.importResourcesErrors.length).toEqual(0);
+        expect(importedResource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
+        const secret = await decryptSecret(
+          importedResource.secrets.items[0].data,
+          pgpKeys.ada.private,
+          pgpKeys.ada.passphrase,
+        );
+        expect(JSON.parse(secret)).toStrictEqual(passkey);
+        // The passkey secret is only kept encrypted once the import is done.
+        expect(importedResource.passkey).toBeNull();
+      });
+
+      it(`Should import a passkey exported by KeePassXC - <${test.scenario}>`, async () => {
+        expect.assertions(3);
+        if (test.metadataTypesSettings.default_resource_types === "v4") {
+          // Passkeys are v5 only.
+          expect.assertions(1);
+        }
+
+        const resourceTypes = [...resourceTypesCollectionDto(), passkeyResourceTypeDto()];
+        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypes);
+        const keepassFields = keepassPasskeyFieldsDto();
+        const kdbxDb = kdbxweb.Kdbx.create(new kdbxweb.Credentials(null, null), "keepassxc export");
+        kdbxDb.setVersion(3);
+        const kdbxEntry = kdbxDb.createEntry(kdbxDb.getDefaultGroup());
+        kdbxEntry.fields.set("Title", "www.spaceship.com");
+        kdbxEntry.fields.set("UserName", "66Ton99");
+        kdbxEntry.fields.set("URL", "https://www.spaceship.com");
+        kdbxEntry.fields.set(KEEPASS_PASSKEY_FIELDS.RELYING_PARTY, keepassFields[KEEPASS_PASSKEY_FIELDS.RELYING_PARTY]);
+        kdbxEntry.fields.set(KEEPASS_PASSKEY_FIELDS.USERNAME, keepassFields[KEEPASS_PASSKEY_FIELDS.USERNAME]);
+        kdbxEntry.fields.set(
+          KEEPASS_PASSKEY_FIELDS.CREDENTIAL_ID,
+          kdbxweb.ProtectedValue.fromString(keepassFields[KEEPASS_PASSKEY_FIELDS.CREDENTIAL_ID]),
+        );
+        kdbxEntry.fields.set(
+          KEEPASS_PASSKEY_FIELDS.USER_HANDLE,
+          kdbxweb.ProtectedValue.fromString(keepassFields[KEEPASS_PASSKEY_FIELDS.USER_HANDLE]),
+        );
+        kdbxEntry.fields.set(
+          KEEPASS_PASSKEY_FIELDS.PRIVATE_KEY_PEM,
+          kdbxweb.ProtectedValue.fromString(keepassFields[KEEPASS_PASSKEY_FIELDS.PRIVATE_KEY_PEM]),
+        );
+        const importResourceFileKdbx = new ImportResourcesFileEntity({
+          ref: "import-ref",
+          file_type: "kdbx",
+          file: kdbxweb.ByteUtils.bytesToBase64(new Uint8Array(await kdbxDb.save())),
+        });
+
+        await importResourcesService.parseFile(importResourceFileKdbx);
+        const result = await importResourcesService.importFile(importResourceFileKdbx, passphrase);
+
+        const importedResource = result.importResources.items[0];
+        if (test.metadataTypesSettings.default_resource_types === "v4") {
+          // The organization does not support v5 content types, the passkey is not imported.
+          expect(importedResource.resourceTypeId).not.toStrictEqual(passkeyResourceTypeDto().id);
+          return;
+        }
+
+        expect(result.importResourcesErrors.length).toEqual(0);
+        expect(importedResource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
+        // The secret is encrypted, and it validated against the v5-passkey secret schema.
+        const secret = await decryptSecret(
+          importedResource.secrets.items[0].data,
+          pgpKeys.ada.private,
+          pgpKeys.ada.passphrase,
+        );
+        expect(JSON.parse(secret)).toEqual(
+          expect.objectContaining({
+            object_type: "PASSLY_PASSKEY",
+            rp_id: "www.spaceship.com",
+            credential_id: "Y3JlZGVudGlhbC1pZA",
+            user_name: "66Ton99",
+            cose_alg: -7,
+          }),
+        );
       });
 
       it("Should throw an error if the resource type cannot be found", async () => {

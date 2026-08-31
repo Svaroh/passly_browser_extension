@@ -14,6 +14,8 @@ import ExternalFolderEntity from "../../entity/folder/external/externalFolderEnt
 import * as kdbxweb from "kdbxweb";
 import { FORMAT_KDBX, FORMAT_KDBX_OTHERS } from "../../entity/export/exportResourcesFileEntity";
 import { ICON_TYPE_KEEPASS_ICON_SET } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/IconEntity";
+import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
+import PasskeySecretSerializer from "../../../../passkey/passkeySecretSerializer";
 
 class ResourcesKdbxExporter {
   /**
@@ -105,6 +107,7 @@ class ResourcesKdbxExporter {
     }
     this.setUrisFields(kdbxEntry, externalResourceEntity);
     this.setCustomFields(kdbxEntry, externalResourceEntity);
+    this.setPasskeyField(kdbxEntry, externalResourceEntity);
     kdbxEntry.fields.set("Notes", externalResourceEntity.description);
 
     if (externalResourceEntity.expired) {
@@ -131,6 +134,21 @@ class ResourcesKdbxExporter {
         kdbxEntry.fields.set(customField.key, kdbxweb.ProtectedValue.fromString(customField.value));
       });
     }
+  }
+
+  /**
+   * Set the passkey field according to the kdbx format.
+   * The secret is serialized in a protected custom field, so a passkey survives an export / import round trip.
+   * @param {kdbxweb.KdbxEntry} kdbxEntry
+   * @param {ExternalResourceEntity} externalResourceEntity
+   * @returns {void}
+   */
+  setPasskeyField(kdbxEntry, externalResourceEntity) {
+    const serializedPasskey = PasskeySecretSerializer.serialize(externalResourceEntity.passkey);
+    if (!serializedPasskey) {
+      return;
+    }
+    kdbxEntry.fields.set(PASSKEY_KDBX_FIELD_NAME, kdbxweb.ProtectedValue.fromString(serializedPasskey));
   }
 
   /**
