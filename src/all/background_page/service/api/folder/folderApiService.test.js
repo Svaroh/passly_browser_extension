@@ -72,4 +72,73 @@ describe("FolderApiService", () => {
       await expect(promise).rejects.toThrow(PassboltServiceUnavailableError);
     });
   });
+  describe("::delete", () => {
+    it("deletes the folder with the given id from the API, without a cascade query parameter by default.", async () => {
+      expect.assertions(3);
+      const folderId = uuidv4();
+      let request;
+      fetch.doMockOnceIf(new RegExp(`/folders/${folderId}\\.json`), async (req) => {
+        request = req;
+        return mockApiResponse(null);
+      });
+
+      const service = new FolderApiService(apiClientOptions);
+      await expect(service.delete(folderId, false)).resolves.not.toThrow();
+
+      expect(request.method).toEqual("DELETE");
+      expect(new URL(request.url).searchParams.has("cascade")).toStrictEqual(false);
+    });
+
+    it("adds the cascade=1 query parameter when cascade is true.", async () => {
+      expect.assertions(2);
+      const folderId = uuidv4();
+      let request;
+      fetch.doMockOnceIf(new RegExp(`/folders/${folderId}\\.json`), async (req) => {
+        request = req;
+        return mockApiResponse(null);
+      });
+
+      const service = new FolderApiService(apiClientOptions);
+      await service.delete(folderId, true);
+
+      expect(request.method).toEqual("DELETE");
+      expect(new URL(request.url).searchParams.get("cascade")).toStrictEqual("1");
+    });
+
+    it("throws an error if the folder id is not a valid uuid, before any request.", async () => {
+      expect.assertions(2);
+
+      const service = new FolderApiService(apiClientOptions);
+      const promise = service.delete("not-a-uuid");
+
+      await expect(promise).rejects.toThrow(TypeError);
+      expect(fetch.mock.calls.length).toStrictEqual(0);
+    });
+
+    it("throws an error if the API returns an error response.", async () => {
+      expect.assertions(2);
+      const folderId = uuidv4();
+      fetch.doMockOnceIf(/folders/, () => mockApiResponseError(500, "Something went wrong!"));
+
+      const service = new FolderApiService(apiClientOptions);
+      const promise = service.delete(folderId);
+
+      await expect(promise).rejects.toThrow(PassboltApiFetchError);
+      await expect(promise).rejects.toThrow("Something went wrong!");
+    });
+
+    it("throws a service unavailable error if the request fails outside of the API.", async () => {
+      expect.assertions(2);
+      const folderId = uuidv4();
+      fetch.doMockOnceIf(/folders/, () => {
+        throw new Error("Service unavailable");
+      });
+
+      const service = new FolderApiService(apiClientOptions);
+      const promise = service.delete(folderId);
+
+      await expect(promise).rejects.toThrow(PassboltServiceUnavailableError);
+      await expect(promise).rejects.toThrow("Unable to reach the server, an unexpected error occurred");
+    });
+  });
 });
