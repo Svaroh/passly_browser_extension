@@ -32,7 +32,7 @@ describe("DeleteFolderService", () => {
   beforeEach(() => {
     const account = new AccountEntity(defaultAccountDto());
     const apiClientOptions = defaultApiClientOptions();
-    service = new DeleteFolderService(account, apiClientOptions);
+    service = new DeleteFolderService(apiClientOptions, account);
     callOrder = [];
     apiDeleteMock = jest.spyOn(FolderApiService.prototype, "delete").mockImplementation(() => {
       callOrder.push("api");

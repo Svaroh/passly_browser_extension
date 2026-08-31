@@ -24,10 +24,10 @@ import { assertBoolean, assertUuid } from "../../utils/assertions";
 export default class DeleteFolderService {
   /**
    * @constructor
-   * @param {AccountEntity} account The user account
    * @param {ApiClientOptions} apiClientOptions The api client options
+   * @param {AccountEntity} account The user account
    */
-  constructor(account, apiClientOptions) {
+  constructor(apiClientOptions, account) {
     this.folderService = new FolderApiService(apiClientOptions);
     this.findAndUpdateFoldersLocalStorageService = new FindAndUpdateFoldersLocalStorageService(
       account,
