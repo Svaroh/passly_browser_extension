@@ -46,6 +46,7 @@ import {
   RESOURCE_TYPE_V5_STANDALONE_PIN_CODE_SLUG,
 } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypeSchemasDefinition.js";
 import { SECRET_DATA_OBJECT_TYPE } from "passbolt-styleguide/src/shared/models/entity/secretData/secretDataEntity";
+import { defaultPasskeySecretDto, passkeyResourceTypeDto } from "../../../../../passkey/passkeySecretDto.test.data";
 
 describe("ExternalResourceEntity", () => {
   describe("::getSchema", () => {
@@ -614,6 +615,25 @@ describe("ExternalResourceEntity", () => {
       expect(secret2Dto.object_type).toStrictEqual(SECRET_DATA_OBJECT_TYPE);
       expect(secret2Dto.pin_code).toStrictEqual("123456");
     });
+
+    it("builds a secret dto for a v5 passkey.", () => {
+      expect.assertions(2);
+
+      const resourceTypesCollectionWithPasskey = new ResourceTypesCollection([
+        ...resourceTypesCollectionDto(),
+        passkeyResourceTypeDto(),
+      ]);
+      const resourceType = resourceTypesCollectionWithPasskey.getFirstBySlug(passkeyResourceTypeDto().slug);
+      const passkey = defaultPasskeySecretDto();
+      const dto = defaultExternalResourceDto({ passkey: passkey, secret_clear: "" });
+      const entity = new ExternalResourceEntity(dto);
+
+      const secretDto = entity.toSecretDto(resourceType);
+
+      // The passkey secret is self contained, no other secret prop should be added to it.
+      expect(secretDto).toStrictEqual(passkey);
+      expect(secretDto.password).toBeUndefined();
+    });
   });
 
   describe("::getters", () => {
@@ -842,6 +862,23 @@ describe("ExternalResourceEntity", () => {
       const resourceType = resourceTypesCollection.getFirstBySlug(RESOURCE_TYPE_TOTP_SLUG);
       entity.resetSecretProps(resourceType);
       expect(entity.totp).toBeNull();
+    });
+
+    it("resets secret passkey but keeps the description in the metadata.", () => {
+      expect.assertions(2);
+
+      const resourceTypesCollectionWithPasskey = new ResourceTypesCollection([
+        ...resourceTypesCollectionDto(),
+        passkeyResourceTypeDto(),
+      ]);
+      const resourceType = resourceTypesCollectionWithPasskey.getFirstBySlug(passkeyResourceTypeDto().slug);
+      const dto = defaultExternalResourceDto({ passkey: defaultPasskeySecretDto() });
+      const entity = new ExternalResourceEntity(dto);
+
+      entity.resetSecretProps(resourceType);
+
+      expect(entity.passkey).toBeNull();
+      expect(entity.description).toStrictEqual(dto.description);
     });
 
     it("resets secret pin code.", () => {

@@ -21,6 +21,7 @@ import { assertType } from "../../../../utils/assertions";
 import IconEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/IconEntity";
 import CustomFieldsCollection from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection";
 import { SECRET_DATA_OBJECT_TYPE } from "passbolt-styleguide/src/shared/models/entity/secretData/secretDataEntity";
+import PasskeySecretSerializer from "../../../../../passkey/passkeySecretSerializer";
 
 const DEFAULT_RESOURCE_NAME = "(no name)";
 const RESOURCE_URI_MAX_LENGTH = 1024;
@@ -135,6 +136,10 @@ class ExternalResourceEntity extends EntityV2 {
           minLength: 4,
           maxLength: 12,
           pattern: "^\\d+$",
+          nullable: true,
+        },
+        passkey: {
+          type: "object",
           nullable: true,
         },
       },
@@ -258,6 +263,14 @@ class ExternalResourceEntity extends EntityV2 {
     // if no resource type id is set, it means that the resource type is a password string.
     if (!resourceType || resourceType.isPasswordString()) {
       return this.secretClear;
+    }
+
+    // A passkey secret is self contained, it is not built out of the other secret props.
+    if (PasskeySecretSerializer.isPasskeyResourceType(resourceType)) {
+      const passkeyDto = PasskeySecretSerializer.normalize(this.passkey);
+      if (passkeyDto) {
+        return passkeyDto;
+      }
     }
 
     const dto = {};
@@ -387,6 +400,14 @@ class ExternalResourceEntity extends EntityV2 {
     return this._props.pin_code || null;
   }
 
+  /**
+   * Return passkey prop if any
+   * @returns {object|null} passkey secret dto
+   */
+  get passkey() {
+    return this._props.passkey || null;
+  }
+
   /*
    * ==================================================
    * Calculated properties getters
@@ -467,6 +488,19 @@ class ExternalResourceEntity extends EntityV2 {
   set pinCode(pinCode) {
     const propSchema = this.cachedSchema.properties.pin_code;
     this._props.pin_code = EntitySchema.validateProp("pin_code", pinCode, propSchema);
+  }
+
+  /**
+   * Set passkey
+   * @param {object|null} passkey The passkey secret dto
+   */
+  set passkey(passkey) {
+    if (!passkey) {
+      delete this._props.passkey;
+      return;
+    }
+    const propSchema = this.cachedSchema.properties.passkey;
+    this._props.passkey = EntitySchema.validateProp("passkey", passkey, propSchema);
   }
 
   /**
@@ -574,10 +608,15 @@ class ExternalResourceEntity extends EntityV2 {
       delete this._props.pin_code;
     }
 
+    const isPasskey = PasskeySecretSerializer.isPasskeyResourceType(resourceType);
+    if (isPasskey) {
+      delete this._props.passkey;
+    }
+
     /*
-     * In the case the resource is a password string, the description will be stored in the metadata.
+     * In the case the resource is a password string or a passkey, the description will be stored in the metadata.
      */
-    if (resourceType && !resourceType?.isPasswordString()) {
+    if (resourceType && !resourceType.isPasswordString() && !isPasskey) {
       this.description = "";
     }
   }

@@ -20,6 +20,13 @@ import { ICON_TYPE_KEEPASS_ICON_SET } from "passbolt-styleguide/src/shared/model
 import { CUSTOM_FIELD_TYPE } from "passbolt-styleguide/src/shared/models/entity/customField/customFieldEntity";
 import { v4 as uuidv4 } from "uuid";
 import { RESOURCE_TYPE_VERSION_5 } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataTypesSettingsEntity";
+import { PASSKEY_KDBX_FIELD_NAME, PASSKEY_RESOURCE_TYPE_SLUG } from "../../../../passkey/passkeyProviderConstants";
+import PasskeySecretSerializer from "../../../../passkey/passkeySecretSerializer";
+import PasskeyKeepassImportService, {
+  KEEPASS_PASSKEY_FIELD_NAMES,
+} from "../../../../passkey/passkeyKeepassImportService";
+
+const RESOURCE_NAME_MAX_LENGTH = 255;
 
 const KDBX_SUPPORTED_FIELDS = [
   "Title",
@@ -32,6 +39,8 @@ const KDBX_SUPPORTED_FIELDS = [
   "TimeOtp-Length",
   "TimeOtp-Period",
   "Password",
+  PASSKEY_KDBX_FIELD_NAME,
+  ...KEEPASS_PASSKEY_FIELD_NAMES,
 ];
 
 class ResourcesKdbxImportParser {
@@ -53,7 +62,7 @@ class ResourcesKdbxImportParser {
    */
   async parseImport() {
     const kdbxDb = await this.readKdbxDb();
-    this.parseFolder(kdbxDb.getDefaultGroup());
+    await this.parseFolder(kdbxDb.getDefaultGroup());
     this.createAndChangeRootFolder();
   }
 
@@ -86,8 +95,9 @@ class ResourcesKdbxImportParser {
   /**
    * Parse a kdbx group
    * @param {KdbxGroup} kdbxGroup The kdbx group
+   * @returns {Promise<void>}
    */
-  parseFolder(kdbxGroup) {
+  async parseFolder(kdbxGroup) {
     const externalFolderDto = {
       name: ExternalFolderEntity.escapeName(kdbxGroup.name),
       folder_parent_path: this.getKdbxEntryPath(kdbxGroup),
@@ -95,8 +105,12 @@ class ResourcesKdbxImportParser {
 
     try {
       this.importEntity.importFolders.push(externalFolderDto);
-      this.getGroupChildrenGroups(kdbxGroup).forEach(this.parseFolder.bind(this));
-      this.getGroupChildrenEntries(kdbxGroup).forEach(this.parseResource.bind(this));
+      for (const childKdbxGroup of this.getGroupChildrenGroups(kdbxGroup)) {
+        await this.parseFolder(childKdbxGroup);
+      }
+      for (const kdbxEntry of this.getGroupChildrenEntries(kdbxGroup)) {
+        await this.parseResource(kdbxEntry);
+      }
     } catch (error) {
       this.importEntity.importFoldersErrors.push(new ImportError("Cannot parse folder", externalFolderDto, error));
     }
@@ -140,9 +154,9 @@ class ResourcesKdbxImportParser {
   /**
    * Parse a KdbxEntry and extract the resource
    * @param {kdbxweb.KdbxEntry} kdbxEntry The entry
-   * @returns {Object}
+   * @returns {Promise<void>}
    */
-  parseResource(kdbxEntry) {
+  async parseResource(kdbxEntry) {
     const externalResourceDto = {
       name: kdbxEntry.fields.get("Title") ? kdbxEntry.fields.get("Title").trim() : "",
       username: kdbxEntry.fields.get("UserName") ? kdbxEntry.fields.get("UserName").trim() : "",
@@ -158,6 +172,7 @@ class ResourcesKdbxImportParser {
     try {
       this.parseUris(kdbxEntry, externalResourceDto);
       this.parseTotp(kdbxEntry, externalResourceDto);
+      await this.parsePasskey(kdbxEntry, externalResourceDto);
 
       /*
        * Parse v5 additional properties only if v5 is the default version for creation.
@@ -172,6 +187,7 @@ class ResourcesKdbxImportParser {
         this.parseIcon(kdbxEntry, externalResourceDto);
       }
 
+      const passkeyResourceDto = this.extractStandalonePasskeyResource(externalResourceDto);
       const resourceType = this.getResourceType(externalResourceDto);
 
       //resourceType should never be empty to not block end user
@@ -182,6 +198,11 @@ class ResourcesKdbxImportParser {
       }
 
       this.importEntity.importResources.push(externalResourceDto);
+
+      if (passkeyResourceDto) {
+        passkeyResourceDto.resource_type_id = this.getResourceType(passkeyResourceDto).id;
+        this.importEntity.importResources.push(passkeyResourceDto);
+      }
     } catch (error) {
       // Remove all warnings related to this resource before adding the error
       this.importEntity.removeWarningsForResource(externalResourceDto);
@@ -269,6 +290,108 @@ class ResourcesKdbxImportParser {
   }
 
   /**
+   * Read the text value of a kdbx entry field, protected or not.
+   * @param {kdbxweb.KdbxEntry} kdbxEntry
+   * @param {string} fieldName
+   * @private
+   * @returns {string|null}
+   */
+  readKdbxFieldText(kdbxEntry, fieldName) {
+    const field = kdbxEntry.fields.get(fieldName);
+    if (!field) {
+      return null;
+    }
+
+    return typeof field === "string" ? field : field.getText();
+  }
+
+  /**
+   * Parse the passkey of the kdbx entry, either exported by Passly in a dedicated protected field,
+   * or stored by KeePassXC in its own passkey attributes.
+   * An unreadable passkey does not fail the resource, it is reported as a warning and the resource
+   * is imported without its passkey.
+   * @param {kdbxweb.KdbxEntry} kdbxEntry
+   * @param {ExternalResourceDto} externalResourceDto
+   * @private
+   * @returns {Promise<void>}
+   */
+  async parsePasskey(kdbxEntry, externalResourceDto) {
+    const serializedPasskey = this.readKdbxFieldText(kdbxEntry, PASSKEY_KDBX_FIELD_NAME);
+    if (serializedPasskey) {
+      const passkey = PasskeySecretSerializer.parse(serializedPasskey);
+      if (!passkey) {
+        this.importEntity.importResourcesWarnings.push(
+          new ImportError("Passkey could not be read and was not imported", externalResourceDto),
+        );
+        return;
+      }
+
+      externalResourceDto.passkey = passkey;
+      return;
+    }
+
+    await this.parseKeepassPasskey(kdbxEntry, externalResourceDto);
+  }
+
+  /**
+   * Parse a passkey stored by KeePassXC in its `KPEX_PASSKEY_*` entry attributes.
+   * @param {kdbxweb.KdbxEntry} kdbxEntry
+   * @param {ExternalResourceDto} externalResourceDto
+   * @private
+   * @returns {Promise<void>}
+   */
+  async parseKeepassPasskey(kdbxEntry, externalResourceDto) {
+    const keepassFields = {};
+    for (const fieldName of KEEPASS_PASSKEY_FIELD_NAMES) {
+      keepassFields[fieldName] = this.readKdbxFieldText(kdbxEntry, fieldName);
+    }
+
+    if (!PasskeyKeepassImportService.hasPasskeyFields(keepassFields)) {
+      return;
+    }
+
+    try {
+      externalResourceDto.passkey = await PasskeyKeepassImportService.buildSecretDto(keepassFields, {
+        username: externalResourceDto.username,
+      });
+    } catch (error) {
+      this.importEntity.importResourcesWarnings.push(
+        new ImportError("Passkey could not be read and was not imported", externalResourceDto, error),
+      );
+    }
+  }
+
+  /**
+   * Extract the passkey of a kdbx entry which also holds another secret, typically a KeePassXC entry
+   * a passkey was added to. A passkey resource cannot hold a password, so the passkey is imported as
+   * its own resource instead of dropping either secret.
+   * @param {ExternalResourceDto} externalResourceDto
+   * @private
+   * @returns {ExternalResourceDto|null} The passkey resource to import, if any
+   */
+  extractStandalonePasskeyResource(externalResourceDto) {
+    const hasOtherSecret = Boolean(externalResourceDto.secret_clear?.length || externalResourceDto.totp);
+    if (!externalResourceDto.passkey || !hasOtherSecret || !this.getPasskeyResourceType()) {
+      return null;
+    }
+
+    const name = `${externalResourceDto.name} passkey`.trim().slice(0, RESOURCE_NAME_MAX_LENGTH);
+    const passkeyResourceDto = {
+      name: name.length ? name : ExternalResourceEntity.DEFAULT_RESOURCE_NAME,
+      username: externalResourceDto.username,
+      uris: [...(externalResourceDto.uris || [])],
+      description: "",
+      folder_parent_path: externalResourceDto.folder_parent_path,
+      secret_clear: "",
+      expired: null,
+      passkey: externalResourceDto.passkey,
+    };
+    delete externalResourceDto.passkey;
+
+    return passkeyResourceDto;
+  }
+
+  /**
    * parse the totp of the kdbx entry
    * @param {kdbxweb.KdbxEntry} kdbxEntry
    * @param {ExternalResourceDto} externalResourceDto
@@ -291,12 +414,35 @@ class ResourcesKdbxImportParser {
   }
 
   /**
+   * Get the passkey resource type, if the organization supports it.
+   * @return {ResourceTypeEntity|null}
+   */
+  getPasskeyResourceType() {
+    this.resourceTypesCollection.filterByResourceTypeVersion(this.metadataTypesSettings.defaultResourceTypes);
+
+    return this.resourceTypesCollection.getFirst("slug", PASSKEY_RESOURCE_TYPE_SLUG) || null;
+  }
+
+  /**
    * Get the resource type
    * @param {ExternalResourceDto} externalResourceDto
    * @return {ResourceTypeDto}
    */
   getResourceType(externalResourceDto) {
     this.resourceTypesCollection.filterByResourceTypeVersion(this.metadataTypesSettings.defaultResourceTypes);
+
+    if (externalResourceDto.passkey) {
+      const passkeyResourceType = this.getPasskeyResourceType();
+      if (passkeyResourceType) {
+        return passkeyResourceType;
+      }
+
+      // The organization does not support passkeys, import the resource without its passkey.
+      delete externalResourceDto.passkey;
+      this.importEntity.importResourcesWarnings.push(
+        new ImportError("Passkey content type not supported, the passkey was not imported", externalResourceDto),
+      );
+    }
 
     ResourcesTypeImportParser.parsePinCode(externalResourceDto, this.resourceTypesCollection);
     const scores = ResourcesTypeImportParser.getScores(externalResourceDto, this.resourceTypesCollection);

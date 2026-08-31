@@ -34,6 +34,13 @@ import {
 import IconEntity, {
   ICON_TYPE_KEEPASS_ICON_SET,
 } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/IconEntity";
+import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
+import {
+  defaultPasskeySecretDto,
+  keepassPasskeyFieldsDto,
+  passkeyResourceTypeDto,
+} from "../../../../passkey/passkeySecretDto.test.data";
+import { KEEPASS_PASSKEY_FIELDS } from "../../../../passkey/passkeyKeepassImportService";
 
 describe("ResourcesKdbxImportParser", () => {
   let resourceTypesCollection, metadataTypesSettings;
@@ -166,6 +173,71 @@ describe("ResourcesKdbxImportParser", () => {
       },
       data,
     );
+  }
+
+  /**
+   * Build a base64 kdbx file holding a single entry, as exported by Passly.
+   * @param {object} fields The kdbx entry fields
+   * @returns {Promise<string>}
+   */
+  async function buildKdbxFile(fields) {
+    const kdbxDb = kdbxweb.Kdbx.create(new kdbxweb.Credentials(null, null), "passbolt export");
+    kdbxDb.setVersion(3);
+    const kdbxEntry = kdbxDb.createEntry(kdbxDb.getDefaultGroup());
+    Object.entries(fields).forEach(([key, value]) => kdbxEntry.fields.set(key, value));
+    kdbxEntry.times.expiryTime = undefined;
+    kdbxEntry.times.expires = false;
+    const file = await kdbxDb.save();
+    return kdbxweb.ByteUtils.bytesToBase64(new Uint8Array(file));
+  }
+
+  /**
+   * Build the import entity of a kdbx file holding a single KeePassXC passkey entry.
+   * @param {object} [keepassFields] The KeePassXC passkey attributes
+   * @param {object} [entryFields] Additional kdbx entry fields
+   * @returns {Promise<ImportResourcesFileEntity>}
+   */
+  async function buildKeepassPasskeyImportEntity(keepassFields = keepassPasskeyFieldsDto(), entryFields = {}) {
+    const protectedFieldNames = [
+      KEEPASS_PASSKEY_FIELDS.CREDENTIAL_ID,
+      KEEPASS_PASSKEY_FIELDS.PRIVATE_KEY_PEM,
+      KEEPASS_PASSKEY_FIELDS.USER_HANDLE,
+    ];
+    const fields = {
+      Title: "www.spaceship.com",
+      UserName: "66Ton99",
+      URL: "https://www.spaceship.com",
+      Notes: "",
+      ...entryFields,
+    };
+    Object.entries(keepassFields).forEach(([key, value]) => {
+      if (value === null || typeof value === "undefined") {
+        return;
+      }
+      // KeePassXC protects the credential id, the private key and the user handle.
+      fields[key] = protectedFieldNames.includes(key) ? kdbxweb.ProtectedValue.fromString(value) : value;
+    });
+
+    const file = await buildKdbxFile(fields);
+
+    return new ImportResourcesFileEntity({ ref: "import-ref", file_type: "kdbx", file: file });
+  }
+
+  /**
+   * Build the import entity of a kdbx file holding a single passkey entry.
+   * @param {string} serializedPasskey The serialized passkey secret
+   * @returns {Promise<ImportResourcesFileEntity>}
+   */
+  async function buildPasskeyImportEntity(serializedPasskey) {
+    const file = await buildKdbxFile({
+      Title: "Spaceship passkey",
+      UserName: "66Ton99",
+      URL: "https://www.spaceship.com",
+      Notes: "",
+      [PASSKEY_KDBX_FIELD_NAME]: kdbxweb.ProtectedValue.fromString(serializedPasskey),
+    });
+
+    return new ImportResourcesFileEntity({ ref: "import-ref", file_type: "kdbx", file: file });
   }
 
   it("should parse resources and folders", async () => {
@@ -609,5 +681,177 @@ describe("ResourcesKdbxImportParser", () => {
     expect(importEntity.importResources.items).toHaveLength(2);
     expect(importEntity.importResources.items[0]._icon).toBeUndefined();
     expect(importEntity.importResources.items[1]._icon).toBeUndefined();
+  });
+  it("should parse a passkey exported by Passly", async () => {
+    expect.assertions(5);
+    const passkey = defaultPasskeySecretDto();
+    const resourceTypesCollection = new ResourceTypesCollection([
+      ...resourceTypesCollectionDto(),
+      passkeyResourceTypeDto(),
+    ]);
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildPasskeyImportEntity(JSON.stringify(passkey));
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResourcesErrors).toHaveLength(0);
+    expect(importEntity.importResourcesWarnings).toHaveLength(0);
+    expect(importEntity.importResources.items).toHaveLength(1);
+    const resource = importEntity.importResources.items[0];
+    expect(resource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
+    expect(resource.passkey).toStrictEqual(passkey);
+  });
+
+  it("should not import the passkey as a custom field", async () => {
+    expect.assertions(2);
+    const resourceTypesCollection = new ResourceTypesCollection([
+      ...resourceTypesCollectionDto(),
+      passkeyResourceTypeDto(),
+    ]);
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildPasskeyImportEntity(JSON.stringify(defaultPasskeySecretDto()));
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    const resource = importEntity.importResources.items[0];
+    expect(resource.customFields).toBeNull();
+    expect(resource.secretClear).toStrictEqual("");
+  });
+
+  it("should import the resource without its passkey if the organization does not support passkeys", async () => {
+    expect.assertions(5);
+    const resourceTypesCollection = new ResourceTypesCollection(resourceTypesCollectionDto());
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildPasskeyImportEntity(JSON.stringify(defaultPasskeySecretDto()));
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResourcesErrors).toHaveLength(0);
+    expect(importEntity.importResourcesWarnings[0]).toBeInstanceOf(ImportError);
+    expect(importEntity.importResourcesWarnings[0].message).toStrictEqual(
+      "Passkey content type not supported, the passkey was not imported",
+    );
+    // The passkey secret must not be kept in the resource, nor reported in the warning details.
+    expect(importEntity.importResourcesWarnings[0].data.passkey).toBeUndefined();
+    expect(importEntity.importResources.items[0].passkey).toBeNull();
+  });
+
+  it("should warn and import the resource without its passkey if the passkey cannot be read", async () => {
+    expect.assertions(4);
+    const resourceTypesCollection = new ResourceTypesCollection([
+      ...resourceTypesCollectionDto(),
+      passkeyResourceTypeDto(),
+    ]);
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildPasskeyImportEntity("not a passkey");
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResourcesErrors).toHaveLength(0);
+    expect(importEntity.importResourcesWarnings[0].message).toStrictEqual(
+      "Passkey could not be read and was not imported",
+    );
+    expect(importEntity.importResources.items).toHaveLength(1);
+    expect(importEntity.importResources.items[0].passkey).toBeNull();
+  });
+  it("should parse a passkey exported by KeePassXC", async () => {
+    expect.assertions(6);
+    const resourceTypesCollection = new ResourceTypesCollection([
+      ...resourceTypesCollectionDto(),
+      passkeyResourceTypeDto(),
+    ]);
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildKeepassPasskeyImportEntity();
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResourcesErrors).toHaveLength(0);
+    expect(importEntity.importResourcesWarnings).toHaveLength(0);
+    expect(importEntity.importResources.items).toHaveLength(1);
+    const resource = importEntity.importResources.items[0];
+    expect(resource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
+    expect(resource.passkey).toEqual(
+      expect.objectContaining({
+        object_type: "PASSLY_PASSKEY",
+        credential_id: "Y3JlZGVudGlhbC1pZA",
+        rp_id: "www.spaceship.com",
+        user_handle: "dXNlci1oYW5kbGU",
+        user_name: "66Ton99",
+        cose_alg: -7,
+        sign_count: 0,
+      }),
+    );
+    // The KeePassXC passkey attributes must not be imported as custom fields.
+    expect(resource.customFields).toBeNull();
+  });
+
+  it("should import a KeePassXC entry holding both a password and a passkey as two resources", async () => {
+    expect.assertions(7);
+    const resourceTypesCollection = new ResourceTypesCollection([
+      ...resourceTypesCollectionDto(),
+      passkeyResourceTypeDto(),
+    ]);
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildKeepassPasskeyImportEntity(keepassPasskeyFieldsDto(), {
+      Password: kdbxweb.ProtectedValue.fromString("Secret 1"),
+    });
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResourcesErrors).toHaveLength(0);
+    expect(importEntity.importResources.items).toHaveLength(2);
+    const [passwordResource, passkeyResource] = importEntity.importResources.items;
+
+    expect(passwordResource.name).toStrictEqual("www.spaceship.com");
+    expect(passwordResource.secretClear).toStrictEqual("Secret 1");
+    expect(passwordResource.passkey).toBeNull();
+
+    expect(passkeyResource.name).toStrictEqual("www.spaceship.com passkey");
+    expect(passkeyResource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
+  });
+
+  it("should not split a KeePassXC entry when the organization does not support passkeys", async () => {
+    expect.assertions(3);
+    const resourceTypesCollection = new ResourceTypesCollection(resourceTypesCollectionDto());
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildKeepassPasskeyImportEntity(keepassPasskeyFieldsDto(), {
+      Password: kdbxweb.ProtectedValue.fromString("Secret 1"),
+    });
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResources.items).toHaveLength(1);
+    expect(importEntity.importResources.items[0].secretClear).toStrictEqual("Secret 1");
+    expect(importEntity.importResourcesWarnings[0].message).toStrictEqual(
+      "Passkey content type not supported, the passkey was not imported",
+    );
+  });
+
+  it("should warn and import the resource without its passkey if the KeePassXC passkey is unusable", async () => {
+    expect.assertions(3);
+    const resourceTypesCollection = new ResourceTypesCollection([
+      ...resourceTypesCollectionDto(),
+      passkeyResourceTypeDto(),
+    ]);
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV6Dto());
+    const importEntity = await buildKeepassPasskeyImportEntity(
+      keepassPasskeyFieldsDto({ [KEEPASS_PASSKEY_FIELDS.PRIVATE_KEY_PEM]: "not a pem key" }),
+    );
+
+    const parser = new ResourcesKdbxImportParser(importEntity, resourceTypesCollection, metadataTypesSettings);
+    await parser.parseImport();
+
+    expect(importEntity.importResourcesErrors).toHaveLength(0);
+    expect(importEntity.importResourcesWarnings[0].message).toStrictEqual(
+      "Passkey could not be read and was not imported",
+    );
+    expect(importEntity.importResources.items[0].passkey).toBeNull();
   });
 });

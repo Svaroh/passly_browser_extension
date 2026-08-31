@@ -33,13 +33,17 @@ export const resourceCollectionV4ToExport = async (data = {}, options = {}) => {
 
 export const resourceCollectionV5ToExport = async (data = {}, options = {}) => {
   const plaintextDto = {};
-  if (data.pin_code) {
+  if (data.passkey) {
+    Object.assign(plaintextDto, data.passkey);
+  } else if (data.pin_code) {
     plaintextDto.pin_code = data.pin_code;
     plaintextDto.object_type = "PASSBOLT_SECRET_DATA";
   } else {
     plaintextDto.password = data.password || "Password 1";
   }
-  plaintextDto.description = data.description || "Description 1";
+  if (!data.passkey) {
+    plaintextDto.description = data.description || "Description 1";
+  }
   if (data.totp) {
     plaintextDto.totp = data.totp;
   }
