@@ -12,11 +12,10 @@
  * @since         1.0.0
  */
 
-import FolderModel from "../model/folder/folderModel";
 import FolderCreateController from "../controller/folder/folderCreateController";
 import UpdateFolderController from "../controller/folder/updateFolderController";
+import DeleteFolderService from "../service/folder/deleteFolderService";
 import FolderEntity from "../model/entity/folder/folderEntity";
-import FindAndUpdateResourcesLocalStorage from "../service/resource/findAndUpdateResourcesLocalStorageService";
 import UpdateAllFolderLocalStorageController from "../controller/folderLocalStorage/updateAllFoldersLocalStorageController";
 import FindFolderDetailsController from "../controller/folder/findFolderDetailsController";
 import MoveFolderController from "../controller/move/moveFolderController";
@@ -67,11 +66,8 @@ const listen = function (worker, apiClientOptions, account) {
    */
   worker.port.on("passbolt.folders.delete", async (requestId, folderId, cascade) => {
     try {
-      const folderModel = new FolderModel(apiClientOptions, account);
-      const findAndUpdateResourcesLocalStorage = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
-
-      await folderModel.delete(folderId, cascade);
-      await findAndUpdateResourcesLocalStorage.findAndUpdateAll();
+      const deleteFolderService = new DeleteFolderService(account, apiClientOptions);
+      await deleteFolderService.delete(folderId, cascade);
 
       worker.port.emit(requestId, "SUCCESS", folderId);
     } catch (error) {

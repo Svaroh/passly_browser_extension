@@ -156,25 +156,6 @@ class FolderModel {
   }
 
   /**
-   * Delete a folder using Passbolt API
-   *
-   * @param {string} folderId uuid
-   * @param {boolean} [cascade] delete sub folder / folders
-   * @returns {Promise<void>}
-   */
-  async delete(folderId, cascade) {
-    await this.folderService.delete(folderId, cascade);
-    await FolderLocalStorage.delete(folderId);
-    if (cascade) {
-      /*
-       * update storage and get updated sub folders list in case some are deleted
-       * TODO: optimize update only if folder contains subfolders
-       */
-      await this.findAndUpdateFoldersLocalStorageService.findAndUpdateAll();
-    }
-  }
-
-  /**
    * Create a bulk of folders
    * @param {FoldersCollection} collection The collection of folders
    * @param {{successCallback: function, errorCallback: function}?} callbacks The intermediate operation callbacks
