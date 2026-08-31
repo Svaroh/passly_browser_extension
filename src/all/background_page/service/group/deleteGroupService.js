@@ -20,7 +20,7 @@ import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/Pass
 import { assertType, assertUuid } from "../../utils/assertions";
 
 /**
- * The service aims to delete a group from the API.
+ * The service aims to delete a group from the API, or check whether it can be deleted.
  */
 export default class DeleteGroupService {
   /**
@@ -32,6 +32,27 @@ export default class DeleteGroupService {
   constructor(apiClientOptions, account) {
     this.groupApiService = new GroupApiService(apiClientOptions);
     this.groupLocalStorage = new GroupLocalStorage(account);
+  }
+
+  /**
+   * Check if a group can be deleted.
+   *
+   * A group can not be deleted if it is the only owner of a shared resource or folder.
+   * In such case ownership transfer is required.
+   *
+   * @param {string} groupId The group id
+   * @returns {Promise<void>}
+   * @throws {DeleteDryRunError} if some permissions must be transferred
+   * @throws {Error} if the API returns an error other than a 400 with permissions to transfer
+   * @public
+   */
+  async deleteDryRun(groupId) {
+    assertUuid(groupId, 'The parameter "groupId" should be a UUID');
+    try {
+      await this.groupApiService.delete(groupId, {}, true);
+    } catch (error) {
+      await this.handleError(error);
+    }
   }
 
   /**
