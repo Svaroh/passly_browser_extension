@@ -12,7 +12,7 @@
  * @since         6.0.0
  */
 import i18n from "../../sdk/i18n";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagsCollection from "../../model/entity/tag/tagsCollection";
 import ProgressService from "../../service/progress/progressService";
 import UpdateResourceTagsService from "../../service/tag/updateResourceTagsService";

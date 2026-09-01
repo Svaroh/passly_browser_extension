@@ -14,20 +14,6 @@
 import Validator from "validator";
 import { ValidatorRule } from "./validatorRules";
 
-const UUID_REGEXP = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
-
-/**
- * Assert that the given parameter is a valid UUID.
- * @param {string<UUID>} uuidString the parameter to validate
- * @param {string} [errorMessage] the message to throw withing the Error if any
- * @throws {Error} if the parameter is not valid
- */
-export const assertUuid = (uuidString, errorMessage = "The given parameter is not a valid UUID") => {
-  if (!UUID_REGEXP.test(uuidString)) {
-    throw new Error(errorMessage);
-  }
-};
-
 /**
  * Assert that the given parameter is a valid Base64 string.
  * @param {string<base64>} base64String the parameter to validate
@@ -212,21 +198,6 @@ export const assertArray = (data, errorMessage = "The given parameter is not a v
 export const assertNonEmptyArray = (data, errorMessage = "The given parameter is not a valid non empty array") => {
   if (!Array.isArray(data) || data.length === 0) {
     throw new TypeError(errorMessage);
-  }
-};
-
-/**
- * Assert that the given parameter is a valid uuid array.
- * @param {Array} data the parameter to validate
- * @param {string} [errorMessage] the message to throw withing the Error if any
- * @throws {Error} if the parameter is not valid
- */
-export const assertArrayUUID = (data, errorMessage = "The given parameter is not a valid array of uuid") => {
-  try {
-    assertArray(data);
-    data.forEach((entry) => assertUuid(entry));
-  } catch (error) {
-    throw new TypeError(errorMessage, { cause: error });
   }
 };
 

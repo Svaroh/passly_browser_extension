@@ -14,7 +14,7 @@
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 import ProgressService from "../../service/progress/progressService";
 import MoveResourcesService, { PROGRESS_STEPS_MOVE_RESOURCES_MOVE_ALL } from "../../service/move/moveResourcesService";
-import { assertArrayUUID, assertUuid } from "../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindFoldersService from "../../service/folder/getOrFindFoldersService";
 import i18n from "../../sdk/i18n";
 import VerifyOrTrustMetadataKeyService from "../../service/metadata/verifyOrTrustMetadataKeyService";

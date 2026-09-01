@@ -13,7 +13,7 @@
  */
 
 import DeleteTagService from "../../service/tag/deleteTagService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 export default class DeleteTagController {
   /**

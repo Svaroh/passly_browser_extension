@@ -14,7 +14,7 @@
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
-import { assertArrayUUID } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 /**

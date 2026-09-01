@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.3.2
  */
-import { assertUuid } from "../../../../all/background_page/utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import { SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN_RESPONSE_HANDLER } from "../../../offscreens/service/clipboard/writeClipobardOffscreenService";
 import {
   SEND_MESSAGE_TARGET_FETCH_OFFSCREEN_POLLING_HANDLER,

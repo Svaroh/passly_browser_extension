@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.9.4
  */
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FindFoldersService from "../../service/folder/findFoldersService";
 
 class FindFolderDetailsController {

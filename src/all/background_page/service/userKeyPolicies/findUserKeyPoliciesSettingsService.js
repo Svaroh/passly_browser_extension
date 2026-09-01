@@ -12,7 +12,7 @@
  * @since         5.1.1
  */
 import GetOrFindSiteSettingsService from "../siteSettings/getOrFindSiteSettingsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import UserKeyPoliciesSettingsApiService from "../api/userKeyPolicies/userKeyPoliciesSettingsApiService";
 import UserKeyPoliciesSettingsEntity from "passbolt-styleguide/src/shared/models/entity/userKeyPolicies/UserKeyPoliciesSettingsEntity";
 

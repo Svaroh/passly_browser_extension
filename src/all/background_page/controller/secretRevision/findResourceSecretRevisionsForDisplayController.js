@@ -14,7 +14,7 @@
 
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 import FindAndDecryptSecretRevisionsService from "../../service/secretRevisions/findAndDecryptSecretRevisionsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 export default class FindResourceSecretRevisionsForDisplayController {
   /**

@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  */
 import AbstractService from "../abstract/abstractService";
-import { assertUuid } from "../../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 const MOVE_SERVICE_RESOURCE_NAME = "move";
 

@@ -15,7 +15,7 @@
 import ShareMetadataKeyPrivateService from "../../service/metadata/shareMetadataKeyPrivateService";
 import VerifyOrTrustMetadataKeyService from "../../service/metadata/verifyOrTrustMetadataKeyService";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class ShareMetadataKeyPrivateController {
   /**

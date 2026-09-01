@@ -21,12 +21,12 @@ import ShareApiService from "../api/share/shareApiService";
 import FindAndUpdateResourcesLocalStorage from "../resource/findAndUpdateResourcesLocalStorageService";
 import {
   assertArray,
-  assertArrayUUID,
   assertNonEmptyArray,
   assertNonEmptyString,
   assertString,
   assertType,
 } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import DecryptPrivateKeyService from "../crypto/decryptPrivateKeyService";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
 import ResourceService from "../api/resource/resourceService";

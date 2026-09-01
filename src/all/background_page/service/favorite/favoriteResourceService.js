@@ -16,7 +16,8 @@ import FavoriteEntity from "../../model/entity/favorite/favoriteEntity";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import ResourceModel from "../../model/resource/resourceModel";
 import FavoriteApiService from "../../service/api/favorite/favoriteApiService";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 
 export default class FavoriteResourceService {

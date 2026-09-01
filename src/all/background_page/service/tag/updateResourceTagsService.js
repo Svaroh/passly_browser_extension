@@ -14,7 +14,7 @@
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import TagsCollection from "../../model/entity/tag/tagsCollection";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagApiService from "../api/tag/tagApiService";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
