@@ -23,6 +23,7 @@ import GetServerKeyController from "../controller/auth/getServerKeyController";
 import ReplaceServerKeyController from "../controller/auth/replaceServerKeyController";
 import ReloadTabController from "../controller/tab/reloadTabController";
 import RedirectPostLoginController from "../controller/auth/redirectPostLoginController";
+import AuthOfflineLogoutController from "../controller/auth/authOfflineLogoutController";
 
 /**
  * Listens to the authentication events
@@ -67,6 +68,17 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.auth.logout", async (requestId, withRedirection) => {
     const controller = new AuthLogoutController(worker, requestId, apiClientOptions, account);
     await controller._exec(withRedirection);
+  });
+
+  /**
+   * Offline Logout when user was signed-in offline
+   *
+   * @listens passbolt.auth.offline-local
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.auth.offline-logout", async (requestId) => {
+    const controller = new AuthOfflineLogoutController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 
   /*
