@@ -114,7 +114,7 @@ class FindAndUpdateResourcesLocalStorage {
 
       await ResourceLocalStorage.set(updatedResourcesCollection);
 
-      await this._refreshOfflineOPFSStorage(canUseOffline, offlineEncryptedResourcesCollection);
+      await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection);
 
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 
@@ -131,13 +131,12 @@ class FindAndUpdateResourcesLocalStorage {
    *   secrets only for resources that are new or whose `modified` timestamp changed since the last
    *   cached snapshot. Secrets for resources that left the offline set are deleted.
    *
-   * @param {boolean} canUseOffline Whether the offline feature is enabled for this user.
    * @param {ResourcesCollection} offlineEncryptedResourcesCollection Resources collection (with offline association, encrypted metadata).
    * @returns {Promise<void>}
    * @private
    */
-  async _refreshOfflineOPFSStorage(canUseOffline, offlineEncryptedResourcesCollection) {
-    if (!canUseOffline || offlineEncryptedResourcesCollection.length === 0) {
+  async _refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection) {
+    if (offlineEncryptedResourcesCollection.length === 0) {
       await this.offlineResourcesOPFSStorage.flush();
       await this.offlineSecretsOPFSStorage.flush();
       return;

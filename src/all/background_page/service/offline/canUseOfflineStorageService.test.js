@@ -135,6 +135,17 @@ describe("CanUseOfflineStorageService", () => {
 
       expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(false);
     });
+
+    it("returns false when the offline settings throw an error.", async () => {
+      expect.assertions(1);
+      jest
+        .spyOn(canUseOfflineStorageService.getOrFindOfflineSettingsService, "getOrFind")
+        .mockImplementationOnce(() => {
+          throw new Error("error");
+        });
+
+      expect(await canUseOfflineStorageService.canUseOfflineStorage()).toBe(false);
+    });
   });
 
   describe("::canUseOfflineStorageFromLocalStorage", () => {
@@ -232,7 +243,7 @@ describe("CanUseOfflineStorageService", () => {
       expect(await CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage(account)).toBe(false);
     });
 
-    it("throws when a stored dto does not validate, letting the caller decide how to fail.", async () => {
+    it("throws when a stored dto does not validate, return false to not block the process.", async () => {
       expect.assertions(1);
       mockStorages({ offlineSettings: defaultOfflineSettingsDto(), user: { username: 42 }, rbacs: [] });
 

@@ -59,35 +59,41 @@ export default class CanUseOfflineStorageService {
   }
 
   /**
-   * Returns true iff the offline mode plugin is enabled, offline mode is configured for the org and the
+   * Returns true if the offline mode plugin is enabled, offline mode is configured for the org and the
    * current user can access offline data.
+   * Return false if any error happen (prevent any online workflow to failed)
    * @returns {Promise<boolean>}
    */
   async canUseOfflineStorage() {
-    // Offline mode plugin is enabled on the API.
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
-    if (!siteSettings?.isPluginEnabled("offlineMode")) {
+    try {
+      // Offline mode plugin is enabled on the API.
+      const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
+      if (!siteSettings?.isPluginEnabled("offlineMode")) {
+        return false;
+      }
+      // Org has offline mode configured.
+      const offlineSettings = await this.getOrFindOfflineSettingsService.getOrFind();
+      if (!offlineSettings) {
+        return false;
+      }
+      const user = await this.getOrFindMeService.getOrFindMe();
+      if (!user) {
+        return false;
+      }
+      /*
+       * Administrators are not controlled by rbac (see canViewOfflineItems), so their rbacs are not
+       * retrieved: it would trigger a useless API round-trip on a stale or empty cache.
+       */
+      const rbacs = user?.role?.isAdmin() ? null : await this.getOrFindRbacService.getOrFindMe();
+      return CanUse.canRoleUseAction(user, rbacs, actions.OFFLINE_ITEMS_VIEW);
+    } catch (error) {
+      console.error("Could not resolve the offline capability.", error);
       return false;
     }
-    // Org has offline mode configured.
-    const offlineSettings = await this.getOrFindOfflineSettingsService.getOrFind();
-    if (!offlineSettings) {
-      return false;
-    }
-    const user = await this.getOrFindMeService.getOrFindMe();
-    if (!user) {
-      return false;
-    }
-    /*
-     * Administrators are not controlled by rbac (see canViewOfflineItems), so their rbacs are not
-     * retrieved: it would trigger a useless API round-trip on a stale or empty cache.
-     */
-    const rbacs = user?.role?.isAdmin() ? null : await this.getOrFindRbacService.getOrFindMe();
-    return CanUse.canRoleUseAction(user, rbacs, actions.OFFLINE_ITEMS_VIEW);
   }
 
   /**
-   * Returns true iff the offline mode plugin is enabled, offline mode is configured for the org and the
+   * Returns true if the offline mode plugin is enabled, offline mode is configured for the org and the
    * current user can access offline data, resolved from the local storages only: no API call, and no cache
    * write-back.
    *
