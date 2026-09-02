@@ -163,10 +163,13 @@ class ResourceUpdateService {
       ResourceLocalStorage.DEFAULT_CONTAIN,
     );
 
-    const updatedResourceEntity = new ResourceEntity(resourceDto);
+    let updatedResourceEntity = new ResourceEntity(resourceDto);
     // Refresh the offline storage: the OPFS store only accepts
     // resources whose metadata is still encrypted.
-    await this.updateOfflineStorage(updatedResourceEntity, Boolean(data.secrets));
+    if (resourceEntity.hasOfflineAccess()) {
+      updatedResourceEntity.offline = resourceEntity.offline;
+      await this.updateOfflineStorage(updatedResourceEntity, Boolean(data.secrets));
+    }
 
     // If resource v5, metadata will be returned encrypted, replace it with the original decrypted copy.
     if (!updatedResourceEntity.isMetadataDecrypted()) {
@@ -193,7 +196,7 @@ class ResourceUpdateService {
   async updateOfflineStorage(updatedResourceEntity, secretUpdated) {
     // OPFS only caches v5 resources (encrypted metadata). A v4 resource is normalized to a decrypted
     // metadata shape the OPFS store rejects, so skip it even if it is tagged offline.
-    if (!updatedResourceEntity.hasOfflineAccess() || updatedResourceEntity.isMetadataDecrypted()) {
+    if (updatedResourceEntity.isMetadataDecrypted()) {
       return;
     }
     await this.offlineResourcesOPFSStorage.updateResource(updatedResourceEntity);

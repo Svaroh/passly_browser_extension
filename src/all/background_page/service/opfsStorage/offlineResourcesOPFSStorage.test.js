@@ -410,6 +410,23 @@ describe("OfflineResourcesOPFSStorage", () => {
       expect(storageData[0]).not.toEqual(resourceDto);
     });
 
+    it("Should update the resource unfavorite", async () => {
+      expect.assertions(4);
+      const favoriteDto = defaultFavoriteDto();
+      const favorite = new FavoriteEntity(favoriteDto);
+      const resourceDto = resourceMetadataEncryptedDto({
+        favorite,
+      });
+      const resourcesDtos = [resourceDto];
+      await storage._setOPFSStorage(storage.storageKey, resourcesDtos);
+      await storage.updateResourceFavorite(resourceDto.id, null);
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData).toEqual(expect.any(Array));
+      expect(storageData).toHaveLength(1);
+      expect(storageData[0].favorite).toEqual(null);
+      expect(storageData[0]).not.toEqual(resourceDto);
+    });
+
     it("Should update the cache with the updated resource", async () => {
       expect.assertions(6);
       const resourceDto = resourceMetadataEncryptedDto();

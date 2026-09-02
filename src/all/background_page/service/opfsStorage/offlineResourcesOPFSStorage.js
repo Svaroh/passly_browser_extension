@@ -194,14 +194,16 @@ class OfflineResourcesOPFSStorage {
    */
   async updateResourceFavorite(resourceId, favoriteEntity) {
     assertUuid(resourceId, "The parameter resourceId should be a UUID.");
-    assertType(favoriteEntity, FavoriteEntity, "The `favoriteEntity` parameter should be of type FavoriteEntity");
+    if (favoriteEntity) {
+      assertType(favoriteEntity, FavoriteEntity, "The `favoriteEntity` parameter should be of type FavoriteEntity");
+    }
     await navigator.locks.request(this.storageKey, async () => {
       const resources = (await this.get()) || [];
       const resourceIndex = resources.findIndex((item) => item.id === resourceId);
       if (resourceIndex === -1) {
         throw new Error("The offline resource could not be found in the OPFS storage");
       }
-      resources[resourceIndex].favorite = favoriteEntity.toDto();
+      resources[resourceIndex].favorite = favoriteEntity ? favoriteEntity.toDto() : null;
       await this._setOPFSStorage(this.storageKey, resources);
       OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;
     });

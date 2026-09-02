@@ -1115,9 +1115,34 @@ describe("ResourceUpdateService", () => {
       return new ResourceEntity({ ...dto, secrets: [secretDto] });
     };
 
-    it("does nothing when the resource has no offline access", async () => {
-      expect.assertions(2);
-      const entity = new ResourceEntity(resourceMetadataEncryptedDto());
+    it("does not refresh the offline storage when the resource is not cached offline", async () => {
+      expect.assertions(1);
+      const resourceTypeEntity = new ResourceTypeEntity(resourceTypePasswordAndDescriptionDto());
+      const resourceDto = defaultResourceDto();
+      const resourceEntity = new ResourceEntity({
+        ...resourceDto,
+        secrets: [readSecret({ resource_id: resourceDto.id })],
+      });
+      const metadataDecrypted = resourceEntity.metadata;
+
+      jest
+        .spyOn(resourceUpdateService.resourceService, "update")
+        .mockImplementation(() =>
+          new ResourceEntity(defaultResourceDto({ id: resourceDto.id })).toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN),
+        );
+      const offlineSpy = jest.spyOn(resourceUpdateService, "updateOfflineStorage").mockResolvedValue();
+      jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
+
+      await resourceUpdateService.update(resourceEntity, resourceTypeEntity, metadataDecrypted);
+
+      expect(offlineSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the offline resource even when the entity carries no offline association", async () => {
+      expect.assertions(3);
+      const dto = resourceMetadataEncryptedDto();
+      const entity = new ResourceEntity({ ...dto, secrets: [readSecret({ resource_id: dto.id })] });
+      expect(entity.hasOfflineAccess()).toBe(false);
       const updateResourceSpy = jest
         .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
         .mockResolvedValue();
@@ -1127,8 +1152,8 @@ describe("ResourceUpdateService", () => {
 
       await resourceUpdateService.updateOfflineStorage(entity, true);
 
-      expect(updateResourceSpy).not.toHaveBeenCalled();
-      expect(updateSecretSpy).not.toHaveBeenCalled();
+      expect(updateResourceSpy).toHaveBeenCalledWith(entity);
+      expect(updateSecretSpy).toHaveBeenCalledWith(entity.secret);
     });
 
     it("does not touch the OPFS storage for a v4 resource even when it is tagged offline", async () => {
@@ -1184,9 +1209,9 @@ describe("ResourceUpdateService", () => {
 
   describe("ResourceUpdateService::update - offline storage wiring", () => {
     it("refreshes the offline storage flagging the secret as updated, before the metadata is decrypted", async () => {
-      expect.assertions(3);
+      expect.assertions(5);
       const resourceTypeEntity = new ResourceTypeEntity(resourceTypePasswordAndDescriptionDto());
-      const resourceDto = defaultResourceDto();
+      const resourceDto = defaultResourceDto({}, { withOffline: true });
       // A secret is set (via the constructor so it validates), so `data` carries secrets and the
       // update counts as a secret update.
       const resourceEntity = new ResourceEntity({
@@ -1198,7 +1223,7 @@ describe("ResourceUpdateService", () => {
       jest
         .spyOn(resourceUpdateService.resourceService, "update")
         .mockImplementation(() =>
-          new ResourceEntity(defaultResourceDto()).toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN),
+          new ResourceEntity(defaultResourceDto({ id: resourceDto.id })).toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN),
         );
       const offlineSpy = jest.spyOn(resourceUpdateService, "updateOfflineStorage").mockResolvedValue();
       jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
@@ -1209,6 +1234,10 @@ describe("ResourceUpdateService", () => {
       const [passedEntity, secretUpdated] = offlineSpy.mock.calls[0];
       expect(passedEntity).toBeInstanceOf(ResourceEntity);
       expect(secretUpdated).toBe(true);
+
+      // carries the offline associations that is not returned by the API on update to OPFS
+      expect(passedEntity.hasOfflineAccess()).toBe(true);
+      expect(passedEntity.offline.toDto()).toEqual(resourceEntity.offline.toDto());
     });
   });
 });
