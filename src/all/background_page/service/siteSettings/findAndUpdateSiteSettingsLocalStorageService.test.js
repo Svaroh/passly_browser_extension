@@ -20,7 +20,10 @@ import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage"
 import SiteSettingsRuntimeCache from "./siteSettingsRuntimeCache";
 import FindAndUpdateSiteSettingsLocalStorageService from "./findAndUpdateSiteSettingsLocalStorageService";
 import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
-import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
 import AuthenticationStatusService from "../authenticationStatusService";
 
@@ -82,6 +85,21 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       jest
         .spyOn(service.getOrFindActiveSessionService, "getOrFind")
         .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
+
+      jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
+
+      await service.findAndUpdateAll();
+
+      expect(await readBrowserStorage(service.siteSettingsLocalStorage.storageKey)).toBeUndefined();
+      expect(SiteSettingsLocalStorage._runtimeCachedData[account.id]).toBeUndefined();
+    });
+
+    it("does not touch SiteSettingsLocalStorage when authenticated offline", async () => {
+      expect.assertions(2);
+      const dto = defaultProSiteSettings();
+      jest
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(offlineUserActiveSessionDto({ is_server_reachable: true })));
 
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 

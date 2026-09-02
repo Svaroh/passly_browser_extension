@@ -58,10 +58,10 @@ export default class FindAndUpdateSiteSettingsLocalStorageService {
 
       const siteSettings = await this.findSiteSettingsService.findSiteSettings();
 
-      // Authenticated sessions persist to SiteSettingsLocalStorage (the offline-mode store);
-      // Anonymous sessions only get the in-memory runtime cache below.
+      // Online authenticated sessions persist to SiteSettingsLocalStorage (the offline-mode store);
+      // Anonymous sessions only set the in-memory runtime cache below.
       const activeSession = await this.getOrFindActiveSessionService.getOrFind();
-      if (activeSession.isAuthenticated) {
+      if (activeSession.isSessionOnline && activeSession.isAuthenticated) {
         await this.siteSettingsLocalStorage.set(siteSettings);
       }
       /*
