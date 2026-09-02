@@ -51,17 +51,19 @@ class FindAndUpdateResourcesLocalStorageFromOPFSService {
    */
   async findAndUpdateAll(passphrase = null) {
     const lockKey = `${RESOURCES_UPDATE_ALL_OPFS_LS_LOCK_PREFIX}${this.account.id}`;
-    const localStorageResourceCollection = await ResourceLocalStorage.get();
 
     // If no update is in progress, refresh the local storage.
     return await navigator.locks.request(lockKey, { ifAvailable: true }, async (lock) => {
       // Lock not granted, an update is already in progress. Wait for its completion to notify the function consumer.
       if (!lock) {
-        return await navigator.locks.request(
-          lockKey,
-          { mode: "shared" },
-          async () => new ResourcesCollection(localStorageResourceCollection, { validate: false }),
-        );
+        return await navigator.locks.request(lockKey, { mode: "shared" }, async () => {
+          /*
+           * Return the data from local storage while waiting for the update in progress.
+           */
+          const isRuntimeCacheInitialized = ResourceLocalStorage.hasCachedData();
+          const localStorageResourceCollection = await ResourceLocalStorage.get();
+          return new ResourcesCollection(localStorageResourceCollection, { validate: !isRuntimeCacheInitialized });
+        });
       }
 
       // Lock is granted, read the resources from the OPFS storage and update the local storage.
