@@ -192,6 +192,13 @@ class ResourcesCollection extends EntityV2Collection {
   }
 
   /**
+   * Filter out the resources which metadata is decrypted.
+   */
+  filterOutMetadataDecrypted() {
+    this.filterByCallback((resource) => !resource.isMetadataDecrypted());
+  }
+
+  /**
    * Filter out resources having their metadata not encrypted with a user key.
    */
   filterOutMetadataNotEncryptedWithUserKey() {
@@ -261,7 +268,9 @@ class ResourcesCollection extends EntityV2Collection {
    */
   remove(resourceId) {
     const i = this.items.findIndex((item) => item.id === resourceId);
-    this.items.splice(i, 1);
+    if (i !== -1) {
+      this.items.splice(i, 1);
+    }
   }
 
   /**

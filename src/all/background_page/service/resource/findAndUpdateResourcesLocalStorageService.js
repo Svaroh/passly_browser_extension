@@ -102,7 +102,9 @@ class FindAndUpdateResourcesLocalStorage {
       updatedResourcesCollection.filterByResourceTypes(resourceTypes);
 
       // Snapshot offline-tagged items with encrypted metadata before decryption mutates the collection.
-      const offlineEncryptedResourcesCollection = canUseOffline ? updatedResourcesCollection.filterByOffline() : [];
+      const offlineEncryptedResourcesCollection = canUseOffline
+        ? updatedResourcesCollection.filterByOffline()
+        : new ResourcesCollection([]);
 
       updatedResourcesCollection.setDecryptedMetadataFromCollection(localResourcesCollection);
 
@@ -198,6 +200,9 @@ class FindAndUpdateResourcesLocalStorage {
     assertUuid(parentFolderId);
     const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
 
+    // Can use offline
+    const canUseOffline = await this.canUseOfflineStorageService.canUseOfflineStorage();
+
     const apiResourcesCollection =
       await this.findResourcesServices.findAllByParentFolderIdForLocalStorage(parentFolderId);
     apiResourcesCollection.filterByResourceTypes(resourceTypes);
@@ -217,22 +222,36 @@ class FindAndUpdateResourcesLocalStorage {
       return result;
     }, Array(apiResourcesCollection.length));
 
+    // Update offline collection
     apiResourcesCollection.setDecryptedMetadataFromCollection(localStorageResourcesCollection);
     localStorageResourcesCollection.updateWithCollection(apiResourcesCollection);
-
     const movedOrRemovedResourcesIds = knownResourcesCollectionInFolderIds.filter(
       (id) => !apiResourcesCollectionMapIds[id],
     );
     if (movedOrRemovedResourcesIds.length > 0) {
       const updatedResources = await this.findResourcesServices.findAllByIdsForLocalStorage(movedOrRemovedResourcesIds);
-
       updatedResources.setDecryptedMetadataFromCollection(localStorageResourcesCollection);
       localStorageResourcesCollection.updateWithCollection(updatedResources);
-
       // These resources have been deleted (or permissions revoked) and need to be removed from the local storage.
       const remainingResourcesIds = movedOrRemovedResourcesIds.filter((id) => !updatedResources.getFirstById(id));
 
+      // Remove form ids in offline collection
       localStorageResourcesCollection.removeMany(remainingResourcesIds);
+      if (canUseOffline) {
+        // Delete resources and secrets store in offline if the resources have been deleted (or permissions revoked)
+        await this.offlineResourcesOPFSStorage.deleteResources(remainingResourcesIds);
+        await this.offlineSecretsOPFSStorage.deleteByResourceIds(remainingResourcesIds);
+      }
+    }
+
+    if (canUseOffline) {
+      // Offline resources to update.
+      const offlineEncryptedResourcesCollection = canUseOffline
+        ? localStorageResourcesCollection.filterByOffline()
+        : new ResourcesCollection([]);
+      // Keep only resources encrypted (means these resources needs to be updated)
+      offlineEncryptedResourcesCollection.filterOutMetadataDecrypted();
+      await this._updateOfflineOPFSStorage(offlineEncryptedResourcesCollection);
     }
 
     await this.decryptMetadataService.decryptAllFromForeignModels(localStorageResourcesCollection, passphrase, {
@@ -242,6 +261,32 @@ class FindAndUpdateResourcesLocalStorage {
     localStorageResourcesCollection.filterOutMetadataEncrypted();
 
     await ResourceLocalStorage.set(localStorageResourcesCollection);
+  }
+
+  /**
+   * Update the offline OPFS stores from a resources collection.
+   *
+   * - Do nothing if the collection is empty.
+   * - Otherwise -> update the offline resources (encrypted metadata) and selectively fetch the
+   *   secrets for resources updated
+   *   cached snapshot. Secrets for resources that left the offline set are deleted.
+   *
+   * @param {ResourcesCollection} offlineEncryptedResourcesCollection Resources collection (with offline association, encrypted metadata).
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _updateOfflineOPFSStorage(offlineEncryptedResourcesCollection) {
+    if (offlineEncryptedResourcesCollection.length === 0) {
+      return;
+    }
+
+    await this.offlineResourcesOPFSStorage.addOrReplaceResourcesCollection(offlineEncryptedResourcesCollection);
+    // Get resource Ids to update the secret of the resources updated
+    const resourceOfflineIds = offlineEncryptedResourcesCollection.items.map((resource) => resource.id);
+    const resourcesWithSecrets = await this.findResourcesServices.findAllByIdsForOffline(resourceOfflineIds);
+    const secretDtos = resourcesWithSecrets.items.map((resourceEntity) => resourceEntity.secrets.items[0].toDto());
+    const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
+    await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
   }
 }
 

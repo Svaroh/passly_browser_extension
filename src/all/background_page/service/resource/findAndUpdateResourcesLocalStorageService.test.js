@@ -49,6 +49,8 @@ import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResp
 import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
+import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
 
 jest.useFakeTimers();
 
@@ -677,6 +679,9 @@ describe("UpdateResourcesLocalStorage", () => {
     beforeEach(() => {
       service = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     });
 
     it("should extract the id from the resource collection", async () => {
@@ -687,6 +692,8 @@ describe("UpdateResourcesLocalStorage", () => {
       const resourcesDto = multipleResourceDtos();
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
       jest.spyOn(service.findResourcesServices, "findAllByParentFolderIdForLocalStorage");
+      // Default: offline disabled, so the OPFS branch short-circuits. Individual tests can override.
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
 
       await service.findAndUpdateAllByParentFolderId(parentFolderId);
 
@@ -745,6 +752,8 @@ describe("UpdateResourcesLocalStorage", () => {
         return mockPassboltResponse(resourcesDto);
       });
 
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
+
       await service.findAndUpdateAllByParentFolderId(parentFolderId);
 
       const updatedResourceLocalStorage = new ResourcesCollection(await ResourceLocalStorage.get());
@@ -764,6 +773,93 @@ describe("UpdateResourcesLocalStorage", () => {
 
       const updatedResource3 = updatedResourceLocalStorage.getFirstById(resourcesDto[3].id); // this resource should have been removed
       expect(updatedResource3).toBeUndefined();
+    });
+
+    it("should update the local storage resource collection by removing deleted resources, moving resources and updating resources data", async () => {
+      expect.assertions(9);
+
+      const parentFolderId = uuidv4();
+      const otherParentFolderId = uuidv4();
+
+      /*
+       * Resources collection in local storage:
+       * Resource0.folderParentId = null;
+       * Resource1.folderParentId = parentFolderId; // on API it should be modified only
+       * Resource2.folderParentId = parentFolderId; // on API it should be moved
+       * Resource3.folderParentId = parentFolderId; // on API it should be removed
+       */
+
+      const resourcesDto = multipleResourceDtos();
+      resourcesDto[1].folder_parent_id = parentFolderId;
+      resourcesDto[1].offline = defaultOfflineItemDto();
+      resourcesDto[2].folder_parent_id = parentFolderId;
+      resourcesDto[3].folder_parent_id = parentFolderId;
+      resourcesDto[3].offline = defaultOfflineItemDto();
+
+      delete resourcesDto[0].name;
+      delete resourcesDto[1].name;
+      delete resourcesDto[2].name;
+      delete resourcesDto[3].name;
+
+      const localStorageResourceCollection = new ResourcesCollection(resourcesDto);
+      await ResourceLocalStorage.set(localStorageResourceCollection);
+      const offlineStorageResourceCollection = new ResourcesCollection([resourcesDto[1], resourcesDto[3]]);
+      offlineStorageResourceCollection.items.forEach((item) => {
+        item.metadata = metadata.withAdaKey.encryptedMetadata[0];
+      });
+      await service.offlineResourcesOPFSStorage.set(offlineStorageResourceCollection);
+      expect(await service.offlineResourcesOPFSStorage.get()).toHaveLength(2); // 2 resources should be in the offline storage
+
+      // the resources in the folder on the API does not have resource2 anymore but resources1 remains and is changed.
+      // findAllByIds (secrets fetch) returns the same resource decorated with its secret.
+      const secretDto = readSecretDto({ resource_id: resourcesDto[1].id });
+      const apiResourcesDtoInFolder = [{ ...resourcesDto[1] }];
+      apiResourcesDtoInFolder[0].metadata = metadata.withSharedKey.encryptedMetadata[0];
+      apiResourcesDtoInFolder[0].modified = new Date().toISOString();
+      apiResourcesDtoInFolder[0].secrets = [secretDto];
+
+      // resource2 on the API will be return and updated, resource3 will never be sent back as it is deleted
+      const allIdsApiResourcesDto = [{ ...resourcesDto[2] }];
+      allIdsApiResourcesDto[0].folder_parent_id = otherParentFolderId;
+
+      async function mockedFindAllApi(contain, filter) {
+        const isParentFolderSearchRequest = Boolean(filter["has-parent"]);
+        const isSecretContain = Boolean(contain.secret);
+
+        return isParentFolderSearchRequest || isSecretContain ? apiResourcesDtoInFolder : allIdsApiResourcesDto;
+      }
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(async (contains, filters) => {
+        const resourcesDto = await mockedFindAllApi(contains, filters);
+        return mockPassboltResponse(resourcesDto);
+      });
+
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(true);
+      jest.spyOn(service.offlineResourcesOPFSStorage, "deleteResources");
+      jest.spyOn(service.offlineSecretsOPFSStorage, "deleteByResourceIds");
+      jest.spyOn(service.offlineSecretsOPFSStorage, "addOrReplaceSecretsCollection");
+
+      await service.findAndUpdateAllByParentFolderId(parentFolderId);
+
+      const updatedOfflineResourceLocalStorage = new ResourcesCollection(
+        await service.offlineResourcesOPFSStorage.get(),
+      );
+
+      expect(updatedOfflineResourceLocalStorage).toHaveLength(1); //1 resource should be removed compared to the original data
+
+      const updatedResource1 = updatedOfflineResourceLocalStorage.getFirstById(resourcesDto[1].id); // this resource should have been updated but not moved
+      expect(updatedResource1.metadata).toStrictEqual(metadata.withSharedKey.encryptedMetadata[0]);
+      expect(updatedResource1.modified).toStrictEqual(apiResourcesDtoInFolder[0].modified);
+      expect(updatedResource1.folderParentId).toStrictEqual(parentFolderId);
+
+      const updatedResource3 = updatedOfflineResourceLocalStorage.getFirstById(resourcesDto[3].id); // this resource should have been removed
+      expect(updatedResource3).toBeUndefined();
+
+      expect(service.offlineResourcesOPFSStorage.deleteResources).toHaveBeenNthCalledWith(1, [resourcesDto[3].id]);
+      expect(service.offlineSecretsOPFSStorage.deleteByResourceIds).toHaveBeenNthCalledWith(1, [resourcesDto[3].id]);
+      expect(service.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection).toHaveBeenNthCalledWith(
+        1,
+        new SecretsCollection([secretDto]),
+      );
     });
   });
 });

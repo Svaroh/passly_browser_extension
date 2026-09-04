@@ -405,6 +405,33 @@ describe("ResourcesCollection", () => {
     });
   });
 
+  describe("::filterOutMetadataDecrypted", () => {
+    it("should filter out the resource which metadata are decrypted.", () => {
+      expect.assertions(3);
+
+      const resourceDecrypted1 = defaultResourceDto();
+      const resourceDecrypted2 = defaultResourceDto();
+      const resourceEncrypted1 = defaultResourceDto({ metadata: metadata.withAdaKey.encryptedMetadata[0] });
+      const resourceEncrypted2 = defaultResourceDto({ metadata: metadata.withSharedKey.encryptedMetadata[1] });
+
+      delete resourceEncrypted1.permission;
+      delete resourceEncrypted2.permission;
+
+      const resources = new ResourcesCollection([
+        resourceDecrypted1,
+        resourceEncrypted1,
+        resourceDecrypted2,
+        resourceEncrypted2,
+      ]);
+
+      resources.filterOutMetadataDecrypted();
+
+      expect(resources).toHaveLength(2);
+      expect(resources.items[0].toDto()).toStrictEqual(resourceEncrypted1);
+      expect(resources.items[1].toDto()).toStrictEqual(resourceEncrypted2);
+    });
+  });
+
   describe("::filterOutMetadataNotEncryptedWithUserKey", () => {
     it("should filter out the resource which have metadata key type different than user_key.", () => {
       expect.assertions(2);
