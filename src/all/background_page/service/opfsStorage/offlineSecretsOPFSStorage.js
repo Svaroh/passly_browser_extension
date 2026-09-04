@@ -13,7 +13,8 @@
  */
 import Log from "../../model/log";
 import SecretEntity from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity";
-import { assertArrayUUID, assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import OPFSJSONStore from "passbolt-styleguide/src/shared/utils/opfs/OPFSJsonStore";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
@@ -170,7 +171,7 @@ class OfflineSecretsOPFSStorage {
     await navigator.locks.request(this.storageKey, async () => {
       const secrets = (await this.get()) || [];
       secretsCollection.items.forEach((secretEntity) => {
-        const secretIndex = secrets.findIndex((item) => item.id === secretEntity.id);
+        const secretIndex = secrets.findIndex((item) => item.resource_id === secretEntity.resourceId);
         if (secretIndex === -1) {
           throw new Error("The secret could not be found in the OPFS storage");
         }
@@ -195,7 +196,7 @@ class OfflineSecretsOPFSStorage {
     await navigator.locks.request(this.storageKey, async () => {
       const secrets = (await this.get()) || [];
       secretsCollection.items.forEach((secretEntity) => {
-        const secretIndex = secrets.findIndex((item) => item.id === secretEntity.id);
+        const secretIndex = secrets.findIndex((item) => item.resource_id === secretEntity.resourceId);
         if (secretIndex === -1) {
           secrets.push(secretEntity.toDto(OfflineSecretsOPFSStorage.DEFAULT_CONTAIN));
         } else {

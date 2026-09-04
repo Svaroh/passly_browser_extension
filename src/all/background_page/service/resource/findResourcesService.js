@@ -138,7 +138,7 @@ export default class FindResourcesService {
    * might be available in the passphrase session storage.
    * @returns {Promise<ResourcesCollection>}
    */
-  async findAllByIsSharedWithGroupForLocalStorage(groupId, passphrase = null) {
+  async findAllByIsSharedWithGroupForLocalStorage(groupId) {
     const resources = await this.findAll(
       ResourceLocalStorage.DEFAULT_CONTAIN,
       { "is-shared-with-group": groupId },
@@ -146,11 +146,6 @@ export default class FindResourcesService {
     );
     const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
     resources.filterByResourceTypes(resourceTypes);
-
-    await this.decryptMetadataService.decryptAllFromForeignModels(resources, passphrase, {
-      ignoreDecryptionError: true,
-    });
-    resources.filterOutMetadataEncrypted();
 
     return resources;
   }

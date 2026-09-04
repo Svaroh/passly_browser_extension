@@ -14,7 +14,8 @@
 import Log from "../../model/log";
 import MetadataKeyEntity from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeyEntity";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import OPFSJSONStore from "passbolt-styleguide/src/shared/utils/opfs/OPFSJsonStore";
 

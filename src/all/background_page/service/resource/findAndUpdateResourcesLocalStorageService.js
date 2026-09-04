@@ -180,10 +180,20 @@ class FindAndUpdateResourcesLocalStorage {
    * @throw {TypeError} If the groupId is not valid UUID
    */
   async findAndUpdateByIsSharedWithGroup(groupId, passphrase = null) {
-    const resourcesCollection = await this.findResourcesServices.findAllByIsSharedWithGroupForLocalStorage(
-      groupId,
-      passphrase,
-    );
+    const resourcesCollection = await this.findResourcesServices.findAllByIsSharedWithGroupForLocalStorage(groupId);
+
+    const offlineEncryptedResourcesCollection = (await this.canUseOfflineStorageService.canUseOfflineStorage())
+      ? resourcesCollection.filterByOffline()
+      : new ResourcesCollection([]);
+
+    offlineEncryptedResourcesCollection.filterOutMetadataDecrypted();
+    await this._updateOfflineOPFSStorage(offlineEncryptedResourcesCollection);
+
+    await this.decryptMetadataService.decryptAllFromForeignModels(resourcesCollection, passphrase, {
+      ignoreDecryptionError: true,
+    });
+    resourcesCollection.filterOutMetadataEncrypted();
+
     await ResourceLocalStorage.addOrReplaceResourcesCollection(resourcesCollection);
     return resourcesCollection;
   }

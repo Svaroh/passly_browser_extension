@@ -12,7 +12,7 @@
  * @since         6.0.0
  */
 import SecretEntity from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetSecretSchemaResourceTypeService from "../resourceType/getSecretSchemaResourceTypeService";
 import GetDecryptedUserPrivateKeyService from "../account/getDecryptedUserPrivateKeyService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";

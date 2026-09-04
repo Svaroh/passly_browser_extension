@@ -671,6 +671,52 @@ describe("UpdateResourcesLocalStorage", () => {
       expect(expectLocalStorageResult[0]).toEqual(ResourceEntity.transformDtoFromV4toV5(resourceDto1));
       expect(expectLocalStorageResult[1]).toEqual(ResourceEntity.transformDtoFromV4toV5(resourceDto2));
     });
+
+    it("should update the offline storage with the resources shared with the group available offline", async () => {
+      expect.assertions(5);
+
+      const groupId = uuidv4();
+
+      /*
+       * Resources shared with the group as returned by the API, i.e. with their metadata encrypted.
+       * Only Resource1 is available offline, its metadata and its secret should be stored in the offline storage.
+       */
+      const resourcesDto = multipleResourceWithMetadataEncrypted(uuidv4());
+      resourcesDto[1].offline = defaultOfflineItemDto();
+
+      // The secrets request (contain secret) returns the resource available offline decorated with its secret.
+      const secretDto = readSecretDto({ resource_id: resourcesDto[1].id });
+      const apiResourcesWithSecretDto = [{ ...resourcesDto[1], secrets: [secretDto] }];
+
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(async (contains) =>
+          mockPassboltResponse(contains?.secret ? apiResourcesWithSecretDto : resourcesDto),
+        );
+
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(true);
+      jest
+        .spyOn(service.decryptMetadataService.getOrFindMetadataKeysService, "getOrFindAll")
+        .mockImplementation(() => new MetadataKeysCollection([]));
+      jest.spyOn(service.offlineSecretsOPFSStorage, "addOrReplaceSecretsCollection");
+
+      await service.findAndUpdateByIsSharedWithGroup(groupId);
+
+      const offlineResourcesCollection = new ResourcesCollection(await service.offlineResourcesOPFSStorage.get());
+
+      expect(offlineResourcesCollection).toHaveLength(1); // only the resource available offline is stored
+
+      const offlineResource = offlineResourcesCollection.getFirstById(resourcesDto[1].id);
+      // The resources are stored prior to their decryption, the offline storage keeps the metadata encrypted.
+      expect(offlineResource.metadata).toStrictEqual(metadata.withAdaKey.encryptedMetadata[1]);
+      expect(offlineResource.offline.toDto()).toEqual(resourcesDto[1].offline);
+      expect(offlineResourcesCollection.getFirstById(resourcesDto[0].id)).toBeUndefined();
+
+      expect(service.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection).toHaveBeenNthCalledWith(
+        1,
+        new SecretsCollection([secretDto]),
+      );
+    });
   });
 
   describe("::findAndUpdateAllByParentFolderId", () => {

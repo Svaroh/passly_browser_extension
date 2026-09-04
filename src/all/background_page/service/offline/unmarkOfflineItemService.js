@@ -12,7 +12,7 @@
  * @since         5.13.0
  */
 
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import UnmarkOfflineItemApiService from "../api/offline/unmarkOfflineItemApiService";
 import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";

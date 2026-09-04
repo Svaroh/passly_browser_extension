@@ -14,7 +14,8 @@
 import Log from "../../model/log";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
-import { assertArrayUUID, assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import OPFSJSONStore from "passbolt-styleguide/src/shared/utils/opfs/OPFSJsonStore";
 import FavoriteEntity from "../../model/entity/favorite/favoriteEntity";

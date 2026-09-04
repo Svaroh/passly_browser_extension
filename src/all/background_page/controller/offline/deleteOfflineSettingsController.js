@@ -13,7 +13,7 @@
  */
 
 import DisableOfflineSettingsService from "../../service/offline/disableOfflineSettingsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class DeleteOfflineSettingsController {
   /**
