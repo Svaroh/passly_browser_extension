@@ -18,13 +18,18 @@ import WorkerEntity from "../model/entity/worker/workerEntity";
 import ScriptExecution from "../sdk/scriptExecution";
 import Pagemod from "./pagemod";
 import { PortEvents } from "../event/portEvents";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
-import { userLoggedInAuthStatus, userLoggedOutAuthStatus } from "../controller/auth/authCheckStatus.test.data";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import AccountEntity from "../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../model/entity/account/accountEntity.test.data";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import PassboltBadResponseError from "../error/passboltBadResponseError";
+import AuthenticationStatusService from "../service/authenticationStatusService";
+import ServerStatusApiService from "../service/api/status/serverStatusApiService";
 
 const spyAddWorker = jest.spyOn(WorkersSessionStorage, "addWorker");
 jest.spyOn(ScriptExecution.prototype, "injectPortname").mockImplementation(jest.fn());
@@ -68,8 +73,8 @@ describe("AppBootstrap", () => {
       // mock functions
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => new AccountEntity(defaultAccountDto()));
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(async () => new OnlineSessionEntity(userLoggedInAuthStatus()));
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+        .mockImplementation(async () => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
       const result = await AppBootstrap.canBeAttachedTo({
         frameId: Pagemod.TOP_FRAME_ID,
@@ -106,8 +111,26 @@ describe("AppBootstrap", () => {
       // mock functions
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(async () => userLoggedOutAuthStatus());
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
+        );
+      jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt");
+      // process
+      const constraint = await AppBootstrap.canBeAttachedTo({ frameId: 0 });
+      // expectations
+      expect(constraint).toBeFalsy();
+    });
+
+    it("Should not be able to attach a pagemod if the user is authenticated offline", async () => {
+      expect.assertions(1);
+      // mock functions
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
+      jest
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(offlineUserActiveSessionDto({ is_authenticated: false })),
+        );
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt");
       // process
       const constraint = await AppBootstrap.canBeAttachedTo({ frameId: 0 });
@@ -120,7 +143,10 @@ describe("AppBootstrap", () => {
 
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => new AccountEntity(defaultAccountDto()));
       // An API error occured
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockRejectedValue(new PassboltBadResponseError());
+      jest.spyOn(ServerStatusApiService.prototype, "find").mockRejectedValue(() => true);
+      jest
+        .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
+        .mockRejectedValue(new PassboltBadResponseError());
       jest.spyOn(UserSettings.prototype, "getDomain").mockImplementation(() => "https://passbolt.dev");
 
       const result = await AppBootstrap.canBeAttachedTo({

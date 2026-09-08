@@ -14,11 +14,9 @@
 import GetOrFindSiteSettingsService from "../../service/siteSettings/getOrFindSiteSettingsService";
 
 /**
- * Returns site settings; either from the in-memory cache or by fetching from the API.
- * Drop-in replacement for the legacy {@link GetOrganizationSettingsController} —
- * preserves the `refreshCache` semantics. Whether the API response is persisted to
- * local storage is decided by the `isAuthenticated` flag passed at construction
- * (set by the event handler based on its pagemod context).
+ * Returns the site settings, from the cache that fits the session or by fetching from the API.
+ * Resolves to null on an offline session with nothing persisted, the one case that cannot fall
+ * back to the API.
  */
 class GetOrFindSiteSettingsController {
   /**
@@ -48,11 +46,10 @@ class GetOrFindSiteSettingsController {
   }
 
   /**
-   * @param {boolean} [refreshCache=true] When true, bypass the in-memory cache and hit the API.
-   * @returns {Promise<SiteSettingsEntity>}
+   * @returns {Promise<SiteSettingsEntity|null>} null on an offline session with nothing persisted.
    */
-  async exec(refreshCache = true) {
-    return this.getOrFindSiteSettingsService.getOrFind(refreshCache);
+  async exec() {
+    return this.getOrFindSiteSettingsService.getOrFind();
   }
 }
 

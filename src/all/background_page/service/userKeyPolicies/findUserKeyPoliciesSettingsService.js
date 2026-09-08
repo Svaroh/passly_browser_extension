@@ -43,7 +43,7 @@ export default class FindUserKeyPoliciesSettingsService {
     assertUuid(authenticationToken, "The authenticationToken must be a valid UUID");
 
     const getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(this.account, this.apiClientOptions);
-    const siteSettings = await getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await getOrFindSiteSettingsService.getOrFind();
     const isUserKeyPoliciesPluginEnabled = siteSettings.isPluginEnabled("userKeyPolicies");
 
     if (isUserKeyPoliciesPluginEnabled) {

@@ -58,7 +58,7 @@ class ImportResourcesService {
     this.resourceService = new ResourceService(apiClientOptions);
     this.executeConcurrentlyService = new ExecuteConcurrentlyService();
     this.progressService = progressService;
-    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions);
+    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions, account);
     this.getOrFindMetadataSettingsService = new GetOrFindMetadataSettingsService(account, apiClientOptions);
     this.encryptMetadataService = new EncryptMetadataService(apiClientOptions, account);
     this.decryptMetadataService = new DecryptMetadataService(apiClientOptions, account);
@@ -76,7 +76,7 @@ class ImportResourcesService {
    */
   async importFile(importResourcesFile, passphrase) {
     const userId = User.getInstance().get().id;
-    const organizationSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const organizationSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const privateKey = await DecryptPrivateKeyService.decryptArmoredKey(this.account.userPrivateArmoredKey, passphrase);
     await this.encryptSecrets(importResourcesFile, userId, privateKey);
     importResourcesFile.mustImportFolders && (await this.bulkImportFolders(importResourcesFile));

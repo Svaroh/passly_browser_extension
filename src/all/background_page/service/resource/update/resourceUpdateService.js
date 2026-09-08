@@ -26,6 +26,8 @@ import ResourceSecretsCollection from "../../../model/entity/secret/resource/res
 import EncryptMetadataKeysService from "../../metadata/encryptMetadataService";
 import FindPermissionsService from "../../permission/findPermissionsService";
 import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
+import OfflineResourcesOPFSStorage from "../../opfsStorage/offlineResourcesOPFSStorage";
+import OfflineSecretsOPFSStorage from "../../opfsStorage/offlineSecretsOPFSStorage";
 import PermissionChangesCollection from "../../../model/entity/permission/change/permissionChangesCollection";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../../share/shareResourceService";
 
@@ -55,6 +57,8 @@ class ResourceUpdateService {
     this.encryptMetadataKeysService = new EncryptMetadataKeysService(apiClientOptions, this.account);
     this.userModel = new UserModel(apiClientOptions);
     this.keyring = new Keyring();
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
+    this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
     this.shareResourceService = new ShareResourceService(apiClientOptions, account, progressService);
   }
 
@@ -158,7 +162,15 @@ class ResourceUpdateService {
       data,
       ResourceLocalStorage.DEFAULT_CONTAIN,
     );
-    const updatedResourceEntity = new ResourceEntity(resourceDto);
+
+    let updatedResourceEntity = new ResourceEntity(resourceDto);
+    // Refresh the offline storage: the OPFS store only accepts
+    // resources whose metadata is still encrypted.
+    if (resourceEntity.hasOfflineAccess()) {
+      updatedResourceEntity.offline = resourceEntity.offline;
+      await this.updateOfflineStorage(updatedResourceEntity, Boolean(data.secrets));
+    }
+
     // If resource v5, metadata will be returned encrypted, replace it with the original decrypted copy.
     if (!updatedResourceEntity.isMetadataDecrypted()) {
       updatedResourceEntity.metadata = metadataDecrypted;
@@ -166,6 +178,34 @@ class ResourceUpdateService {
     await ResourceLocalStorage.updateResource(updatedResourceEntity);
 
     return updatedResourceEntity;
+  }
+
+  /**
+   * Refresh the offline OPFS stores after a resource update.
+   *
+   * Offline caching is opt-in per resource and v5-only, so this is a no-op unless the updated
+   * resource carries an offline association and still holds encrypted metadata.
+   * v4 resources are normalized to decrypted metadata, which the OPFS store rejects, so they are
+   * skipped here. It must run before the metadata is decrypted back for the local storage.
+   *
+   * @param {ResourceEntity} updatedResourceEntity The resource built from the update API response.
+   * @param {boolean} secretUpdated Whether the secret was re-encrypted by this update.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async updateOfflineStorage(updatedResourceEntity, secretUpdated) {
+    // OPFS only caches v5 resources (encrypted metadata). A v4 resource is normalized to a decrypted
+    // metadata shape the OPFS store rejects, so skip it even if it is tagged offline.
+    if (updatedResourceEntity.isMetadataDecrypted()) {
+      return;
+    }
+    await this.offlineResourcesOPFSStorage.updateResource(updatedResourceEntity);
+
+    const secretEntity = updatedResourceEntity.secret;
+    if (!secretUpdated || !secretEntity) {
+      return;
+    }
+    await this.offlineSecretsOPFSStorage.updateSecret(secretEntity);
   }
 
   /**

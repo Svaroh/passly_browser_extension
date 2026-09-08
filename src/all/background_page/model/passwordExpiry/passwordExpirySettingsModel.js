@@ -69,7 +69,7 @@ class PasswordExpirySettingsModel {
    * @returns {Promise<PasswordExpirySettingsEntity>}
    */
   async save(passwordExpirySettingsEntity) {
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const isAdvancedSettingsEnable = siteSettings.isPluginEnabled("passwordExpiryPolicies");
     if (!isAdvancedSettingsEnable) {
       assertType(
@@ -107,7 +107,7 @@ class PasswordExpirySettingsModel {
    * @returns {Promise<PasswordExpirySettingsEntity|PasswordExpiryProSettingsEntity>}
    */
   async createFromDefault(passwordExpirySettingsDto = {}) {
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const isAdvancedSettingsEnabled = siteSettings.isPluginEnabled("passwordExpiryPolicies");
     if (!isAdvancedSettingsEnabled) {
       return PasswordExpirySettingsEntity.createFromDefault(passwordExpirySettingsDto);

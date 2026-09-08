@@ -30,6 +30,7 @@ jest.mock("webextension-polyfill", () => {
       get: jest.fn(),
       getAll: jest.fn(),
       getAllCookieStores: jest.fn(),
+      remove: jest.fn(),
       set: jest.fn(),
     },
     // offscreen is not mocked by jest-webextension-mock v3.8.9

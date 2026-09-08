@@ -16,12 +16,13 @@ import OnExtensionInstalledController from "./onExtensionInstalledController";
 import UserSettings from "../../model/userSettings/userSettings";
 import WebNavigationService from "../../service/webNavigation/webNavigationService";
 import AuthModel from "../../model/auth/authModel";
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../../service/account/getActiveAccountService";
 import User from "../../model/user";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
 // Reset the modules before each test.
 beforeEach(() => {
@@ -157,8 +158,8 @@ describe("OnExtensionInstalledController", () => {
       jest.spyOn(browser.tabs, "query").mockImplementation(() => Promise.resolve(tabs));
       jest.spyOn(browser.tabs, "reload");
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => new OnlineSessionEntity({ is_authenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
       // process
       await OnExtensionInstalledController.exec(details);
       // expectation

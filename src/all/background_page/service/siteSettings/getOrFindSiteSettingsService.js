@@ -15,21 +15,29 @@ import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/sit
 import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
 import FindAndUpdateSiteSettingsLocalStorageService from "./findAndUpdateSiteSettingsLocalStorageService";
 import SiteSettingsRuntimeCache from "./siteSettingsRuntimeCache";
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 /**
  * Read entry point for site settings. Successor of the legacy
  * 'OrganizationSettingsModel.getOrFind'.
  *
- * On 'refreshCache=true' (default), the cache step is skipped — every call goes through
- * to the API. Callers that explicitly opt into cached reads pass 'refreshCache=false',
- * which picks the cache by authentication state:
- *   - Authenticated: SiteSettingsLocalStorage (the offline-mode store), else the API.
- *   - Anonymous: SiteSettingsRuntimeCache (in-memory; populated by any fetch this
- *     session), else the API.
+ * 'getOrFind()' reads the cache that fits the session and falls back to the API.
  *
- * The API fall-through goes through FindAndUpdateSiteSettingsLocalStorageService, which
- * refreshes the caches. Anonymous callers never read SiteSettingsLocalStorage.
+ *   | session               | cache         | API fall-back |
+ *   |-----------------------|---------------|---------------|
+ *   | offline               | local storage | no            |
+ *   | online, authenticated | local storage | yes           |
+ *   | online, anonymous     | runtime cache | yes           |
+ *
+ * An offline session never falls through to the API - the request cannot complete - so this is the
+ * one case where the method resolves to null.
+ *
+ * The two caches are not interchangeable. Local storage holds what an authenticated session
+ * persisted; the runtime cache holds whatever this service worker last fetched, which may be an
+ * anonymous response. Hence an authenticated session never reads the
+ * runtime cache, and an anonymous one never reads local storage: online it would answer 'canIUse()'
+ * for plugins the API hides from anonymous callers, and the API is right there and fresher. Writes
+ * follow the same rule - an anonymous response is never persisted over the richer stored settings.
  */
 export default class GetOrFindSiteSettingsService {
   /**
@@ -43,50 +51,59 @@ export default class GetOrFindSiteSettingsService {
       account,
       apiClientOptions,
     );
-    this.checkAuthStatusService = new CheckAuthStatusService(account, apiClientOptions);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
   }
 
   /**
-   * @param {boolean} [refreshCache=true] When true (default), bypass caches and hit the API.
-   * Pass false to read from the cache selected by authentication state (LS when
-   * authenticated, runtime cache when anonymous) before falling back to the API.
-   * @returns {Promise<SiteSettingsEntity>}
+   * Get the site settings from the cache that fits the session, or retrieve them from the API and
+   * update the local storage.
+   * @returns {Promise<SiteSettingsEntity|null>} null only on an offline session with nothing
+   * persisted, the one case that cannot fall back to the API.
    */
-  async getOrFind(refreshCache = true) {
-    if (!refreshCache) {
-      let isAuthenticated = false;
+  async getOrFind() {
+    const activeSession = await this.getOrFindActiveSessionService.getOrFind();
 
-      try {
-        const activeSession = await this.checkAuthStatusService.checkAuthStatus();
-        isAuthenticated = activeSession.isAuthenticated;
-      } catch (error) {
-        // An error occured while checking the auth status
-        console.error(error);
-      }
-
-      if (isAuthenticated) {
-        const lsDto = await this.siteSettingsLocalStorage.get();
-        if (lsDto) {
-          const siteSettings = new SiteSettingsEntity(lsDto);
-          /*
-           * Mirror the persisted settings into the in-memory runtime cache. The cache is
-           * service-worker-lifetime and is flushed on login (postLoginService) and lost on
-           * service-worker restart, whereas SiteSettingsLocalStorage survives both. Seeding it
-           * here keeps AppEmailValidatorService.validate - which reads SiteSettingsRuntimeCache
-           * synchronously to validate account usernames - in sync with the persisted settings,
-           * so a custom email validation regex is honored even after the cache has been dropped.
-           */
-          SiteSettingsRuntimeCache.set(siteSettings);
-          return siteSettings;
-        }
-      } else {
-        const cachedDto = SiteSettingsRuntimeCache.get(this.account.id);
-        if (cachedDto) {
-          return new SiteSettingsEntity(cachedDto);
-        }
-      }
+    // An offline session cannot reach the API: the persisted store is the only source.
+    if (activeSession.isSessionOffline) {
+      return this._getFromLocalStorage();
     }
 
-    return this.findAndUpdateSiteSettingsLocalStorageService.findAndUpdateAll();
+    const siteSettings = activeSession.isAuthenticated
+      ? await this._getFromLocalStorage()
+      : this._getFromRuntimeCache();
+
+    return siteSettings ?? this.findAndUpdateSiteSettingsLocalStorageService.findAndUpdateAll();
+  }
+
+  /**
+   * @returns {SiteSettingsEntity|null} null when the runtime cache is empty.
+   * @private
+   */
+  _getFromRuntimeCache() {
+    const cachedDto = SiteSettingsRuntimeCache.get();
+    return cachedDto ? new SiteSettingsEntity(cachedDto) : null;
+  }
+
+  /**
+   * @returns {Promise<SiteSettingsEntity|null>} null when the local storage is empty.
+   * @private
+   */
+  async _getFromLocalStorage() {
+    const lsDto = await this.siteSettingsLocalStorage.get();
+    if (!lsDto) {
+      return null;
+    }
+
+    const siteSettings = new SiteSettingsEntity(lsDto);
+    /*
+     * Mirror the persisted settings into the in-memory runtime cache. The cache is
+     * service-worker-lifetime and is flushed on login (postLoginService) and lost on
+     * service-worker restart, whereas SiteSettingsLocalStorage survives both. Seeding it
+     * here keeps AppEmailValidatorService.validate - which reads SiteSettingsRuntimeCache
+     * synchronously to validate account usernames - in sync with the persisted settings,
+     * so a custom email validation regex is honored even after the cache has been dropped.
+     */
+    SiteSettingsRuntimeCache.set(siteSettings);
+    return siteSettings;
   }
 }

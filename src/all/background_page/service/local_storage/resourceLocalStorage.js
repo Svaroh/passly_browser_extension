@@ -118,6 +118,17 @@ class ResourceLocalStorage {
   }
 
   /**
+   * Get a resource from the local storage by its offline item id
+   *
+   * @param {string} offlineItemId The offline item id (offline_items row id)
+   * @return {Promise<object>} resource dto object
+   */
+  static async getResourceByOfflineItemId(offlineItemId) {
+    const resources = await ResourceLocalStorage.get();
+    return resources?.find((item) => item.offline?.id === offlineItemId);
+  }
+
+  /**
    * Add a resource in the local storage
    * @param {ResourceEntity} resourceEntity
    */
@@ -321,7 +332,7 @@ class ResourceLocalStorage {
    * @private
    */
   static get DEFAULT_CONTAIN() {
-    return { permission: true, favorite: true, tag: true };
+    return { permission: true, favorite: true, tag: true, offline: true };
   }
 
   /**

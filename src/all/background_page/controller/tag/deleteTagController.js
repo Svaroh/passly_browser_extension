@@ -21,11 +21,12 @@ export default class DeleteTagController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.deleteTagService = new DeleteTagService(apiClientOptions);
+    this.deleteTagService = new DeleteTagService(apiClientOptions, account);
   }
 
   /**

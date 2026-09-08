@@ -25,6 +25,8 @@ import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity
 import { v4 as uuidv4 } from "uuid";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
+import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
+import OfflineItemEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity";
 
 describe("Resource entity", () => {
   describe("ResourceEntity::getSchema", () => {
@@ -114,24 +116,31 @@ describe("Resource entity", () => {
 
       assertEntityProperty.assert(ResourceEntity, "metadata", successScenario, failScenario, "type");
     });
+
+    it("validates offline property", () => {
+      const dto = defaultResourceDto();
+      const successScenarios = [{ scenario: "a valid option", value: defaultOfflineItemDto() }];
+      const failScenarios = [{ scenario: "with invalid offline entity", value: {} }];
+      assertEntityProperty.assertAssociation(ResourceEntity, "offline", dto, successScenarios, failScenarios);
+    });
   });
 
   it("constructor works if valid DTO is provided", () => {
     expect.assertions(1);
-
-    const contain = {
-      secrets: true,
-      permissions: true,
-      permission: true,
-      tags: true,
-      favorite: true,
-      creator: true,
-      modifier: true,
-    };
-    const dto = defaultResourceDto({}, contain);
+    const dto = defaultResourceDto(
+      {},
+      {
+        withPermissions: true,
+        withTags: true,
+        withFavorite: true,
+        withCreator: true,
+        withModifier: true,
+        withOffline: true,
+      },
+    );
     const entity = new ResourceEntity(dto);
 
-    expect(entity.toDto(contain)).toEqual(ResourceEntity.transformDtoFromV4toV5(dto));
+    expect(entity.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toEqual(dto);
   });
 
   it("constructor returns validation error if dto required fields are missing", () => {
@@ -340,6 +349,38 @@ describe("Resource entity", () => {
     });
   });
 
+  describe("ResourceEntity::offline", () => {
+    it("Should set offline with offlineItemEntity", () => {
+      expect.assertions(3);
+
+      const resourceDTO = defaultResourceDto();
+      const offlineItemEntity = new OfflineItemEntity(defaultOfflineItemDto());
+      const entityV5 = new ResourceEntity(resourceDTO);
+
+      expect(entityV5.offline).toBeNull();
+
+      entityV5.offline = offlineItemEntity;
+      const expectedDto = { ...resourceDTO, offline: offlineItemEntity.toDto() };
+
+      expect(entityV5._offline).toBeDefined();
+      expect(entityV5.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toEqual(expectedDto);
+    });
+
+    it("Should failed to set offline with object", () => {
+      expect.assertions(1);
+
+      const resourceDTO = defaultResourceDto();
+      const offline = {};
+      const entityV5 = new ResourceEntity(resourceDTO);
+
+      try {
+        entityV5.offline = offline;
+      } catch (error) {
+        expect(error.message).toEqual("The parameter 'offline' should be an OfflineItemEntity.");
+      }
+    });
+  });
+
   describe("getter::soleOwnerId", () => {
     it("Should return null if no permission is set", () => {
       expect.assertions(1);
@@ -376,6 +417,25 @@ describe("Resource entity", () => {
       const entity = new ResourceEntity(resourceDTO);
 
       expect(entity.soleOwnerId).toStrictEqual(resourceDTO.permissions[0].aro_foreign_key);
+    });
+  });
+
+  describe("getter::offline", () => {
+    it("Should return null if no offline is set", () => {
+      expect.assertions(1);
+
+      const entity = new ResourceEntity(defaultResourceDto());
+
+      expect(entity.offline).toBeNull();
+    });
+
+    it("Should return offline object", () => {
+      expect.assertions(1);
+
+      const resourceDTO = defaultResourceDto({}, { withOffline: true });
+      const entity = new ResourceEntity(resourceDTO);
+
+      expect(entity.offline.toDto()).toStrictEqual(resourceDTO.offline);
     });
   });
 
@@ -550,6 +610,20 @@ describe("Resource entity", () => {
         expect(entityV5._props.expired).toEqual(date);
         expect(entityV5.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toEqual({ ...resourceDTO, expired: date });
       });
+    });
+  });
+
+  describe("::hasOfflineAccess", () => {
+    it("returns true if the resource has offline access", () => {
+      expect.assertions(1);
+      const entity = new ResourceEntity(defaultResourceDto({}, { withOffline: true }));
+      expect(entity.hasOfflineAccess()).toBeTruthy();
+    });
+
+    it("returns false if the resource has no offline access", () => {
+      expect.assertions();
+      const entity = new ResourceEntity(defaultResourceDto());
+      expect(entity.hasOfflineAccess()).toBeFalsy();
     });
   });
 });

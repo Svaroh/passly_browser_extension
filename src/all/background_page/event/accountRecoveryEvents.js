@@ -17,7 +17,7 @@ import RecoverAccountController from "../controller/accountRecovery/recoverAccou
 import VerifyAccountPassphraseController from "../controller/account/verifyAccountPassphraseController";
 import AbortAndInitiateNewAccountRecoveryController from "../controller/accountRecovery/abortAndInitiateNewAccountRecoveryController";
 import SetSetupLocaleController from "../controller/setup/setSetupLocaleController";
-import GetOrFindSiteSettingsController from "../controller/siteSettings/getOrFindSiteSettingsController";
+import FindAndUpdateSiteSettingsLocalStorageController from "../controller/siteSettings/findAndUpdateSiteSettingsLocalStorageController";
 import GetAndInitializeAccountLocaleController from "../controller/account/getAndInitializeAccountLocaleController";
 import GetExtensionVersionController from "../controller/extension/getExtensionVersionController";
 import GetAccountController from "../controller/account/getAccountController";
@@ -31,9 +31,15 @@ import ReloadTabController from "../controller/tab/reloadTabController";
  * @param {AccountAccountRecoveryEntity} account The account completing the account recovery
  */
 const listen = function (worker, apiClientOptions, account) {
-  worker.port.on("passbolt.site-settings.get-or-find", async (requestId, refreshCache = true) => {
-    const controller = new GetOrFindSiteSettingsController(worker, requestId, apiClientOptions, account);
-    await controller._exec(refreshCache);
+  // The authentication screens bootstrap against a reachable server and need current settings.
+  worker.port.on("passbolt.site-settings.find-and-update", async (requestId) => {
+    const controller = new FindAndUpdateSiteSettingsLocalStorageController(
+      worker,
+      requestId,
+      apiClientOptions,
+      account,
+    );
+    await controller._exec();
   });
 
   worker.port.on("passbolt.locale.get", async (requestId) => {

@@ -91,6 +91,7 @@ class ShareResourceService {
      * This could be optimized by refreshing only the resources that have been updated:
      * - Either by having their metadata encrypted with the shared key;
      * - Or for which a permission has been removed for which I could be impacted (lost access or privilege)
+     * - Do not forget to update resources in the offline storage as well
      */
     this.progressService.finishStep(i18n.t("Updating resources local storage"), true);
     await this.findAndUpdateResourcesLocalStorage.findAndUpdateAll({}, passphrase);

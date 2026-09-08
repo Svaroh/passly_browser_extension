@@ -57,7 +57,7 @@ class UserModel {
       contains.last_logged_in = true;
       contains.is_mfa_enabled = true;
       const getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(this.account, this.apiClientOptions);
-      const siteSettings = await getOrFindSiteSettingsService.getOrFind(false);
+      const siteSettings = await getOrFindSiteSettingsService.getOrFind();
       if (siteSettings.isPluginEnabled("metadata")) {
         contains.missing_metadata_key_ids = true;
       }

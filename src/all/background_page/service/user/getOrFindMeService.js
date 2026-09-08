@@ -15,6 +15,7 @@ import UserApiService from "passbolt-styleguide/src/shared/services/api/user/use
 import UserMeLocalStorage from "../local_storage/userMeLocalStorage";
 import UserEntity from "../../model/entity/user/userEntity";
 import GetOrFindSiteSettingsService from "../siteSettings/getOrFindSiteSettingsService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 /**
  * The service aims to get user me from the local storage if it is set, or retrieve them from the API and
@@ -31,23 +32,33 @@ class GetOrFindMeService {
     this.userApiService = new UserApiService(apiClientOptions);
     this.getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(account, apiClientOptions);
     this.userMeLocalStorageService = new UserMeLocalStorage(account);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
   }
 
   /**
    * Get or find me as a user.
    * @param {boolean} refreshCache (Optional) Should request the API and refresh the cache. Default false.
-   * @returns {Promise<UserEntity>}
+   * @returns {Promise<UserEntity|null>}
    */
   async getOrFindMe(refreshCache = false) {
     if (!refreshCache) {
-      const userDto = await this.userMeLocalStorageService.getData();
-      if (typeof userDto !== "undefined") {
-        return new UserEntity(userDto);
+      const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+      // Only an online session refreshes stale data; an offline session cannot reach the API.
+      const isStale =
+        activeSession.isSessionOnline &&
+        (await this.userMeLocalStorageService.isStaleSinceLastLoggedIn(activeSession.lastLoggedIn));
+      if (!isStale) {
+        const userDto = await this.userMeLocalStorageService.getData();
+        if (typeof userDto !== "undefined") {
+          return new UserEntity(userDto);
+        } else if (activeSession.isSessionOffline) {
+          return null;
+        }
       }
     }
 
     const contains = { profile: true, role: true, account_recovery_user_setting: true };
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     if (siteSettings.isPluginEnabled("metadata")) {
       contains.missing_metadata_key_ids = true;
     }

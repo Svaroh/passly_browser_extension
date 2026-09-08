@@ -17,8 +17,11 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import { defaultTagDto } from "../../model/entity/tag/tagEntity.test.data";
 import TagEntity from "../../model/entity/tag/tagEntity";
 import UpdateTagController from "./updateTagController";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("UpdateTagController", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let tagDto, tag;
 
   beforeEach(() => {
@@ -32,7 +35,7 @@ describe("UpdateTagController", () => {
     it("should update a tag", async () => {
       expect.assertions(2);
 
-      const controller = new UpdateTagController(null, null, defaultApiClientOptions());
+      const controller = new UpdateTagController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateTagService, "update").mockResolvedValue(tag);
 
       const result = await controller.exec(tagDto);
@@ -44,7 +47,7 @@ describe("UpdateTagController", () => {
     it("should throw EntityValidationError if provided dto is malformed", async () => {
       expect.assertions(2);
 
-      const controller = new UpdateTagController(null, null, defaultApiClientOptions());
+      const controller = new UpdateTagController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateTagService, "update").mockResolvedValue(tag);
 
       try {
@@ -60,7 +63,7 @@ describe("UpdateTagController", () => {
       expect.assertions(1);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new UpdateTagController(null, null, defaultApiClientOptions());
+      const controller = new UpdateTagController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateTagService, "update").mockRejectedValue(expectedError);
 
       try {

@@ -11,8 +11,8 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  */
 import InformCallToActionController from "../controller/informCallToActionController/informCallToActionController";
-import AuthCheckStatusController from "../controller/auth/authCheckStatusController";
 import IsApplicationOverlaidController from "../controller/applicationOverlaid/IsApplicationOverlaidController";
+import GetOrFindActiveSessionController from "../controller/auth/getOrFindActiveSessionController";
 
 /**
  * Listens the inform call to action events
@@ -23,13 +23,13 @@ import IsApplicationOverlaidController from "../controller/applicationOverlaid/I
 const listen = function (worker, apiClientOptions, account) {
   /*
    * Whenever the in-form call-to-action status is required
-   * @listens passbolt.in-form-cta.check-status
+   * @listens passbolt.in-form-cta.get-or-find-active-session
    * @param requestId {uuid} The request identifier
    * @returns {*{isAuthenticated,isMfaRequired}
    */
-  worker.port.on("passbolt.in-form-cta.check-status", async (requestId, flushCache = false) => {
-    const authIsAuthenticatedController = new AuthCheckStatusController(worker, requestId, apiClientOptions, account);
-    await authIsAuthenticatedController._exec(flushCache);
+  worker.port.on("passbolt.in-form-cta.get-or-find-active-session", async (requestId) => {
+    const controller = new GetOrFindActiveSessionController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 
   /*

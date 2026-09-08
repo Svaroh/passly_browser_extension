@@ -11,14 +11,15 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         3.3.0
  */
-import CheckAuthStatusService from "./checkAuthStatusService";
 import PostLogoutService from "./postLogoutService";
 import StartLoopAuthSessionCheckService from "./startLoopAuthSessionCheckService";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import GetActiveAccountService from "../account/getActiveAccountService";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
-import PassboltBadResponseError from "../../error/passboltBadResponseError";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_ONLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 jest.useFakeTimers();
 
@@ -34,13 +35,21 @@ beforeEach(async () => {
 
 describe("StartLoopAuthSessionCheckService", () => {
   it("should trigger a check authentication and clear alarm on logout", async () => {
-    expect.assertions(7);
+    expect.assertions(8);
     // Function mocked
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
-    const sessionEntity = new OnlineSessionEntity({ is_authenticated: true, is_mfa_authenticated: true });
+    const sessionEntity = new UserActiveSessionEntity({
+      is_authenticated: true,
+      is_mfa_required: false,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    });
     const spyIsAuthenticated = jest
-      .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+      .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
+    const spyUpdateLastSeenOnline = jest.spyOn(
+      FindAndUpdateActiveSessionLocalStorageService.prototype,
+      "updateLastSeenOnline",
+    );
 
     //mocking top-level alarm handler
     browser.alarms.onAlarm.addListener(
@@ -63,16 +72,25 @@ describe("StartLoopAuthSessionCheckService", () => {
     await PostLogoutService.exec();
     expect(spyIsAuthenticated).toHaveBeenCalledTimes(2);
     expect(spyClearAuthSessionCheck).toHaveBeenCalledTimes(1);
+    expect(spyUpdateLastSeenOnline).toHaveBeenCalledTimes(2);
   });
 
   it("should send logout event if not authenticated anymore", async () => {
-    expect.assertions(4);
+    expect.assertions(5);
     // Function mocked
     const spyClearAuthSessionCheck = jest.spyOn(StartLoopAuthSessionCheckService, "clearAlarm");
-    const sessionEntity = new OnlineSessionEntity({ is_authenticated: false, is_mfa_authenticated: true });
+    const sessionEntity = new UserActiveSessionEntity({
+      is_authenticated: false,
+      is_mfa_required: false,
+      type: USER_ACTIVE_SESSION_ONLINE,
+    });
     const spyIsAuthenticated = jest
-      .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+      .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
       .mockImplementation(() => Promise.resolve(sessionEntity));
+    const spyUpdateLastSeenOnline = jest.spyOn(
+      FindAndUpdateActiveSessionLocalStorageService.prototype,
+      "updateLastSeenOnline",
+    );
     const spyOnPostLogout = jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
     //mocking top-level alarm handler
@@ -91,32 +109,6 @@ describe("StartLoopAuthSessionCheckService", () => {
 
     expect(spyIsAuthenticated).toHaveBeenCalledTimes(1);
     expect(spyOnPostLogout).toHaveBeenCalledTimes(1);
-  });
-
-  it("should not send logout event if the authentication status cannot be determined, and retry on the next alarm", async () => {
-    expect.assertions(4);
-
-    const spyIsAuthenticated = jest
-      .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-      .mockRejectedValue(new PassboltBadResponseError());
-    const spyOnPostLogout = jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
-
-    browser.alarms.onAlarm.addListener(
-      async (alarm) => await StartLoopAuthSessionCheckService.handleAuthStatusCheckAlarm(alarm),
-    );
-
-    await StartLoopAuthSessionCheckService.exec();
-
-    await jest.advanceTimersByTime(60000);
-    await Promise.resolve();
-
-    expect(spyIsAuthenticated).toHaveBeenCalledTimes(1);
-    expect(spyOnPostLogout).not.toHaveBeenCalled();
-
-    await jest.advanceTimersByTime(60000);
-    await Promise.resolve();
-
-    expect(spyIsAuthenticated).toHaveBeenCalledTimes(2);
-    expect(spyOnPostLogout).not.toHaveBeenCalled();
+    expect(spyUpdateLastSeenOnline).toHaveBeenCalledTimes(1);
   });
 });

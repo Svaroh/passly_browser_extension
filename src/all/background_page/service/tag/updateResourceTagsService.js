@@ -18,6 +18,7 @@ import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagApiService from "../api/tag/tagApiService";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 
 const BULK_OPERATION_SIZE = 5;
 
@@ -25,9 +26,11 @@ export default class UpdateResourceTagsService {
   /**
    * @constructor
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(apiClientOptions) {
+  constructor(apiClientOptions, account) {
     this.tagService = new TagApiService(apiClientOptions);
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
   }
 
   /**
@@ -101,7 +104,12 @@ export default class UpdateResourceTagsService {
    */
   async updateResourceTags(resourceId, tags) {
     const updatedTagsCollection = await this._updateResourceTagsApi(resourceId, tags);
-    return this._updateResourceTagsLocalStorage(resourceId, updatedTagsCollection);
+    const resource = await this._updateResourceTagsLocalStorage(resourceId, updatedTagsCollection);
+
+    // Mirror the tags change to offline storage. No-op if the resource is not cached there.
+    await this.offlineResourcesOPFSStorage.updateResourceTags(resourceId, updatedTagsCollection);
+
+    return resource;
   }
 
   /**
@@ -264,6 +272,9 @@ export default class UpdateResourceTagsService {
       // Update the resources in the local storage, merging the updated ones with the rest
       localResources.updateWithCollection(updatedResources);
       await ResourceLocalStorage.set(localResources);
+
+      // Mirror the tags changes to offline storage. Resources not cached there are ignored.
+      await this.offlineResourcesOPFSStorage.updateResourcesTags(updatedResources);
     }
 
     // Put back the ignored ones so the caller gets as many resources as they asked

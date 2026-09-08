@@ -18,6 +18,8 @@ import GetOrFindLoggedInUserController from "../controller/user/getOrFindLoggedI
 import GetOrFindMetadataKeysSettingsController from "../controller/metadata/getOrFindMetadataKeysSettingsController";
 import GetOrFindMetadataTypesController from "../controller/metadata/getMetadataTypesSettingsController";
 import IsApplicationOverlaidController from "../controller/applicationOverlaid/IsApplicationOverlaidController";
+import GetResourceTypesController from "../controller/resourceType/getResourceTypesController";
+import FindAndUpdateActiveSessionLocalStorageController from "../controller/auth/findAndUpdateActiveSessionLocalStorageController";
 
 /**
  * Listens the inform menu events
@@ -108,6 +110,49 @@ const listen = function (worker, apiClientOptions, account) {
 
   worker.port.on("passbolt.password-policies.get", async (requestId) => {
     const controller = new GetOrFindPasswordPoliciesController(worker, requestId, account, apiClientOptions);
+    await controller._exec();
+  });
+
+  /*
+   * ==================================================================================
+   *  Resource types events.
+   * ==================================================================================
+   */
+
+  /*
+   * Get or find the resource types. (Since ResourceTypesLocalStorageContext now uses this for OFM)
+   * Required by the resource types local storage context the in-form menu is mounted in: it resolves the
+   * collection through the service worker, which serves it from the offline storage in an offline session.
+   *
+   * @listens passbolt.resource-type.get-or-find-all
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.resource-type.get-or-find-all", async (requestId) => {
+    const controller = new GetResourceTypesController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
+  });
+
+  /*
+   * ==================================================================================
+   *  Active session events.
+   * ==================================================================================
+   */
+
+  /*
+   * Find and update the active session local storage.
+   * Required by the active session local storage context the in-form menu is mounted in, it initialises the
+   * storage when the in-form menu is the first to read it.
+   *
+   * @listens passbolt.auth.find-and-update-authentication-status
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.auth.find-and-update-authentication-status", async (requestId) => {
+    const controller = new FindAndUpdateActiveSessionLocalStorageController(
+      worker,
+      requestId,
+      apiClientOptions,
+      account,
+    );
     await controller._exec();
   });
 

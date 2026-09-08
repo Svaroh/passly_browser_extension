@@ -37,6 +37,8 @@ class AccountRecoveryLoginController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
+    this.account = account;
+    this.apiClientOptions = apiClientOptions;
     this.authVerifyLoginChallengeService = new AuthVerifyLoginChallengeService(apiClientOptions);
     this.updateSsoCredentialsService = new UpdateSsoCredentialsService(apiClientOptions, account);
     this.checkPassphraseService = new CheckPassphraseService(new Keyring());
@@ -110,7 +112,7 @@ class AccountRecoveryLoginController {
       } else {
         await PassphraseStorageService.set(passphrase, 60);
       }
-      await PostLoginService.exec();
+      await PostLoginService.exec(this.account, this.apiClientOptions);
       await this.registerRememberMeOption(rememberMe);
     } catch (error) {
       if (!(error instanceof UserAlreadyLoggedInError)) {

@@ -31,12 +31,20 @@ import {
 } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.useFakeTimers();
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.clearAllTimers();
+  jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
+  jest
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+    .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
 });
 
 describe("GetOrFindResourcesService", () => {
@@ -249,6 +257,40 @@ describe("GetOrFindResourcesService", () => {
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
 
       const resources = await service.getOrFindSuggested("https://www.passbolt.com", "test");
+
+      expect(resources).toBeInstanceOf(ResourcesCollection);
+      expect(resources).toHaveLength(2);
+      expect(resources.getFirstById(suggestedResource1.id)).toBeTruthy();
+      expect(resources.getFirstById(suggestedResource2.id)).toBeTruthy();
+    });
+
+    it("should filter the collection by password and otp resource types when fieldType is null and filter by suggested url", async () => {
+      expect.assertions(4);
+
+      const suggestedResource1 = resourceStandaloneTotpDto({
+        metadata: defaultResourceMetadataDto({ uris: ["https://passbolt.com"] }),
+      });
+      const suggestedResource2 = defaultResourceDto({
+        metadata: defaultResourceMetadataDto({ uris: ["passbolt.com"] }),
+      });
+      const notSuggestedResource1 = defaultResourceDto({
+        metadata: defaultResourceMetadataDto({ uris: ["not-passbolt.com"] }),
+      });
+      const notSuggestedResource2 = defaultResourceDto({ metadata: defaultResourceMetadataDto({ uris: [""] }) });
+
+      const resourcesCollectionDto = [
+        suggestedResource1,
+        suggestedResource2,
+        notSuggestedResource1,
+        notSuggestedResource2,
+      ];
+
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourcesCollectionDto));
+      jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+
+      const resources = await service.getOrFindSuggested("https://www.passbolt.com");
 
       expect(resources).toBeInstanceOf(ResourcesCollection);
       expect(resources).toHaveLength(2);

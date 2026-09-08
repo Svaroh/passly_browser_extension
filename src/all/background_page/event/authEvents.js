@@ -7,8 +7,8 @@
  * @licence GNU Affero General Public License http://www.gnu.org/licenses/agpl-3.0.en.html
  */
 import AuthVerifyServerKeyController from "../controller/auth/authVerifyServerKeyController";
-import AuthCheckStatusController from "../controller/auth/authCheckStatusController";
-import AuthIsMfaRequiredController from "../controller/auth/authIsMfaRequiredController";
+import FindAndUpdateActiveSessionLocalStorageController from "../controller/auth/findAndUpdateActiveSessionLocalStorageController";
+import IsMfaRequiredController from "../controller/auth/isMfaRequiredController";
 import CheckPassphraseController from "../controller/crypto/checkPassphraseController";
 import RequestHelpCredentialsLostController from "../controller/auth/requestHelpCredentialsLostController";
 import AuthLoginController from "../controller/auth/authLoginController";
@@ -23,6 +23,7 @@ import GetServerKeyController from "../controller/auth/getServerKeyController";
 import ReplaceServerKeyController from "../controller/auth/replaceServerKeyController";
 import ReloadTabController from "../controller/tab/reloadTabController";
 import RedirectPostLoginController from "../controller/auth/redirectPostLoginController";
+import AuthOfflineLogoutController from "../controller/auth/authOfflineLogoutController";
 
 /**
  * Listens to the authentication events
@@ -34,23 +35,28 @@ const listen = function (worker, apiClientOptions, account) {
   /*
    * Check if the user requires to complete the mfa.
    *
-   * @listens passbolt.auth.is-mfa-required
+   * @listens passbolt.auth.get-or-find-active-session
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.auth.is-mfa-required", async (requestId) => {
-    const controller = new AuthIsMfaRequiredController(worker, requestId, apiClientOptions, account);
-    controller._exec();
+    const controller = new IsMfaRequiredController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 
   /*
    * Check the user auth status.
    *
-   * @listens passbolt.auth.check-status
+   * @listens passbolt.auth.find-and-update-authentication-status
    * @param requestId {uuid} The request identifier
    */
-  worker.port.on("passbolt.auth.check-status", async (requestId) => {
-    const controller = new AuthCheckStatusController(worker, requestId, apiClientOptions, account);
-    controller._exec();
+  worker.port.on("passbolt.auth.find-and-update-authentication-status", async (requestId) => {
+    const controller = new FindAndUpdateActiveSessionLocalStorageController(
+      worker,
+      requestId,
+      apiClientOptions,
+      account,
+    );
+    await controller._exec();
   });
 
   /*
@@ -60,8 +66,19 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.auth.logout", async (requestId, withRedirection) => {
-    const controller = new AuthLogoutController(worker, requestId, apiClientOptions);
+    const controller = new AuthLogoutController(worker, requestId, apiClientOptions, account);
     await controller._exec(withRedirection);
+  });
+
+  /**
+   * Offline Logout when user was signed-in offline
+   *
+   * @listens passbolt.auth.offline-local
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.auth.offline-logout", async (requestId) => {
+    const controller = new AuthOfflineLogoutController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
   });
 
   /*

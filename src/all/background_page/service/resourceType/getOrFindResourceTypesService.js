@@ -14,6 +14,7 @@
 import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
 import ResourceTypeService from "../api/resourceType/resourceTypeService";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 /**
  * The service aims to get resource types from the local storage if it is set, or retrieve them from the API and
@@ -28,6 +29,7 @@ class GetOrFindResourceTypesService {
   constructor(account, apiClientOptions) {
     this.resourceTypeService = new ResourceTypeService(apiClientOptions);
     this.resourceTypeLocalStorage = new ResourceTypeLocalStorage(account);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
   }
 
   /**
@@ -35,9 +37,18 @@ class GetOrFindResourceTypesService {
    * @returns {Promise<ResourceTypesCollection>}
    */
   async getOrFindAll() {
-    const resourceTypesDto = await this.resourceTypeLocalStorage.getData();
-    if (typeof resourceTypesDto !== "undefined") {
-      return new ResourceTypesCollection(resourceTypesDto);
+    const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+    // Only an online session refreshes stale data; an offline session cannot reach the API.
+    const isStale =
+      activeSession.isSessionOnline &&
+      (await this.resourceTypeLocalStorage.isStaleSinceLastLoggedIn(activeSession.lastLoggedIn));
+    if (!isStale) {
+      const resourceTypesDto = await this.resourceTypeLocalStorage.getData();
+      if (typeof resourceTypesDto !== "undefined") {
+        return new ResourceTypesCollection(resourceTypesDto);
+      } else if (activeSession.isSessionOffline) {
+        return null;
+      }
     }
     const resourceTypeDtos = await this.resourceTypeService.findAll();
     const resourceTypesCollection = new ResourceTypesCollection(resourceTypeDtos);

@@ -81,6 +81,9 @@ import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/sit
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -128,6 +131,9 @@ describe("ImportResourcesService", () => {
       .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
     collection = resourceTypesCollectionDto();
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => collection);
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     importResourceFileCSV = new ImportResourcesFileEntity(defaultImportResourceFileCSVDto());
     passphrase = pgpKeys.ada.passphrase;
   });

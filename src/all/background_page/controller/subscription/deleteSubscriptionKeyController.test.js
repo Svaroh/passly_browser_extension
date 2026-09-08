@@ -16,34 +16,42 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 
 import DeleteSubscriptionKeyController from "./deleteSubscriptionKeyController";
 import PostLogoutService from "../../service/auth/postLogoutService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("DeleteSubscriptionKeyController", () => {
+  const account = new AccountEntity(defaultAccountDto());
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "resetAuthentication").mockResolvedValue();
   });
 
   describe("::exec", () => {
-    it("should delete the subscription key and log the user out", async () => {
-      expect.assertions(3);
+    it("should delete the subscription key, mark the active session as signed out and log the user out", async () => {
+      expect.assertions(4);
 
-      const controller = new DeleteSubscriptionKeyController(null, null, defaultApiClientOptions());
+      const controller = new DeleteSubscriptionKeyController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.deleteSubscriptionService, "delete").mockResolvedValue(undefined);
       jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       await expect(controller.exec()).resolves.toBeUndefined();
       expect(controller.deleteSubscriptionService.delete).toHaveBeenCalledTimes(1);
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).toHaveBeenCalledTimes(1);
       expect(PostLogoutService.exec).toHaveBeenCalledTimes(1);
     });
 
     it("should not catch errors", async () => {
-      expect.assertions(2);
+      expect.assertions(3);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new DeleteSubscriptionKeyController(null, null, defaultApiClientOptions());
+      const controller = new DeleteSubscriptionKeyController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.deleteSubscriptionService, "delete").mockRejectedValue(expectedError);
       jest.spyOn(PostLogoutService, "exec").mockImplementation(async () => {});
 
       await expect(controller.exec()).rejects.toStrictEqual(expectedError);
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).not.toHaveBeenCalled();
       expect(PostLogoutService.exec).not.toHaveBeenCalled();
     });
   });

@@ -17,6 +17,10 @@ import MockExtension from "../../../../../test/mocks/mockExtension";
 import User from "../../model/user";
 import LocalStorageService from "../localStorage/localStorageService";
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
+import GetActiveAccountService from "../account/getActiveAccountService";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 // Reset the modules before each test.
 beforeEach(() => {
@@ -42,18 +46,21 @@ describe("OnStartUpService", () => {
     });
 
     it("Should exec start up process if the user is valid", async () => {
-      expect.assertions(2);
+      expect.assertions(3);
       // data mocked
       await MockExtension.withConfiguredAccount();
       // mock function
       jest.spyOn(User.getInstance(), "isValid").mockImplementation(() => true);
       jest.spyOn(LocalStorageService, "flush");
       jest.spyOn(BrowserExtensionIconService, "deactivate");
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => new AccountEntity(defaultAccountDto()));
+      jest.spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "resetAuthentication");
       // process
       await OnStartUpService.exec();
       // expectation
       expect(LocalStorageService.flush).toHaveBeenCalledTimes(1);
       expect(BrowserExtensionIconService.deactivate).toHaveBeenCalledTimes(1);
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.resetAuthentication).toHaveBeenCalledTimes(1);
     });
   });
 });
