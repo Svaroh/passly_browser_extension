@@ -13,6 +13,7 @@
  */
 
 import ServerStatusApiService from "../api/status/serverStatusApiService";
+import { MFA_VERIFY_ERROR_REGEXP } from "../authenticationStatusService";
 
 export default class FindServerStatusService {
   /**
@@ -33,8 +34,8 @@ export default class FindServerStatusService {
       await this.serverStatusApiService.find();
       return true;
     } catch (error) {
-      console.error(error);
-      return false;
+      // If MFA required return true else false
+      return MFA_VERIFY_ERROR_REGEXP.test(error.data?.header?.url);
     }
   }
 }
