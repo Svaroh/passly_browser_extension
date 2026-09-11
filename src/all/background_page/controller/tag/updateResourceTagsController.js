@@ -13,7 +13,7 @@
  */
 import TagsCollection from "../../model/entity/tag/tagsCollection";
 import UpdateResourceTagsService from "../../service/tag/updateResourceTagsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 export default class UpdateResourceTagsController {
   /**
@@ -21,11 +21,12 @@ export default class UpdateResourceTagsController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions);
+    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions, account);
   }
 
   /**

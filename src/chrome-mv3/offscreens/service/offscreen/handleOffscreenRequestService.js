@@ -16,7 +16,7 @@ import FetchOffscreenService, { SEND_MESSAGE_TARGET_FETCH_OFFSCREEN } from "../n
 import WriteClipobardOffscreenService, {
   SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN,
 } from "../clipboard/writeClipobardOffscreenService";
-import { assertUuid } from "../../../../all/background_page/utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AddUsersToGroupOffscreenService, {
   SEND_MESSAGE_TARGET_ADD_USERS_TO_GROUP_OFFSCREEN,
 } from "../group/addUsersToGroupOffscreenService";

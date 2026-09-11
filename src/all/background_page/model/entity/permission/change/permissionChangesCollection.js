@@ -122,21 +122,6 @@ class PermissionChangesCollection extends EntityCollection {
     }
   }
 
-  /**
-   * Copy permission changes for another ACO (folder or resource)
-   * Useful to apply a collection of changes to another item
-   *
-   * @param {string} aco type folder or resource
-   * @param {string} acoForeignKey uuid
-   */
-  copyForAnotherAco(aco, acoForeignKey) {
-    const results = new PermissionChangesCollection([]);
-    for (const change of this.items) {
-      results.push(change.copyForAnotherAco(aco, acoForeignKey));
-    }
-    return results;
-  }
-
   /*
    * ==================================================
    * Changes calculation

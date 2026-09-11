@@ -23,6 +23,7 @@ import { enableFetchMocks } from "jest-fetch-mock";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { RememberMeEvents } from "../event/rememberMeEvents";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import { AccountEvents } from "../event/accountEvents";
 
 jest.spyOn(ConfigEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(UserEvents, "listen").mockImplementation(jest.fn());
@@ -31,6 +32,7 @@ jest.spyOn(AuthEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(SiteSettingsEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(LocaleEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(RememberMeEvents, "listen").mockImplementation(jest.fn());
+jest.spyOn(AccountEvents, "listen").mockImplementation(jest.fn());
 
 describe("Auth", () => {
   beforeEach(async () => {

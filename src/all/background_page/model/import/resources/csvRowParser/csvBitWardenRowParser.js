@@ -94,14 +94,17 @@ class CsvBitWardenRowParser extends AbstractCsvRowParser {
   }
 
   /**
-   * Parse the TOTP
-   * @param {string} totpUrl
+   * Parse the TOTP.
+   * Bitwarden exports either an otpauth URL or the base-32 secret key alone.
+   * @param {string} totpValue
    * @return {{secret_key: *, period: *, digits: *, algorithm: *}}
    */
-  static parseTotp(totpUrl) {
-    const totpUrlDecoded = new URL(decodeURIComponent(totpUrl));
-    const totp = ExternalTotpEntity.createTotpFromUrl(totpUrlDecoded);
-    return totp.toDto();
+  static parseTotp(totpValue) {
+    if (totpValue.toLowerCase().startsWith("otpauth://")) {
+      const totpUrlDecoded = new URL(decodeURIComponent(totpValue));
+      return ExternalTotpEntity.createTotpFromUrl(totpUrlDecoded).toDto();
+    }
+    return ExternalTotpEntity.createTotpFromSecretKey(totpValue).toDto();
   }
 }
 

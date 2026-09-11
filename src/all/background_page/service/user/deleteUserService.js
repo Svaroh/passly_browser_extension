@@ -12,7 +12,8 @@
  * @since         5.4.0
  */
 import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import DeleteDryRunError from "../../error/deleteDryRunError";
 import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/PassboltApiFetchError";
 import UserDeleteTransferEntity from "../../model/entity/user/transfer/userDeleteTransferEntity";

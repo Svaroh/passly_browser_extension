@@ -29,6 +29,9 @@ import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 describe("FindAllIdsByIsSharedWithGroupController", () => {
   let controller, worker, groupId;
@@ -45,6 +48,9 @@ describe("FindAllIdsByIsSharedWithGroupController", () => {
     groupId = uuidv4();
     controller = new FindAllIdsByIsSharedWithGroupController(worker, null, apiClientOptions, account);
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("FindAllIdsByIsSharedWithGroupController::_exec", () => {

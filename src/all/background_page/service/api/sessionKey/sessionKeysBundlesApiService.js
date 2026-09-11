@@ -14,7 +14,8 @@
 
 import AbstractService from "../abstract/abstractService";
 import SessionKeysBundleEntity from "passbolt-styleguide/src/shared/models/entity/sessionKey/sessionKeysBundleEntity";
-import { assertType, assertUuid } from "../../../utils/assertions";
+import { assertType } from "../../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 const SESSION_KEYS_BUNDLES_API_SERVICE_RESOURCE_NAME = "metadata/session-keys";
 

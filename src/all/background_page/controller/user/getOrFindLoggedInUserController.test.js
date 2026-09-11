@@ -21,10 +21,16 @@ import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import UserEntity from "../../model/entity/user/userEntity";
 import UserMeLocalStorage from "../../service/local_storage/userMeLocalStorage";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   enableFetchMocks();
   fetch.resetMocks();
+  jest
+    .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+    .mockImplementation(async () => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
 });
 
 describe("GetOrFindLoggedInUserController", () => {
@@ -91,6 +97,8 @@ describe("GetOrFindLoggedInUserController", () => {
       expect(cachedUsedMe.id).toEqual(mockApiResult.id);
       expect(fetch).toHaveBeenCalled();
       expect(controller.getOrFindMeService.userMeLocalStorageService.setData).toHaveBeenCalled();
+
+      await storage.flush();
     });
   });
 });

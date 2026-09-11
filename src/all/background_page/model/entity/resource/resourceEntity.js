@@ -23,6 +23,8 @@ import EntityV2 from "passbolt-styleguide/src/shared/models/entity/abstract/enti
 import UserEntity from "../user/userEntity";
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import CanSuggestService from "passbolt-styleguide/src/shared/services/canSuggestService/canSuggestService";
+import OfflineItemEntity from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity";
+import { assertType } from "../../../utils/assertions";
 
 const ENTITY_NAME = "Resource";
 
@@ -84,6 +86,16 @@ class ResourceEntity extends EntityV2 {
       this._metadata = new ResourceMetadataEntity(this._props.metadata, { ...options, clone: false });
       delete this._props.metadata;
     }
+  }
+
+  /**
+   *  @inheritDoc
+   * @returns {{offline: OfflineItemEntity}}
+   */
+  static get associations() {
+    return {
+      offline: OfflineItemEntity,
+    };
   }
 
   /**
@@ -188,6 +200,10 @@ class ResourceEntity extends EntityV2 {
         tags: TagsCollection.getSchema(),
         creator: userSchema,
         modifier: userSchema,
+        offline: {
+          ...OfflineItemEntity.getSchema(),
+          nullable: true,
+        },
       },
     };
   }
@@ -230,6 +246,9 @@ class ResourceEntity extends EntityV2 {
     }
     if (this._modifier && contain.modifier) {
       result.modifier = this._modifier.toDto(UserEntity.ALL_CONTAIN_OPTIONS);
+    }
+    if (this._offline && contain.offline) {
+      result.offline = this._offline.toDto();
     }
 
     return result;
@@ -479,6 +498,14 @@ class ResourceEntity extends EntityV2 {
     return destinationFolder === null || !destinationFolder.isReadOnly();
   }
 
+  /**
+   * Return true if offline is set
+   * @returns {(boolean)}
+   */
+  hasOfflineAccess() {
+    return this.offline != null;
+  }
+
   /*
    * ==================================================
    * Meta data relative
@@ -581,6 +608,14 @@ class ResourceEntity extends EntityV2 {
       return secret;
     }
     return null;
+  }
+
+  /**
+   * Get offline object for the current user
+   * @returns {(OfflineItemEntity|null)}
+   */
+  get offline() {
+    return this._offline || null;
   }
 
   /*
@@ -686,6 +721,17 @@ class ResourceEntity extends EntityV2 {
   set personal(personal) {
     EntitySchema.validateProp("personal", personal, ResourceEntity.getSchema().properties.personal);
     this._props.personal = personal;
+  }
+
+  /**
+   * Set resource offline
+   * @param {OfflineItemEntity|null} offline
+   */
+  set offline(offline) {
+    if (offline !== null) {
+      assertType(offline, OfflineItemEntity, "The parameter 'offline' should be an OfflineItemEntity.");
+    }
+    this._offline = offline;
   }
 
   /**
@@ -826,6 +872,7 @@ class ResourceEntity extends EntityV2 {
       tag: true,
       creator: true,
       modifier: true,
+      offline: true,
     };
   }
 }

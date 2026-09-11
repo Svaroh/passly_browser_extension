@@ -15,7 +15,8 @@ import Log from "../../model/log";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import Lock from "../../utils/lock";
-import { assertArrayUUID, assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import PasswordExpiryResourceEntity from "../../model/entity/passwordExpiry/passwordExpiryResourceEntity";
 
 const lock = new Lock();
@@ -114,6 +115,17 @@ class ResourceLocalStorage {
   static async getResourcesByIds(ids) {
     const resources = await ResourceLocalStorage.get();
     return resources?.filter((item) => ids.includes(item.id));
+  }
+
+  /**
+   * Get a resource from the local storage by its offline item id
+   *
+   * @param {string} offlineItemId The offline item id (offline_items row id)
+   * @return {Promise<object>} resource dto object
+   */
+  static async getResourceByOfflineItemId(offlineItemId) {
+    const resources = await ResourceLocalStorage.get();
+    return resources?.find((item) => item.offline?.id === offlineItemId);
   }
 
   /**
@@ -320,7 +332,7 @@ class ResourceLocalStorage {
    * @private
    */
   static get DEFAULT_CONTAIN() {
-    return { permission: true, favorite: true, tag: true };
+    return { permission: true, favorite: true, tag: true, offline: true };
   }
 
   /**

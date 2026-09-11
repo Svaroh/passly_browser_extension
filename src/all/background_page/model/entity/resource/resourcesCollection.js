@@ -130,6 +130,18 @@ class ResourcesCollection extends EntityV2Collection {
   }
 
   /**
+   * Return a new collection with all resources the current user has offline access
+   *
+   * @returns {ResourcesCollection}
+   */
+  filterByOffline() {
+    return new ResourcesCollection(
+      this._items.filter((r) => r.hasOfflineAccess()),
+      { validate: false },
+    );
+  }
+
+  /**
    * Filter by resource types.
    * @param {ResourceTypesCollection} resourceTypes The resource types to filter by
    * @return {void} The function alters the collection itself.
@@ -177,6 +189,13 @@ class ResourcesCollection extends EntityV2Collection {
    */
   filterOutMetadataEncrypted() {
     this.filterByCallback((resource) => resource.isMetadataDecrypted());
+  }
+
+  /**
+   * Filter out the resources which metadata is decrypted.
+   */
+  filterOutMetadataDecrypted() {
+    this.filterByCallback((resource) => !resource.isMetadataDecrypted());
   }
 
   /**
@@ -249,7 +268,9 @@ class ResourcesCollection extends EntityV2Collection {
    */
   remove(resourceId) {
     const i = this.items.findIndex((item) => item.id === resourceId);
-    this.items.splice(i, 1);
+    if (i !== -1) {
+      this.items.splice(i, 1);
+    }
   }
 
   /**

@@ -20,7 +20,7 @@ import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import { enableFetchMocks } from "jest-fetch-mock";
 import { anonymousSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
 import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
-import GetOrFindSiteSettingsService from "../service/siteSettings/getOrFindSiteSettingsService";
+import FindAndUpdateSiteSettingsLocalStorageService from "../service/siteSettings/findAndUpdateSiteSettingsLocalStorageService";
 
 jest.spyOn(BuildAccountRecoverService, "buildFromRecoverUrl");
 jest.spyOn(BuildApiClientOptionsService, "buildFromAccount");
@@ -34,7 +34,7 @@ describe("Recover", () => {
     jest.clearAllMocks();
     enableFetchMocks();
     jest
-      .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+      .spyOn(FindAndUpdateSiteSettingsLocalStorageService.prototype, "findAndUpdateAll")
       .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
   });
 

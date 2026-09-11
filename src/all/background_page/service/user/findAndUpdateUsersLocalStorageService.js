@@ -64,7 +64,7 @@ class FindAndUpdateUsersLocalStorageService {
       };
       if (this.account?.roleName === RoleEntity.ROLE_ADMIN) {
         contains.is_mfa_enabled = true;
-        const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+        const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
         if (siteSettings.isPluginEnabled("metadata")) {
           contains.missing_metadata_key_ids = true;
         }

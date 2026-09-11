@@ -17,15 +17,24 @@ import StartLoopAuthSessionCheckService from "./startLoopAuthSessionCheckService
 import InformCallToActionPagemod from "../../pagemod/informCallToActionPagemod";
 import WorkerService from "../worker/workerService";
 import SiteSettingsRuntimeCache from "../siteSettings/siteSettingsRuntimeCache";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 class PostLoginService {
   /**
    * Post login
+   * @param {AccountEntity} account The user account
+   * @param {ApiClientOptions} apiClientOptions The api client options
    * @returns {Promise<void>}
    */
-  static async exec() {
+  static async exec(account, apiClientOptions) {
     // Clear the in-memory site settings cache so the next authenticated read refetches.
     SiteSettingsRuntimeCache.flushAll();
+    // Record the online login transition (is_authenticated + login date) on the active session.
+    const findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
+    await findAndUpdateActiveSessionLocalStorageService.authenticateOnline();
     await PostLoginService.sendLoginEventForWorkers();
     await StartLoopAuthSessionCheckService.exec();
     toolbarService.handleUserLoggedIn();

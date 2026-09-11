@@ -110,6 +110,25 @@ class AbstractLocalStorage {
   }
 
   /**
+   * Whether the cached data is stale relative to the given login date, i.e. the user logged in more
+   * recently than the last time the cache was written. When true, the cache should be refreshed.
+   * @param {string} [lastLoggedIn] The active session last login date.
+   * @return {Promise<boolean>}
+   */
+  async isStaleSinceLastLoggedIn(lastLoggedIn) {
+    // No login date (e.g. offline session, or never logged in online): cannot decide, keep the cache.
+    if (!lastLoggedIn) {
+      return false;
+    }
+    const metadata = await this.getMetadata();
+    // Data present but no metadata date: refresh defensively.
+    if (!metadata?.last_updated) {
+      return true;
+    }
+    return new Date(lastLoggedIn) > new Date(metadata.last_updated);
+  }
+
+  /**
    * Set the data in the local storage and update the metadata.
    * @param {EntityV2|EntityV2Collection} data The data to insert in the local storage.
    * @return {Promise<void>}

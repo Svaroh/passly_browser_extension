@@ -12,7 +12,8 @@
  * @since         5.6.0
  */
 
-import { assertString, assertType, assertUuid } from "../../../utils/assertions";
+import { assertString, assertType } from "../../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import i18n from "../../../sdk/i18n";
 import CreateMetadataKeyService from "../createMetadataKeyService";
 import ExpireMetadataKeyService from "../expireMetadataKeyService";

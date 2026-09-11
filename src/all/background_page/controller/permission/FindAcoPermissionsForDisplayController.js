@@ -14,7 +14,8 @@
 import FindPermissionsService from "../../service/permission/findPermissionsService";
 import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
 import FindFoldersService from "../../service/folder/findFoldersService";
-import { assertString, assertUuid } from "../../utils/assertions";
+import { assertString } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class FindAcoPermissionsForDisplayController {
   /**

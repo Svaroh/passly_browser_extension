@@ -26,8 +26,19 @@ import ResourceSecretsCollection from "../../../model/entity/secret/resource/res
 import EncryptMetadataKeysService from "../../metadata/encryptMetadataService";
 import FindPermissionsService from "../../permission/findPermissionsService";
 import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
+import OfflineResourcesOPFSStorage from "../../opfsStorage/offlineResourcesOPFSStorage";
+import OfflineSecretsOPFSStorage from "../../opfsStorage/offlineSecretsOPFSStorage";
 import PermissionChangesCollection from "../../../model/entity/permission/change/permissionChangesCollection";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../../share/shareResourceService";
+
+/**
+ * Total main steps to update a resource (without updating permissions)
+ *  - Encrypting Metadata
+ *  - Encrypting Secret
+ *  - Saving resource
+ */
+const PROGRESS_STEPS_UPDATE_RESOURCES_V4 = 2;
+const PROGRESS_STEPS_UPDATE_RESOURCES_V5 = 3;
 
 class ResourceUpdateService {
   /**
@@ -46,6 +57,8 @@ class ResourceUpdateService {
     this.encryptMetadataKeysService = new EncryptMetadataKeysService(apiClientOptions, this.account);
     this.userModel = new UserModel(apiClientOptions);
     this.keyring = new Keyring();
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
+    this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
     this.shareResourceService = new ShareResourceService(apiClientOptions, account, progressService);
   }
 
@@ -60,10 +73,24 @@ class ResourceUpdateService {
    */
   async exec(resourceDto, plaintextDto, passphrase, permissionChanges) {
     const resourceEntity = new ResourceEntity(resourceDto);
-
     permissionChanges = permissionChanges ?? [];
+
+    const resourceTypesCollection = await this.getOrFindResourcetypesService.getOrFindAll();
+    const resourceTypeEntity = resourceTypesCollection.getFirstById(resourceEntity.resourceTypeId);
+
+    const isResourceTypeV5 = resourceTypeEntity.isV5();
+
+    const shouldUpdatePermission = permissionChanges.length > 0;
+    let progressStepCount = isResourceTypeV5 ? PROGRESS_STEPS_UPDATE_RESOURCES_V5 : PROGRESS_STEPS_UPDATE_RESOURCES_V4;
+
+    if (shouldUpdatePermission) {
+      progressStepCount += PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL;
+    }
+
+    this.progressService.updateGoals(progressStepCount);
+
     // Apply the operator-confirmed permission changes (re-share) in the spec-mandated safe order.
-    if (permissionChanges.length > 0) {
+    if (shouldUpdatePermission) {
       // The styleguide emits deltas with aco_foreign_key unset (or null); stamp the resource id
       // before handing them to the share orchestration.
       const stampedChanges = permissionChanges.map((change) => ({
@@ -77,18 +104,12 @@ class ResourceUpdateService {
       );
     }
 
-    const resourceTypesCollection = await this.getOrFindResourcetypesService.getOrFindAll();
-    const resourceTypeEntity = resourceTypesCollection.getFirstById(resourceEntity.resourceTypeId);
-
     // Get users ids of those who have access to the resource
     const usersIds = await this.userModel.findAllIdsForResourceUpdate(resourceEntity.id);
-    // Set goals
-    const goals = this.calculateGoals(plaintextDto, resourceTypeEntity, usersIds.length, permissionChanges.length);
-    this.progressService.updateGoals(goals);
 
     // Keep metadata decrypted to update it in the local storage
     const metadataDecrypted = resourceEntity.metadata;
-    if (resourceTypeEntity.isV5()) {
+    if (isResourceTypeV5) {
       // Encrypt metadata
       await this.progressService.finishStep(i18n.t("Encrypting Metadata"), true);
       await this.encryptMetadataKeysService.encryptOneForForeignModel(resourceEntity, passphrase);
@@ -141,7 +162,15 @@ class ResourceUpdateService {
       data,
       ResourceLocalStorage.DEFAULT_CONTAIN,
     );
-    const updatedResourceEntity = new ResourceEntity(resourceDto);
+
+    let updatedResourceEntity = new ResourceEntity(resourceDto);
+    // Refresh the offline storage: the OPFS store only accepts
+    // resources whose metadata is still encrypted.
+    if (resourceEntity.hasOfflineAccess()) {
+      updatedResourceEntity.offline = resourceEntity.offline;
+      await this.updateOfflineStorage(updatedResourceEntity, Boolean(data.secrets));
+    }
+
     // If resource v5, metadata will be returned encrypted, replace it with the original decrypted copy.
     if (!updatedResourceEntity.isMetadataDecrypted()) {
       updatedResourceEntity.metadata = metadataDecrypted;
@@ -149,6 +178,34 @@ class ResourceUpdateService {
     await ResourceLocalStorage.updateResource(updatedResourceEntity);
 
     return updatedResourceEntity;
+  }
+
+  /**
+   * Refresh the offline OPFS stores after a resource update.
+   *
+   * Offline caching is opt-in per resource and v5-only, so this is a no-op unless the updated
+   * resource carries an offline association and still holds encrypted metadata.
+   * v4 resources are normalized to decrypted metadata, which the OPFS store rejects, so they are
+   * skipped here. It must run before the metadata is decrypted back for the local storage.
+   *
+   * @param {ResourceEntity} updatedResourceEntity The resource built from the update API response.
+   * @param {boolean} secretUpdated Whether the secret was re-encrypted by this update.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async updateOfflineStorage(updatedResourceEntity, secretUpdated) {
+    // OPFS only caches v5 resources (encrypted metadata). A v4 resource is normalized to a decrypted
+    // metadata shape the OPFS store rejects, so skip it even if it is tagged offline.
+    if (updatedResourceEntity.isMetadataDecrypted()) {
+      return;
+    }
+    await this.offlineResourcesOPFSStorage.updateResource(updatedResourceEntity);
+
+    const secretEntity = updatedResourceEntity.secret;
+    if (!secretUpdated || !secretEntity) {
+      return;
+    }
+    await this.offlineSecretsOPFSStorage.updateSecret(secretEntity);
   }
 
   /**
@@ -161,6 +218,7 @@ class ResourceUpdateService {
    */
   async encryptSecrets(plaintextDto, usersIds, privateKey) {
     const secrets = [];
+    await this.progressService.finishStep(i18n.t("Encrypting Secret"), true);
     for (let i = 0; i < usersIds.length; i++) {
       if (Object.prototype.hasOwnProperty.call(usersIds, i)) {
         const userId = usersIds[i];
@@ -168,29 +226,15 @@ class ResourceUpdateService {
         const userPublicKey = await OpenpgpAssertion.readKeyOrFail(userPublicArmoredKey);
         const data = await EncryptMessageService.encrypt(plaintextDto, userPublicKey, [privateKey]);
         secrets.push({ user_id: userId, data: data });
-        await this.progressService.finishStep(i18n.t("Encrypting Secret"), true);
+        await this.progressService.updateStepMessage(
+          i18n.t("Encrypting secrets {{count}}/{{total}}", {
+            count: i + 1,
+            total: usersIds.length,
+          }),
+        );
       }
     }
     return new ResourceSecretsCollection(secrets);
-  }
-
-  /**
-   * Calculate goals
-   * @param {string|object} plaintextDto The secret to encrypt
-   * @param {ResourceTypeEntity} resourceType The resource type
-   * @param {number} usersLength The number of users
-   * @param {number} [permissionChangesLength] The number of permission changes applied after the update
-   * @returns {number}
-   */
-  calculateGoals(plaintextDto, resourceType, usersLength, permissionChangesLength = 0) {
-    const shareSteps = permissionChangesLength > 0 ? PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL : 0;
-    if (resourceType.isV5()) {
-      // encrypt metadata + save + done or encrypt secret * users + encrypt metadata + save + done
-      return (plaintextDto === null ? 3 : usersLength + 3) + shareSteps;
-    } else if (resourceType.isV4()) {
-      // save + done or encrypt secret * users + save + done
-      return (plaintextDto === null ? 2 : usersLength + 2) + shareSteps;
-    }
   }
 }
 

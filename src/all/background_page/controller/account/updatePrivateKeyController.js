@@ -66,7 +66,7 @@ class UpdatePrivateKeyController {
     if (typeof oldPassphrase !== "string" || typeof newPassphrase !== "string") {
       throw new Error("The old and new passphrase have to be string");
     }
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const ssoIsEnabled = siteSettings.isPluginEnabled("sso");
 
     const userPrivateArmoredKey = await this.accountModel.rotatePrivateKeyPassphrase(oldPassphrase, newPassphrase);

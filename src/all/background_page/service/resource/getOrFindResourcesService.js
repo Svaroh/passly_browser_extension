@@ -14,7 +14,7 @@
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
-import { assertArrayUUID } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 /**
@@ -56,10 +56,10 @@ export default class GetOrFindResourcesService {
   /**
    * Returns the possible resources to suggest given an url.
    * @param {string} url The url to suggest for.
-   * @param {"username"|"password"|"otp"} fieldType The field type to suggest for
+   * @param {"username"|"password"|"otp"|null} fieldType The field type to suggest for
    * @return {Promise<ResourcesCollection>}
    */
-  async getOrFindSuggested(url, fieldType) {
+  async getOrFindSuggested(url, fieldType = null) {
     if (!url) {
       return new ResourcesCollection([]);
     }
@@ -68,7 +68,9 @@ export default class GetOrFindResourcesService {
     const resourceTypesCollection = await this.getOrFindResourceTypesService.getOrFindAll();
 
     // Filter resource types according to what we need
-    if (fieldType === "otp") {
+    if (fieldType === null) {
+      resourceTypesCollection.filterByPasswordAndTOTPResourceTypes();
+    } else if (fieldType === "otp") {
       resourceTypesCollection.filterByTOTPResourceTypes();
     } else {
       resourceTypesCollection.filterByPasswordResourceTypes();

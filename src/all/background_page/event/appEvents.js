@@ -86,6 +86,12 @@ import OpenAdministrationPageController from "../controller/tab/openAdministrati
 import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainTabController";
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
 import OpenResourceUriTabController from "../controller/tab/openResourceUriTabController";
+import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
+import GetOrFindOfflineSettingsController from "../controller/offline/getOrFindOfflineSettingsController";
+import SaveOfflineSettingsController from "../controller/offline/saveOfflineSettingsController";
+import DeleteOfflineSettingsController from "../controller/offline/deleteOfflineSettingsController";
+import MarkResourceOfflineAvailableController from "../controller/offlineResourceController/markResourceOfflineAvailableController";
+import UnmarkItemOfflineAvailableController from "../controller/offline/unmarkItemOfflineAvailableController";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
@@ -786,7 +792,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param subscriptionKeyDto {{ data: string }} The new subscription key
    */
   worker.port.on("passbolt.subscription.create", async (requestId, subscriptionKeyDto) => {
-    const subscriptionController = new CreateSubscriptionKeyController(worker, requestId, apiClientOptions);
+    const subscriptionController = new CreateSubscriptionKeyController(worker, requestId, apiClientOptions, account);
     await subscriptionController._exec(subscriptionKeyDto);
   });
 
@@ -797,7 +803,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.subscription.downgrade", async (requestId) => {
-    const subscriptionController = new DeleteSubscriptionKeyController(worker, requestId, apiClientOptions);
+    const subscriptionController = new DeleteSubscriptionKeyController(worker, requestId, apiClientOptions, account);
     await subscriptionController._exec();
   });
 
@@ -820,7 +826,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param tagDto {object} The tag object
    */
   worker.port.on("passbolt.tags.update", async (requestId, tagDto) => {
-    const updateTagController = new UpdateTagController(worker, requestId, apiClientOptions);
+    const updateTagController = new UpdateTagController(worker, requestId, apiClientOptions, account);
     await updateTagController._exec(tagDto);
   });
 
@@ -832,7 +838,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param tagId {uuid} The tag identifier
    */
   worker.port.on("passbolt.tags.delete", async (requestId, tagId) => {
-    const deleteTagController = new DeleteTagController(worker, requestId, apiClientOptions);
+    const deleteTagController = new DeleteTagController(worker, requestId, apiClientOptions, account);
     await deleteTagController._exec(tagId);
   });
 
@@ -845,7 +851,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param tagsDto {Object} tags dto
    */
   worker.port.on("passbolt.tags.update-resource-tags", async (requestId, resourceId, tagsDto) => {
-    const updateResourceTagsController = new UpdateResourceTagsController(worker, requestId, apiClientOptions);
+    const updateResourceTagsController = new UpdateResourceTagsController(worker, requestId, apiClientOptions, account);
     await updateResourceTagsController._exec(resourceId, tagsDto);
   });
 
@@ -857,7 +863,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param {object} resourcesTagDto {resources: array of uuids, tag: {object}} the tag to add for the resources
    */
   worker.port.on("passbolt.tags.add-resources-tag", async (requestId, resourcesTagDto) => {
-    const addTagsToResourcesController = new AddTagsToResourcesController(worker, requestId, apiClientOptions);
+    const addTagsToResourcesController = new AddTagsToResourcesController(worker, requestId, apiClientOptions, account);
     await addTagsToResourcesController._exec(resourcesTagDto.resources, [resourcesTagDto.tag]);
   });
 
@@ -901,6 +907,80 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.tabs.open-resource-uri", async (requestId, uri) => {
     const controller = new OpenResourceUriTabController(worker, requestId);
     await controller._exec(uri);
+  });
+
+  /*
+   * ==================================================================================
+   *  Offline events
+   * ==================================================================================
+   */
+  /*
+   * Find offline settings.
+   *
+   * @listens passbolt.offline.find-settings
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.offline.find-settings", async (requestId) => {
+    const controller = new FindOfflineSettingsController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
+  });
+
+  /*
+   * Get or find offline settings.
+   *
+   * @listens passbolt.offline.get-or-find-settings
+   * @param requestId {uuid} The request identifier
+   */
+  worker.port.on("passbolt.offline.get-or-find-settings", async (requestId) => {
+    const controller = new GetOrFindOfflineSettingsController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
+  });
+
+  /*
+   * Save offline settings.
+   *
+   * @listens passbolt.offline.save-settings
+   * @param requestId {uuid} The request identifier
+   * @param offlineSettingsDto {Object} The offline settings dto
+   */
+  worker.port.on("passbolt.offline.save-settings", async (requestId, offlineSettingsDto) => {
+    const controller = new SaveOfflineSettingsController(worker, requestId, apiClientOptions, account);
+    await controller._exec(offlineSettingsDto);
+  });
+
+  /*
+   * Delete offline settings.
+   *
+   * @listens passbolt.offline.delete-settings
+   * @param requestId {uuid} The request identifier
+   * @param id {uuid} The offline settings id
+   */
+  worker.port.on("passbolt.offline.delete-settings", async (requestId, id) => {
+    const controller = new DeleteOfflineSettingsController(worker, requestId, apiClientOptions, account);
+    await controller._exec(id);
+  });
+
+  /*
+   * Mark a resource as offline available.
+   *
+   * @listens passbolt.offline.mark-offline
+   * @param requestId {uuid} The request identifier
+   * @param id {uuid} resourceId
+   */
+  worker.port.on("passbolt.offline.mark-resource-offline", async (requestId, id) => {
+    const controller = new MarkResourceOfflineAvailableController(worker, requestId, apiClientOptions, account);
+    await controller._exec(id);
+  });
+  /*
+   * Remove a resource's offline availability.
+   *
+   * @listens passbolt.offline.unmark-offline
+   * @param requestId {uuid} The request identifier
+   * @param id {uuid} resourceId
+   */
+  worker.port.on("passbolt.offline.unmark-item-offline", async (requestId, id) => {
+    const controller = new UnmarkItemOfflineAvailableController(worker, requestId, apiClientOptions, account);
+    await controller._exec(id);
   });
 };
 

@@ -19,8 +19,13 @@ import { defaultProSiteSettings } from "passbolt-styleguide/src/shared/models/en
 import SiteSettingsLocalStorage from "../local_storage/siteSettingsLocalStorage";
 import SiteSettingsRuntimeCache from "./siteSettingsRuntimeCache";
 import FindAndUpdateSiteSettingsLocalStorageService from "./findAndUpdateSiteSettingsLocalStorageService";
-import OnlineSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/onlineSessionEntity";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 import PassboltBadResponseError from "../../error/passboltBadResponseError";
+import AuthenticationStatusService from "../authenticationStatusService";
 
 const readBrowserStorage = async (storageKey) => {
   const data = await browser.storage.local.get([storageKey]);
@@ -48,8 +53,8 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: false }));
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
       const result = await service.findAndUpdateAll();
@@ -64,8 +69,8 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: true }));
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
       await service.findAndUpdateAll();
@@ -78,8 +83,23 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(2);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: false }));
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })));
+
+      jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
+
+      await service.findAndUpdateAll();
+
+      expect(await readBrowserStorage(service.siteSettingsLocalStorage.storageKey)).toBeUndefined();
+      expect(SiteSettingsLocalStorage._runtimeCachedData[account.id]).toBeUndefined();
+    });
+
+    it("does not touch SiteSettingsLocalStorage when authenticated offline", async () => {
+      expect.assertions(2);
+      const dto = defaultProSiteSettings();
+      jest
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(offlineUserActiveSessionDto({ is_server_reachable: true })));
 
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
@@ -95,7 +115,9 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       const dto = defaultProSiteSettings();
 
       // An API error occured
-      jest.spyOn(service.checkAuthStatusService, "checkAuthStatus").mockRejectedValue(new PassboltBadResponseError());
+      jest
+        .spyOn(AuthenticationStatusService.prototype, "isAuthenticated")
+        .mockRejectedValue(new PassboltBadResponseError());
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockResolvedValue(new SiteSettingsEntity(dto));
 
       const result = await service.findAndUpdateAll();
@@ -112,8 +134,8 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
       expect.assertions(4);
       const dto = defaultProSiteSettings();
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: true }));
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       const apiSpy = jest
         .spyOn(service.findSiteSettingsService, "findSiteSettings")
@@ -134,8 +156,8 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
     it("propagates API errors and leaves both caches untouched", async () => {
       expect.assertions(4);
       jest
-        .spyOn(service.checkAuthStatusService, "checkAuthStatus")
-        .mockResolvedValue(new OnlineSessionEntity({ is_authenticated: true }));
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockRejectedValue(new Error("API down"));
 

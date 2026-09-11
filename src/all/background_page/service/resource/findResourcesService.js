@@ -14,12 +14,11 @@
 import ResourceService from "../api/resource/resourceService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
-import { assertArrayUUID, assertUuid } from "../../utils/assertions";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
 import splitBySize from "../../utils/array/splitBySize";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
-import { assertNumber } from "passbolt-styleguide/src/shared/utils/assertions";
+import { assertArrayUUID, assertNumber, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 const DEFAULT_PAGE_SIZE = 10_000;
@@ -139,7 +138,7 @@ export default class FindResourcesService {
    * might be available in the passphrase session storage.
    * @returns {Promise<ResourcesCollection>}
    */
-  async findAllByIsSharedWithGroupForLocalStorage(groupId, passphrase = null) {
+  async findAllByIsSharedWithGroupForLocalStorage(groupId) {
     const resources = await this.findAll(
       ResourceLocalStorage.DEFAULT_CONTAIN,
       { "is-shared-with-group": groupId },
@@ -147,11 +146,6 @@ export default class FindResourcesService {
     );
     const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
     resources.filterByResourceTypes(resourceTypes);
-
-    await this.decryptMetadataService.decryptAllFromForeignModels(resources, passphrase, {
-      ignoreDecryptionError: true,
-    });
-    resources.filterOutMetadataEncrypted();
 
     return resources;
   }
@@ -171,6 +165,21 @@ export default class FindResourcesService {
     await this.decryptMetadataService.decryptAllFromForeignModels(resources);
 
     return resources;
+  }
+
+  /**
+   * Retrieve all resources by ids for offline.
+   * @param {Array<string>} resourcesIds The resource ids to retrieve.
+   * @returns {Promise<ResourcesCollection>}
+   */
+  async findAllByIdsForOffline(resourcesIds) {
+    assertArrayUUID(resourcesIds);
+
+    const contains = {
+      secret: true,
+    };
+
+    return await this.findAllByIds(resourcesIds, contains, true);
   }
 
   /**
@@ -225,7 +234,7 @@ export default class FindResourcesService {
   /**
    * Find a resource given an id
    *
-   * @param {array} resourceId resource id
+   * @param {string} resourceId resource id
    * @param {Object} [contains] optional example: {permissions: true}
    * @returns {Promise<ResourceEntity>}
    */
@@ -241,7 +250,7 @@ export default class FindResourcesService {
   /**
    * Find the resource detail given an id
    *
-   * @param {array} resourceId resource id
+   * @param {string} resourceId resource id
    * @returns {Promise<ResourceEntity>}
    */
   async findOneByIdForDetails(resourceId) {
@@ -254,6 +263,23 @@ export default class FindResourcesService {
 
     const resource = this.findOneById(resourceId, contains);
     return resource;
+  }
+
+  /**
+   * Find the resource for offline given an id
+   *
+   * @param {string} resourceId resource id
+   * @returns {Promise<ResourceEntity>}
+   */
+  async findOneByIdForOffline(resourceId) {
+    assertUuid(resourceId);
+
+    const contains = {
+      secret: true,
+      ...ResourceLocalStorage.DEFAULT_CONTAIN,
+    };
+
+    return this.findOneById(resourceId, contains);
   }
 
   /**

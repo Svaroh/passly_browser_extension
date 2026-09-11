@@ -12,7 +12,8 @@
  * @since         4.12.0
  */
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import ResourceTypeService from "../api/resourceType/resourceTypeService";
 import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
 

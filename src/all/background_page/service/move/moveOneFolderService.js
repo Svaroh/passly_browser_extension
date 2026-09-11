@@ -14,7 +14,8 @@
 import GetOrFindFoldersService from "../folder/getOrFindFoldersService";
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../share/shareResourceService";
-import { assertString, assertType, assertUuid } from "../../utils/assertions";
+import { assertString, assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
 import i18n from "../../sdk/i18n";
 import MoveService from "../api/move/moveService";

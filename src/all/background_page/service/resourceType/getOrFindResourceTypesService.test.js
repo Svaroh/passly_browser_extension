@@ -19,6 +19,17 @@ import GetOrFindResourceTypesService from "./getOrFindResourceTypesService";
 import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
 import { resourceTypesCollectionDto } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection.test.data";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_OFFLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import LocalStorageMetadataEntity from "../../model/entity/localStorage/localStorageMetadataEntity";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+
+const mockActiveSession = (data) =>
+  jest
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+    .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto(data)));
 
 describe("GetOrFindResourceTypesService", () => {
   let service, account, storage;
@@ -48,6 +59,7 @@ describe("GetOrFindResourceTypesService", () => {
 
     it("delegates to the find-and-update service on cold cache and returns its result.", async () => {
       expect.assertions(2);
+      mockActiveSession();
       const resourceTypesDto = resourceTypesCollectionDto();
       const expected = new ResourceTypesCollection(resourceTypesDto);
       jest.spyOn(service.resourceTypeService, "findAll").mockImplementation(() => expected);
@@ -56,6 +68,69 @@ describe("GetOrFindResourceTypesService", () => {
 
       expect(service.resourceTypeService.findAll).toHaveBeenCalledTimes(1);
       expect(result).toStrictEqual(expected);
+    });
+
+    it("refreshes from the API when the online session logged in after the cache was written.", async () => {
+      expect.assertions(2);
+      await storage.setData(new ResourceTypesCollection(resourceTypesCollectionDto()));
+      await storage.setMetadata(new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }));
+      mockActiveSession({ last_logged_in: "2025-08-04T18:58:11+00:00" });
+      const expected = new ResourceTypesCollection(resourceTypesCollectionDto());
+      jest.spyOn(service.resourceTypeService, "findAll").mockImplementation(() => expected);
+
+      const result = await service.getOrFindAll();
+
+      expect(service.resourceTypeService.findAll).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual(expected);
+    });
+
+    it("returns the cache when the online session logged in before the cache was written.", async () => {
+      expect.assertions(2);
+      const resourceTypesDto = resourceTypesCollectionDto();
+      await storage.setData(new ResourceTypesCollection(resourceTypesDto));
+      await storage.setMetadata(new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }));
+      mockActiveSession({ last_logged_in: "2025-08-01T00:00:00+00:00" });
+      jest.spyOn(service.resourceTypeService, "findAll");
+
+      const result = await service.getOrFindAll();
+
+      expect(service.resourceTypeService.findAll).not.toHaveBeenCalled();
+      expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(
+        new ResourceTypesCollection(resourceTypesDto).toDto(storage.DEFAULT_CONTAIN),
+      );
+    });
+
+    it("returns the cache for an offline session even when it logged in after the cache was written.", async () => {
+      expect.assertions(2);
+      const resourceTypesDto = resourceTypesCollectionDto();
+      await storage.setData(new ResourceTypesCollection(resourceTypesDto));
+      await storage.setMetadata(new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }));
+      mockActiveSession({
+        type: USER_ACTIVE_SESSION_OFFLINE,
+        is_server_reachable: false,
+        last_logged_in: "2025-08-04T18:58:11+00:00",
+      });
+      jest.spyOn(service.resourceTypeService, "findAll");
+
+      const result = await service.getOrFindAll();
+
+      expect(service.resourceTypeService.findAll).not.toHaveBeenCalled();
+      expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(
+        new ResourceTypesCollection(resourceTypesDto).toDto(storage.DEFAULT_CONTAIN),
+      );
+    });
+
+    it("returns null if the active session is offline and local storage is empty.", async () => {
+      expect.assertions(2);
+      mockActiveSession({
+        type: USER_ACTIVE_SESSION_OFFLINE,
+      });
+      jest.spyOn(service.resourceTypeService, "findAll");
+
+      const result = await service.getOrFindAll();
+
+      expect(service.resourceTypeService.findAll).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
   });
 });

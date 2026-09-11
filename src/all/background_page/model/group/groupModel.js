@@ -12,12 +12,9 @@
  * @since         3.0.0
  */
 import GroupLocalStorage from "../../service/local_storage/groupLocalStorage";
-import DeleteDryRunError from "../../error/deleteDryRunError";
 import GroupEntity from "passbolt-styleguide/src/shared/models/entity/group/groupEntity";
 import GroupApiService from "../../service/api/group/groupApiService";
 import GroupUpdateDryRunResultEntity from "../entity/group/update/groupUpdateDryRunResultEntity";
-import GroupDeleteTransferEntity from "../entity/group/transfer/groupDeleteTransferEntity";
-import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/PassboltApiFetchError";
 import FindGroupsService from "../../service/group/findGroupsService";
 
 class GroupModel {
@@ -69,63 +66,6 @@ class GroupModel {
     const data = groupUpdateEntity.toDto();
     const groupUpdateDryRunResultDto = await this.groupApiService.updateDryRun(groupUpdateEntity.id, data);
     return new GroupUpdateDryRunResultEntity(groupUpdateDryRunResultDto);
-  }
-
-  /**
-   * Check if a group can be deleted
-   *
-   * A group can not be deleted if:
-   * - they are the only owner of a shared resource
-   * - they are the only group manager of a group that owns a shared resource
-   * In such case ownership transfer is required.
-   *
-   * @param {string} groupId The group id
-   * @param {GroupDeleteTransferEntity} [transfer] optional ownership transfer information if needed
-   * @returns {Promise<void>}
-   * @throws {DeleteDryRunError} if some permissions must be transferred
-   * @public
-   */
-  async deleteDryRun(groupId, transfer) {
-    try {
-      const deleteData = transfer && transfer instanceof GroupDeleteTransferEntity ? transfer.toDto() : {};
-      await this.groupApiService.delete(groupId, deleteData, true);
-    } catch (error) {
-      if (error instanceof PassboltApiFetchError && error.data.code === 400 && error.data.body.errors) {
-        /*
-         * recast generic 400 error into a delete dry run error
-         * allowing validation of the returned entities and reuse down the line to transfer permissions
-         */
-        throw new DeleteDryRunError(error.message, error.data.body.errors);
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a group and transfer ownership if needed
-   *
-   * @param {string} groupId The group id
-   * @param {GroupDeleteTransferEntity} [transfer] optional ownership transfer information if needed
-   * @returns {Promise<void>}
-   * @public
-   */
-  async delete(groupId, transfer) {
-    try {
-      const deleteData = transfer && transfer instanceof GroupDeleteTransferEntity ? transfer.toDto() : {};
-      await this.groupApiService.delete(groupId, deleteData);
-    } catch (error) {
-      if (error instanceof PassboltApiFetchError && error.data.code === 400 && error.data.body.errors) {
-        /*
-         * recast generic 400 error into a delete dry run error
-         * allowing validation of the returned entities and reuse down the line to transfer permissions
-         */
-        throw new DeleteDryRunError(error.message, error.data.body.errors);
-      }
-      throw error;
-    }
-
-    // Update local storage
-    await this.groupLocalStorage.delete(groupId);
   }
 }
 

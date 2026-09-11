@@ -12,7 +12,7 @@
  * @since         6.0.0
  */
 import i18n from "../../sdk/i18n";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import TagsCollection from "../../model/entity/tag/tagsCollection";
 import ProgressService from "../../service/progress/progressService";
 import UpdateResourceTagsService from "../../service/tag/updateResourceTagsService";
@@ -23,12 +23,13 @@ export default class AddTagsToResourcesController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
 
-    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions);
+    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions, account);
     this.progressService = new ProgressService(this.worker, i18n.t("Adding tag..."));
   }
 

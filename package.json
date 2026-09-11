@@ -21,7 +21,7 @@
     "kdbxweb": "2.1.1",
     "openpgp": "^6.1.1",
     "papaparse": "^5.5.2",
-    "passbolt-styleguide": "^5.15.1",
+    "passbolt-styleguide": "^5.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "uuid": "^14.0.0",
@@ -75,10 +75,10 @@
     "webpack-cli": "^7.0.2"
   },
   "overrides": {
-    "@xmldom/xmldom": "0.8.14",
+    "@xmldom/xmldom": "0.8.15",
     "uuid": "^14.0.0",
     "shell-quote": "1.10.0",
-    "js-yaml": "^4.2.0",
+    "js-yaml": "^4.3.2",
     "adm-zip": "0.6.0"
   },
   "scripts": {
@@ -97,7 +97,7 @@
     "dev:watch:build:chromium-mv3": "npm run dev:build:chromium-mv3 -- -w",
     "dev:watch:build:safari": "npm run dev:build:safari -- -w",
     "lint": "npm run lint:lockfile && npm run lint:eslint",
-    "lint:lockfile": "lockfile-lint --path package-lock.json --allowed-hosts npm --allowed-schemes \"https:\" \"git+ssh:\" --empty-hostname false --allowed-urls \"git+ssh://git@github.com/passbolt/react-list.git#f2dc5551e8ec115b160538b4d9db51286e6d6f06\"",
+    "lint:lockfile": "lockfile-lint --path package-lock.json --allowed-hosts npm --allowed-schemes \"https:\" --empty-hostname false",
     "lint:eslint": "eslint src --max-warnings 0",
     "lint:eslint-fix": "eslint --fix src",
     "test": "npm run test:unit",

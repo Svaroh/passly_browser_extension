@@ -39,6 +39,9 @@ import PassphraseStorageService from "../session_storage/passphraseStorageServic
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -51,6 +54,9 @@ describe("FindResourcesService", () => {
   beforeEach(async () => {
     apiClientOptions = defaultApiClientOptions();
     findResourcesService = new FindResourcesService(account, apiClientOptions);
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("::findAll", () => {
@@ -91,11 +97,14 @@ describe("FindResourcesService", () => {
       const collection = multipleResourceDtos();
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(collection));
 
-      const resources = await findResourcesService.findAll({ favorite: true, permission: true, tag: true }, null);
+      const resources = await findResourcesService.findAll(
+        { favorite: true, permission: true, tag: true, offline: true },
+        null,
+      );
 
       expect(resources).toBeInstanceOf(ResourcesCollection);
       expect(findResourcesService.resourceService.findAll).toHaveBeenCalledWith(
-        { favorite: true, permission: true, tag: true },
+        { favorite: true, permission: true, tag: true, offline: true },
         null,
       );
       expect(resources).toEqual(new ResourcesCollection(collection));
@@ -225,7 +234,7 @@ describe("FindResourcesService", () => {
       const resources = await findResourcesService.findAllForLocalStorage();
 
       expect(findResourcesService.resourceService.findAll).toHaveBeenCalledWith(
-        { favorite: true, permission: true, tag: true },
+        { favorite: true, permission: true, tag: true, offline: true },
         null,
         { limit: 10_000, page: 1, sorts: { "Resources.modified": "desc" } },
       );
@@ -357,64 +366,22 @@ describe("FindResourcesService", () => {
       });
     });
 
-    it(
-      "should return a collection with resources metadata decrypted",
-      async () => {
-        expect.assertions(2);
-        const metadataKeysDtos = defaultDecryptedSharedMetadataKeysDtos();
-        const metadataKeys = new MetadataKeysCollection(metadataKeysDtos);
+    it("should return a collection with resources metadata encrypted", async () => {
+      expect.assertions(4);
 
-        const resourcesDto = multipleResourceWithMetadataEncrypted(metadataKeysDtos[0].id);
-        const resourceTypesDto = resourceTypesCollectionDto();
+      const resourcesDto = multipleResourceWithMetadataEncrypted(uuidv4());
 
-        jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
-        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesDto);
-        jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => pgpKeys.ada.passphrase);
-        jest
-          .spyOn(GetDecryptedUserPrivateKeyService, "getKey")
-          .mockImplementation(() => OpenpgpAssertion.readKeyOrFail(pgpKeys.ada.private_decrypted));
-        jest
-          .spyOn(findResourcesService.decryptMetadataService.getOrFindMetadataKeysService, "getOrFindAll")
-          .mockImplementation(() => metadataKeys);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
+      jest.spyOn(PassphraseStorageService, "get");
+      jest.spyOn(service.decryptMetadataService, "decryptAllFromForeignModels");
 
-        const resources = await findResourcesService.findAllByIsSharedWithGroupForLocalStorage(groupId);
+      const resources = await service.findAllByIsSharedWithGroupForLocalStorage(groupId);
 
-        expect(resources).toHaveLength(resourcesDto.length);
-        expect(PassphraseStorageService.get).toHaveBeenCalledTimes(1);
-      },
-      10 * 1000,
-    );
-
-    it(
-      "does not retrieve the passphrase from the session storage if passed as parameter",
-      async () => {
-        expect.assertions(2);
-        const metadataKeysDtos = defaultDecryptedSharedMetadataKeysDtos();
-        const metadataKeys = new MetadataKeysCollection(metadataKeysDtos);
-
-        const resourcesDto = multipleResourceWithMetadataEncrypted(metadataKeysDtos[0].id);
-        const resourceTypesDto = resourceTypesCollectionDto();
-
-        jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
-        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesDto);
-        jest.spyOn(PassphraseStorageService, "get");
-        jest
-          .spyOn(GetDecryptedUserPrivateKeyService, "getKey")
-          .mockImplementation(() => OpenpgpAssertion.readKeyOrFail(pgpKeys.ada.private_decrypted));
-        jest
-          .spyOn(findResourcesService.decryptMetadataService.getOrFindMetadataKeysService, "getOrFindAll")
-          .mockImplementation(() => metadataKeys);
-
-        const resources = await findResourcesService.findAllByIsSharedWithGroupForLocalStorage(
-          groupId,
-          pgpKeys.ada.passphrase,
-        );
-
-        expect(resources).toHaveLength(resourcesDto.length);
-        expect(PassphraseStorageService.get).not.toHaveBeenCalled();
-      },
-      10 * 1000,
-    );
+      expect(resources).toHaveLength(resourcesDto.length);
+      expect(resources.items.every((resource) => !resource.isMetadataDecrypted())).toStrictEqual(true);
+      expect(service.decryptMetadataService.decryptAllFromForeignModels).not.toHaveBeenCalled();
+      expect(PassphraseStorageService.get).not.toHaveBeenCalled();
+    });
   });
 
   describe("::findAllByIds", () => {
@@ -490,6 +457,36 @@ describe("FindResourcesService", () => {
 
       expect(result.toDto()).toEqual(dtos);
       expect(ResourceService.prototype.findAll).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("::findAllByIdsForOffline", () => {
+    let service, expectedContains;
+
+    beforeEach(() => {
+      service = new FindResourcesService(account, apiClientOptions);
+      expectedContains = {
+        secret: true,
+      };
+    });
+
+    it("should call the api when the resource with right parameters", async () => {
+      expect.assertions(4);
+
+      const dtos = Array.from({ length: 10 }, () => defaultResourceDto());
+      const ids = dtos.map((dto) => dto.id);
+
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(dtos));
+      jest.spyOn(service, "findAllByIds");
+
+      const result = await service.findAllByIdsForOffline(ids);
+
+      expect(result).toEqual(new ResourcesCollection(dtos));
+      expect(ResourceService.prototype.findAll).toHaveBeenCalledTimes(1);
+      expect(ResourceService.prototype.findAll).toHaveBeenCalledWith(expectedContains, {
+        "has-id": ids,
+      });
+      expect(service.findAllByIds).toHaveBeenCalledWith(ids, expectedContains, true);
     });
   });
 
@@ -709,6 +706,54 @@ describe("FindResourcesService", () => {
     });
   });
 
+  describe("::findOneByIdForOffline", () => {
+    let service, expectedContains;
+
+    beforeEach(() => {
+      service = new FindResourcesService(account, apiClientOptions);
+      expectedContains = {
+        secret: true,
+        ...ResourceLocalStorage.DEFAULT_CONTAIN,
+      };
+    });
+
+    it("should retrieve the resource by id for offline", async () => {
+      expect.assertions(3);
+
+      const ressource = defaultResourceDto();
+
+      jest.spyOn(ResourceService.prototype, "get").mockImplementation(() => ressource);
+
+      const result = await service.findOneByIdForOffline(ressource.id);
+
+      expect(result).toEqual(new ResourceEntity(ressource));
+      expect(ResourceService.prototype.get).toHaveBeenCalledTimes(1);
+      expect(ResourceService.prototype.get).toHaveBeenCalledWith(ressource.id, expectedContains);
+    });
+
+    it("should validate the resource id to be an uuid", async () => {
+      expect.assertions(1);
+
+      const promise = service.findOneByIdForOffline("Not an uuid");
+
+      await expect(promise).rejects.toThrow("The given parameter is not a valid UUID");
+    });
+
+    it("should throw an error in case of api error", async () => {
+      expect.assertions(1);
+
+      const ressource = defaultResourceDto();
+
+      jest.spyOn(ResourceService.prototype, "get").mockImplementation(() => {
+        throw new Error("API error");
+      });
+
+      const promise = service.findOneByIdForOffline(ressource.id);
+
+      await expect(promise).rejects.toThrow("API error");
+    });
+  });
+
   describe("::findAllByIdsForLocalStorage", () => {
     let service, expectedContains;
 
@@ -718,6 +763,7 @@ describe("FindResourcesService", () => {
         permission: true,
         favorite: true,
         tag: true,
+        offline: true,
       };
     });
 
@@ -756,6 +802,7 @@ describe("FindResourcesService", () => {
         permission: true,
         favorite: true,
         tag: true,
+        offline: true,
       };
 
       expectedFilters = {

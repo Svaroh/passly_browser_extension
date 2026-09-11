@@ -20,8 +20,10 @@ import {
   defaultResourceDto,
   resourceWithTotpDto,
   resourceStandaloneTotpDto,
+  resourceMetadataEncryptedDto,
 } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
+import { readSecret } from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity.test.data";
 import ResourceEntity from "../../../model/entity/resource/resourceEntity";
 import EncryptMessageService from "../../crypto/encryptMessageService";
 import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
@@ -66,6 +68,9 @@ import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data.js";
 import PermissionService from "../../api/permission/permissionService";
 import { ownerGroupPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -112,6 +117,9 @@ describe("ResourceUpdateService", () => {
       .mockImplementation(() => [pgpKeys.ada.userId, pgpKeys.admin.userId, pgpKeys.betty.userId]);
     jest.spyOn(PermissionService.prototype, "findAllByAcoForeignKey").mockImplementation(() => []);
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("ResourceUpdateService::exec", () => {
@@ -123,14 +131,12 @@ describe("ResourceUpdateService", () => {
       await ResourceLocalStorage.addResource(entity);
 
       let resourceLocalStorageExpected;
-      jest
-        .spyOn(resourceUpdateService.resourceService, "update")
-        .mockImplementation((resourceIdToUpdate, resourceDtoToUpdate) => {
-          const resourceEntity = new ResourceEntity(resourceDto);
-          resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
-          resourceLocalStorageExpected = resourceEntity.toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN);
-          return resourceLocalStorageExpected;
-        });
+      jest.spyOn(resourceUpdateService.resourceService, "update").mockImplementation((_, resourceDtoToUpdate) => {
+        const resourceEntity = new ResourceEntity(resourceDto);
+        resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
+        resourceLocalStorageExpected = resourceEntity.toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN);
+        return resourceLocalStorageExpected;
+      });
       jest.spyOn(ResourceLocalStorage, "updateResource");
 
       await resourceUpdateService.exec(
@@ -140,14 +146,117 @@ describe("ResourceUpdateService", () => {
       );
 
       expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledTimes(1);
-      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(5);
-      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledTimes(4);
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(2);
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledTimes(2);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Secret", true);
       expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Saving resource", true);
       expect(ResourceLocalStorage.updateResource).toHaveBeenCalledTimes(1);
       expect(ResourceLocalStorage.updateResource).toHaveBeenCalledWith(
         new ResourceEntity(resourceLocalStorageExpected),
       );
+    });
+
+    it("Should call progress service during the different steps when permissions and secret changed", async () => {
+      expect.assertions(8);
+
+      // A v5 resource so the update path reports its 3 steps (metadata, secret and save).
+      const resourceDto = defaultResourceDto({ resource_type_id: TEST_RESOURCE_TYPE_V5_DEFAULT });
+      const plaintextDto = plaintextSecretPasswordAndDescriptionDto();
+      const passphrase = pgpKeys.ada.passphrase;
+      const metadataKeysDtos = defaultDecryptedSharedMetadataKeysDtos({ armored_key: pgpKeys.metadataKey.public });
+      const metadataKeys = new MetadataKeysCollection(metadataKeysDtos);
+      const entity = new ResourceEntity(resourceDto);
+      await ResourceLocalStorage.addResource(entity);
+
+      jest
+        .spyOn(resourceUpdateService.encryptMetadataKeysService.getOrFindMetadataKeysService, "getOrFindAll")
+        .mockImplementation(() => metadataKeys);
+      let resourceUpdated;
+      jest
+        .spyOn(resourceUpdateService.resourceService, "update")
+        .mockImplementation((resourceIdToUpdate, resourceDtoToUpdate) => {
+          resourceUpdated = resourceDtoToUpdate;
+          const resourceEntity = new ResourceEntity(resourceDto);
+          resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
+          resourceEntity.metadataKeyId = resourceDtoToUpdate.metadata_key_id;
+          resourceEntity.metadataKeyType = resourceDtoToUpdate.metadata_key_type;
+          resourceEntity.metadata = resourceDtoToUpdate.metadata;
+          return resourceEntity.toDto(ResourceLocalStorage.DEFAULT_CONTAIN);
+        });
+      jest.spyOn(ResourceLocalStorage, "updateResource");
+      jest.spyOn(resourceUpdateService.shareResourceService, "shareAll").mockImplementation(() => {});
+
+      const permissionChanges = [
+        {
+          aco: "Resource",
+          aro: "User",
+          aro_foreign_key: pgpKeys.betty.userId,
+          aco_foreign_key: null,
+          type: 1,
+          is_new: true,
+        },
+      ];
+
+      await resourceUpdateService.exec(resourceDto, plaintextDto, passphrase, permissionChanges);
+
+      // The secret is re-encrypted for every user having access to the resource.
+      const secretAdaDecrypted = await decryptSecret(
+        resourceUpdated.secrets[0].data,
+        account.userPrivateArmoredKey,
+        passphrase,
+      );
+      expect(resourceUpdated.secrets.length).toEqual(3);
+      expect(JSON.parse(secretAdaDecrypted)).toEqual(plaintextDto);
+      // The goals reserve 3 update steps plus the 8 share steps, and every one of them is finished.
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledTimes(1);
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(11);
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledTimes(3); //should be 11 but the share service is mocked for the tests
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Metadata", true);
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Secret", true);
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Saving resource", true);
+    });
+
+    it("Should not report the metadata encryption step when the resource type is not v5", async () => {
+      expect.assertions(6);
+
+      // A v4 resource so the update path skips the metadata encryption step.
+      const resourceDto = defaultResourceDto();
+      const plaintextDto = plaintextSecretPasswordAndDescriptionDto();
+      const passphrase = pgpKeys.ada.passphrase;
+      const entity = new ResourceEntity(resourceDto);
+      await ResourceLocalStorage.addResource(entity);
+
+      let resourceUpdated;
+      jest.spyOn(resourceUpdateService.resourceService, "update").mockImplementation((_, resourceDtoToUpdate) => {
+        resourceUpdated = resourceDtoToUpdate;
+        const resourceEntity = new ResourceEntity(resourceDto);
+        resourceEntity.secrets = new ResourceSecretsCollection([resourceDtoToUpdate.secrets[0]]);
+        return resourceEntity.toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN);
+      });
+      jest.spyOn(ResourceLocalStorage, "updateResource");
+      jest.spyOn(resourceUpdateService.shareResourceService, "shareAll").mockImplementation(() => {});
+
+      const permissionChanges = [
+        {
+          aco: "Resource",
+          aro: "User",
+          aro_foreign_key: pgpKeys.betty.userId,
+          aco_foreign_key: null,
+          type: 1,
+          is_new: true,
+        },
+      ];
+
+      await resourceUpdateService.exec(resourceDto, plaintextDto, passphrase, permissionChanges);
+
+      expect(resourceUpdated.secrets.length).toEqual(3);
+      // The goals still reserve 3 update steps plus the 8 share steps.
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledTimes(1);
+      expect(resourceUpdateService.progressService.updateGoals).toHaveBeenCalledWith(10);
+      // The metadata step is skipped for a v4 resource, so only 2 steps are finished (would be 10 but the share service is mocked for the tests).
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledTimes(2);
+      expect(resourceUpdateService.progressService.finishStep).not.toHaveBeenCalledWith("Encrypting Metadata", true);
+      expect(resourceUpdateService.progressService.finishStep).toHaveBeenCalledWith("Encrypting Secret", true);
     });
 
     it("Should apply the permission changes via shareAll after the update, stamping the resource id", async () => {
@@ -992,6 +1101,143 @@ describe("ResourceUpdateService", () => {
       await resourceUpdateService.exec(resourceDto, null, pgpKeys.ada.passphrase);
 
       expect(resourceUpdated.personal).toBe(false);
+    });
+  });
+
+  describe("ResourceUpdateService::updateOfflineStorage", () => {
+    /**
+     * Build a v5 (encrypted metadata) resource carrying an offline association and a secret.
+     * @returns {ResourceEntity}
+     */
+    const buildOfflineResource = () => {
+      const dto = resourceMetadataEncryptedDto({}, { withOffline: true });
+      const secretDto = readSecret({ resource_id: dto.id });
+      return new ResourceEntity({ ...dto, secrets: [secretDto] });
+    };
+
+    it("does not refresh the offline storage when the resource is not cached offline", async () => {
+      expect.assertions(1);
+      const resourceTypeEntity = new ResourceTypeEntity(resourceTypePasswordAndDescriptionDto());
+      const resourceDto = defaultResourceDto();
+      const resourceEntity = new ResourceEntity({
+        ...resourceDto,
+        secrets: [readSecret({ resource_id: resourceDto.id })],
+      });
+      const metadataDecrypted = resourceEntity.metadata;
+
+      jest
+        .spyOn(resourceUpdateService.resourceService, "update")
+        .mockImplementation(() =>
+          new ResourceEntity(defaultResourceDto({ id: resourceDto.id })).toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN),
+        );
+      const offlineSpy = jest.spyOn(resourceUpdateService, "updateOfflineStorage").mockResolvedValue();
+      jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
+
+      await resourceUpdateService.update(resourceEntity, resourceTypeEntity, metadataDecrypted);
+
+      expect(offlineSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the offline resource even when the entity carries no offline association", async () => {
+      expect.assertions(3);
+      const dto = resourceMetadataEncryptedDto();
+      const entity = new ResourceEntity({ ...dto, secrets: [readSecret({ resource_id: dto.id })] });
+      expect(entity.hasOfflineAccess()).toBe(false);
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, true);
+
+      expect(updateResourceSpy).toHaveBeenCalledWith(entity);
+      expect(updateSecretSpy).toHaveBeenCalledWith(entity.secret);
+    });
+
+    it("does not touch the OPFS storage for a v4 resource even when it is tagged offline", async () => {
+      expect.assertions(3);
+      // v4 resources are normalized to decrypted metadata, which the OPFS store rejects.
+      const entity = new ResourceEntity(defaultResourceDto({}, { withOffline: true }));
+      expect(entity.isMetadataDecrypted()).toBe(true);
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, true);
+
+      expect(updateResourceSpy).not.toHaveBeenCalled();
+      expect(updateSecretSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the offline resource but leaves the secret store untouched when the secret was not updated", async () => {
+      expect.assertions(2);
+      const entity = buildOfflineResource();
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, false);
+
+      expect(updateResourceSpy).toHaveBeenCalledWith(entity);
+      expect(updateSecretSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the offline resource and secret when the secret was updated", async () => {
+      expect.assertions(2);
+      const entity = buildOfflineResource();
+      const updateResourceSpy = jest
+        .spyOn(resourceUpdateService.offlineResourcesOPFSStorage, "updateResource")
+        .mockResolvedValue();
+      const updateSecretSpy = jest
+        .spyOn(resourceUpdateService.offlineSecretsOPFSStorage, "updateSecret")
+        .mockResolvedValue();
+
+      await resourceUpdateService.updateOfflineStorage(entity, true);
+
+      expect(updateResourceSpy).toHaveBeenCalledWith(entity);
+      expect(updateSecretSpy).toHaveBeenCalledWith(entity.secret);
+    });
+  });
+
+  describe("ResourceUpdateService::update - offline storage wiring", () => {
+    it("refreshes the offline storage flagging the secret as updated, before the metadata is decrypted", async () => {
+      expect.assertions(5);
+      const resourceTypeEntity = new ResourceTypeEntity(resourceTypePasswordAndDescriptionDto());
+      const resourceDto = defaultResourceDto({}, { withOffline: true });
+      // A secret is set (via the constructor so it validates), so `data` carries secrets and the
+      // update counts as a secret update.
+      const resourceEntity = new ResourceEntity({
+        ...resourceDto,
+        secrets: [readSecret({ resource_id: resourceDto.id })],
+      });
+      const metadataDecrypted = resourceEntity.metadata;
+
+      jest
+        .spyOn(resourceUpdateService.resourceService, "update")
+        .mockImplementation(() =>
+          new ResourceEntity(defaultResourceDto({ id: resourceDto.id })).toV4Dto(ResourceLocalStorage.DEFAULT_CONTAIN),
+        );
+      const offlineSpy = jest.spyOn(resourceUpdateService, "updateOfflineStorage").mockResolvedValue();
+      jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
+
+      await resourceUpdateService.update(resourceEntity, resourceTypeEntity, metadataDecrypted);
+
+      expect(offlineSpy).toHaveBeenCalledTimes(1);
+      const [passedEntity, secretUpdated] = offlineSpy.mock.calls[0];
+      expect(passedEntity).toBeInstanceOf(ResourceEntity);
+      expect(secretUpdated).toBe(true);
+
+      // carries the offline associations that is not returned by the API on update to OPFS
+      expect(passedEntity.hasOfflineAccess()).toBe(true);
+      expect(passedEntity.offline.toDto()).toEqual(resourceEntity.offline.toDto());
     });
   });
 });

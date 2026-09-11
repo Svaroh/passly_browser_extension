@@ -38,7 +38,7 @@ import DecryptMessageService from "../../crypto/decryptMessageService";
 import BinaryConvert from "../../../utils/format/binaryConvert";
 import ImportError from "../../../error/importError";
 import EntityValidationError from "passbolt-styleguide/src/shared/models/entity/abstract/entityValidationError";
-import FolderService from "../../api/folder/folderService";
+import FolderApiService from "../../api/folder/folderApiService";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import TagApiService from "../../api/tag/tagApiService";
 import { defaultTagDto } from "../../../model/entity/tag/tagEntity.test.data";
@@ -81,6 +81,9 @@ import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/sit
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -128,6 +131,9 @@ describe("ImportResourcesService", () => {
       .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
     collection = resourceTypesCollectionDto();
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => collection);
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     importResourceFileCSV = new ImportResourcesFileEntity(defaultImportResourceFileCSVDto());
     passphrase = pgpKeys.ada.passphrase;
   });
@@ -135,7 +141,7 @@ describe("ImportResourcesService", () => {
   describe("::importFile", () => {
     beforeEach(async () => {
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => defaultResourceDto());
-      jest.spyOn(FolderService.prototype, "create").mockImplementation(() => defaultFolderDto());
+      jest.spyOn(FolderApiService.prototype, "create").mockImplementation(() => defaultFolderDto());
       jest
         .spyOn(TagApiService.prototype, "updateResourceTags")
         .mockResolvedValue(new PassboltResponseEntity({ header: {}, body: [defaultTagDto({ slug: "import-ref" })] }));

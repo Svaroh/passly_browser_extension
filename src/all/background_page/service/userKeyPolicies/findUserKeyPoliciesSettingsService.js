@@ -12,7 +12,7 @@
  * @since         5.1.1
  */
 import GetOrFindSiteSettingsService from "../siteSettings/getOrFindSiteSettingsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import UserKeyPoliciesSettingsApiService from "../api/userKeyPolicies/userKeyPoliciesSettingsApiService";
 import UserKeyPoliciesSettingsEntity from "passbolt-styleguide/src/shared/models/entity/userKeyPolicies/UserKeyPoliciesSettingsEntity";
 
@@ -43,7 +43,7 @@ export default class FindUserKeyPoliciesSettingsService {
     assertUuid(authenticationToken, "The authenticationToken must be a valid UUID");
 
     const getOrFindSiteSettingsService = new GetOrFindSiteSettingsService(this.account, this.apiClientOptions);
-    const siteSettings = await getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await getOrFindSiteSettingsService.getOrFind();
     const isUserKeyPoliciesPluginEnabled = siteSettings.isPluginEnabled("userKeyPolicies");
 
     if (isUserKeyPoliciesPluginEnabled) {

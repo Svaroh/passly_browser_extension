@@ -13,7 +13,8 @@
  */
 
 import PasswordExpirySettingsService from "../../service/api/passwordExpiry/passwordExpirySettingsService";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import PasswordExpirySettingsEntity from "passbolt-styleguide/src/shared/models/entity/passwordExpiry/passwordExpirySettingsEntity";
 import GetOrFindSiteSettingsService from "../../service/siteSettings/getOrFindSiteSettingsService";
 import PasswordExpiryProSettingsEntity from "passbolt-styleguide/src/shared/models/entity/passwordExpiryPro/passwordExpiryProSettingsEntity";
@@ -68,7 +69,7 @@ class PasswordExpirySettingsModel {
    * @returns {Promise<PasswordExpirySettingsEntity>}
    */
   async save(passwordExpirySettingsEntity) {
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const isAdvancedSettingsEnable = siteSettings.isPluginEnabled("passwordExpiryPolicies");
     if (!isAdvancedSettingsEnable) {
       assertType(
@@ -106,7 +107,7 @@ class PasswordExpirySettingsModel {
    * @returns {Promise<PasswordExpirySettingsEntity|PasswordExpiryProSettingsEntity>}
    */
   async createFromDefault(passwordExpirySettingsDto = {}) {
-    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind(false);
+    const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
     const isAdvancedSettingsEnabled = siteSettings.isPluginEnabled("passwordExpiryPolicies");
     if (!isAdvancedSettingsEnabled) {
       return PasswordExpirySettingsEntity.createFromDefault(passwordExpirySettingsDto);

@@ -52,6 +52,9 @@ import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity
 import GetOrFindMetadataKeysService from "../../service/metadata/getOrFindMetadataKeysService";
 import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
 import GetOrFindResourceTypesService from "../../service/resourceType/getOrFindResourceTypesService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(async () => {
   await MockExtension.withConfiguredAccount();
@@ -93,6 +96,9 @@ describe("ExportResourcesFileController", () => {
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypeCollection);
       jest.spyOn(FileService, "saveFile").mockImplementation(jest.fn());
       jest.spyOn(GetOrFindMetadataKeysService.prototype, "getOrFindAll").mockImplementation(() => metadataKeys);
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     });
     describe("Should export the csv file.", () => {
       describe.each([

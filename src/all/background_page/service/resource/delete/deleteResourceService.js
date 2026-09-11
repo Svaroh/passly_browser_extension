@@ -14,8 +14,10 @@
 import ResourceService from "../../api/resource/resourceService";
 import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
 import i18n from "../../../sdk/i18n";
-import { assertArrayUUID } from "../../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import ExecuteConcurrentlyService from "../../execute/executeConcurrentlyService";
+import OfflineResourcesOPFSStorage from "../../opfsStorage/offlineResourcesOPFSStorage";
+import OfflineSecretsOPFSStorage from "../../opfsStorage/offlineSecretsOPFSStorage";
 class DeleteResourceService {
   /**
    * Constructor
@@ -27,6 +29,8 @@ class DeleteResourceService {
     this.account = account;
     this.resourceService = new ResourceService(apiClientOptions);
     this.progressService = progressService;
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
+    this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
   }
 
   /**
@@ -55,6 +59,9 @@ class DeleteResourceService {
 
     this.progressService.finishStep(i18n.t("Updating resources local storage"), true);
     await ResourceLocalStorage.deleteResources(resourceIds);
+    // Drop any offline-cached copies + secrets. No-ops if the resources were not cached.
+    await this.offlineResourcesOPFSStorage.deleteResources(resourceIds);
+    await this.offlineSecretsOPFSStorage.deleteByResourceIds(resourceIds);
   }
 }
 

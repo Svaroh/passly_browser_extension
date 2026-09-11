@@ -17,7 +17,7 @@ import PassboltBadResponseError from "../error/passboltBadResponseError";
 import AbstractService from "passbolt-styleguide/src/shared/services/api/abstract/abstractService";
 
 const AUTH_RESOURCE_NAME = "/auth";
-const MFA_VERIFY_ERROR_REGEXP = /mfa\/verify\/error\.json$/;
+export const MFA_VERIFY_ERROR_REGEXP = /mfa\/verify\/error\.json$/;
 
 class AuthenticationStatusService extends AbstractService {
   /**

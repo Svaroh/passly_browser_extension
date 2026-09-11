@@ -16,7 +16,7 @@ import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/
 import FolderEntity from "../entity/folder/folderEntity";
 import FoldersCollection from "../entity/folder/foldersCollection";
 import PermissionChangesCollection from "../entity/permission/change/permissionChangesCollection";
-import FolderService from "../../service/api/folder/folderService";
+import FolderApiService from "../../service/api/folder/folderApiService";
 import ShareApiService from "../../service/api/share/shareApiService";
 import splitBySize from "../../utils/array/splitBySize";
 import FindAndUpdateFoldersLocalStorageService from "../../service/folder/findAndUpdateFoldersLocalStorageService";
@@ -32,7 +32,7 @@ class FolderModel {
    * @public
    */
   constructor(apiClientOptions, account) {
-    this.folderService = new FolderService(apiClientOptions);
+    this.folderService = new FolderApiService(apiClientOptions);
     this.shareApiService = new ShareApiService(apiClientOptions);
     this.findAndUpdateFoldersLocalStorageService = new FindAndUpdateFoldersLocalStorageService(
       account,
@@ -136,20 +136,7 @@ class FolderModel {
   }
 
   /**
-   * Update a folder using Passbolt API
-   *
-   * @param {FolderEntity} folderEntity
-   * @returns {Promise<FolderEntity>}
-   */
-  async update(folderEntity) {
-    const folderDto = await this.folderService.update(folderEntity.id, folderEntity.toDto(), { permission: true });
-    const updatedFolderEntity = new FolderEntity(folderDto);
-    await FolderLocalStorage.updateFolder(updatedFolderEntity);
-    return updatedFolderEntity;
-  }
-
-  /**
-   * Update a folder using Passbolt API
+   * Share a folder using Passbolt API
    *
    * @param {FolderEntity} folderEntity
    * @param {PermissionChangesCollection} changesCollection
@@ -166,25 +153,6 @@ class FolderModel {
       await this.findAndUpdateFoldersLocalStorageService.findAndUpdateAll();
     }
     return folderEntity;
-  }
-
-  /**
-   * Delete a folder using Passbolt API
-   *
-   * @param {string} folderId uuid
-   * @param {boolean} [cascade] delete sub folder / folders
-   * @returns {Promise<void>}
-   */
-  async delete(folderId, cascade) {
-    await this.folderService.delete(folderId, cascade);
-    await FolderLocalStorage.delete(folderId);
-    if (cascade) {
-      /*
-       * update storage and get updated sub folders list in case some are deleted
-       * TODO: optimize update only if folder contains subfolders
-       */
-      await this.findAndUpdateFoldersLocalStorageService.findAndUpdateAll();
-    }
   }
 
   /**
