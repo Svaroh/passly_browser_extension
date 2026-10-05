@@ -20,6 +20,7 @@ import { defaultAccountDto } from "../../model/entity/account/accountEntity.test
 import ResourceTypeService from "../api/resourceType/resourceTypeService";
 import { resourceTypesCollectionDto } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection.test.data";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
 import GetOrFindResourcesService from "./getOrFindResourcesService";
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
 import { multipleResourceDtos } from "./getOrFindResourcesService.test.data";
@@ -267,9 +268,14 @@ describe("GetOrFindResourcesService", () => {
 
       jest
         .spyOn(ResourceService.prototype, "findAll")
-        .mockImplementation(() => [suggestedPasskeyResource, notSuggestedPasskeyResource, passwordResource]);
+        .mockImplementation(() =>
+          mockPassboltResponse([suggestedPasskeyResource, notSuggestedPasskeyResource, passwordResource]),
+        );
       jest
         .spyOn(ResourceTypeService.prototype, "findAll")
+        .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
+      jest
+        .spyOn(ResourceTypeLocalStorage.prototype, "getData")
         .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
 
       const resources = await service.getOrFindSuggested("https://www.passkeys.io", "passkey");

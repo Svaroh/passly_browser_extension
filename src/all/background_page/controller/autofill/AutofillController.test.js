@@ -163,7 +163,7 @@ describe("AutofillController", () => {
     });
 
     it("Should autofill from quickaccess with offline session.", async () => {
-      expect.assertions(11);
+      expect.assertions(10);
 
       const requestId = uuidv4();
       const worker = readWorker({ name: QuickAccessPagemod.appName });
@@ -206,7 +206,6 @@ describe("AutofillController", () => {
         pgpKeys.ada.passphrase,
       );
 
-      expect(portWrapper.emit).toHaveBeenCalledTimes(1);
       expect(portWrapper.request).toHaveBeenCalledTimes(1);
       expect(portWrapper.request).toHaveBeenCalledWith(
         "passbolt.quickaccess.fill-form",

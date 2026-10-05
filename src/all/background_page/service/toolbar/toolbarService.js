@@ -14,10 +14,6 @@
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import GetActiveAccountService from "../account/getActiveAccountService";
-<<<<<<< HEAD
-=======
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
->>>>>>> f6d0dd71 (Implement PassKey (#17))
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
@@ -167,15 +163,22 @@ class ToolbarService {
    */
   async resetSuggestedResourcesBadge() {
     this.tabUrl = null;
-    // Should do nothing if the user is not authenticated
-    const account = await GetActiveAccountService.get();
+    try {
+      // Should do nothing if the user is not authenticated
+      const account = await GetActiveAccountService.get();
 
-    const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-    const userActiveSessionEntity = await this.getUserActiveSession(account, apiClientOptions);
-    if (!userActiveSessionEntity.isAuthenticated) {
-      return;
+      const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      const userActiveSessionEntity = await this.getUserActiveSession(account, apiClientOptions);
+      if (!userActiveSessionEntity.isAuthenticated) {
+        return;
+      }
+      BrowserExtensionIconService.setSuggestedResourcesCount(0);
+    } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
+      console.error(error);
     }
-    BrowserExtensionIconService.setSuggestedResourcesCount(0);
   }
 
   /**
@@ -223,7 +226,7 @@ class ToolbarService {
           resourcesIds.add(id);
         });
 
-        suggestedResourcesCount = resourcesIds.size; (Implement PassKey (#17))
+        suggestedResourcesCount = resourcesIds.size;
       }
 
       BrowserExtensionIconService.setSuggestedResourcesCount(suggestedResourcesCount);
@@ -244,7 +247,7 @@ class ToolbarService {
   async getUserActiveSession(account, apiClientOptions) {
     const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
     // use the cached data as the worker could wake up every 30 secondes.
-    return await getOrFindActiveSessionService.getOrFind(); (Implement PassKey (#17))
+    return await getOrFindActiveSessionService.getOrFind();
   }
 
   /**

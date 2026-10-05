@@ -745,11 +745,14 @@ describe("UpdateResourcesLocalStorage", () => {
         resource_type_id: TEST_RESOURCE_TYPE_V5_PASSKEY,
       });
 
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => undefined);
       jest
         .spyOn(ResourceTypeService.prototype, "findAll")
         .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [deletedPasskeyResource]);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse([deletedPasskeyResource]));
+      jest.spyOn(service.decryptMetadataService, "decryptAllFromForeignModels").mockImplementation(() => {});
 
       const resourcesCollection = await service.findAndUpdateDeleted();
       const resourcesLSDto = await ResourceLocalStorage.get();
@@ -783,10 +786,13 @@ describe("UpdateResourcesLocalStorage", () => {
       });
 
       await ResourceLocalStorage.set(new ResourcesCollection([localDeletedPasskeyResource]));
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => undefined);
       jest
         .spyOn(ResourceTypeService.prototype, "findAll")
         .mockImplementation(() => [...resourceTypesCollectionDto(), resourceTypeV5PasskeyDto()]);
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [apiDeletedPasskeyResource]);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse([apiDeletedPasskeyResource]));
       jest.spyOn(service.decryptMetadataService, "decryptAllFromForeignModels").mockImplementation(() => {});
 
       const resourcesCollection = await service.findAndUpdateDeleted();

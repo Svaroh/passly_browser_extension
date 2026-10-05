@@ -36,7 +36,7 @@ class GetSecretSchemaResourceTypeService {
     assertUuid(resourceTypeId, "The resource type id should be a valid UUID");
 
     const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
-    const type = resourceTypes.getFirst("id", resourceTypeId);
+    const type = resourceTypes?.getFirst("id", resourceTypeId);
     return type?.definition?.secret;
   }
 }

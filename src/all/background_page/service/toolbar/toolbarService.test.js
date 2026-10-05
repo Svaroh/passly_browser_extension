@@ -16,6 +16,7 @@ import toolbarService from "./toolbarService";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import GetLegacyAccountService from "../account/getLegacyAccountService";
+import GetActiveAccountService from "../account/getActiveAccountService";
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import { defaultResourceDtosCollection } from "passbolt-styleguide/src/shared/models/entity/resource/resourcesCollection.test.data";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
@@ -84,7 +85,7 @@ describe("ToolbarService", () => {
       jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
         .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
 
@@ -230,7 +231,7 @@ describe("ToolbarService", () => {
     it("Given the focused window is cleared before an account is configured, it should not log an error.", async () => {
       expect.assertions(2);
       jest.spyOn(console, "error").mockImplementation(() => {});
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockImplementation(() => {
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {
         throw Error("The user is not set");
       });
 

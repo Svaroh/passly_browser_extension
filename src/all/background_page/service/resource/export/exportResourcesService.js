@@ -25,7 +25,7 @@ import DecryptAndParseResourceSecretService from "../../secret/decryptAndParseRe
 import FindResourcesService from "../findResourcesService";
 import CustomFieldsCollection from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection";
 import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
-import PasskeySecretSerializer from "../../../../passkey/passkeySecretSerializer"; (Import and export passkeys in KDBX files)
+import PasskeySecretSerializer from "../../../../passkey/passkeySecretSerializer";
 
 /**
  * The service aim to export the resources to a file.

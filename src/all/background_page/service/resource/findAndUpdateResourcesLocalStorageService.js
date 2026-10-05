@@ -208,7 +208,7 @@ class FindAndUpdateResourcesLocalStorage {
       validate: false,
     });
     const resourcesCollection = await this.findResourcesServices.findAllDeletedForLocalStorage();
-    const resourceTypes = await this.resourceTypeModel.updateLocalStorage();
+    const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
     resourcesCollection.filterByResourceTypes(resourceTypes);
     resourcesCollection.setDecryptedMetadataFromCollection(localStorageResourcesCollection);
     resourcesCollection.setDecryptedMetadataFromCollectionById(localStorageResourcesCollection);
