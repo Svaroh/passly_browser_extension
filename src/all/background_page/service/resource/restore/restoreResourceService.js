@@ -15,7 +15,7 @@ import ResourceService from "../../api/resource/resourceService";
 import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../../model/entity/resource/resourcesCollection";
 import i18n from "../../../sdk/i18n";
-import { assertArrayUUID } from "../../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import ExecuteConcurrentlyService from "../../execute/executeConcurrentlyService";
 import DecryptMetadataService from "../../metadata/decryptMetadataService";
 

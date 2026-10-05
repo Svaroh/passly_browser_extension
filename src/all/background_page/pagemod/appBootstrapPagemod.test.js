@@ -41,7 +41,6 @@ describe("AppBootstrap", () => {
   beforeEach(async () => {
     jest.resetModules();
     jest.clearAllMocks();
-    jest.spyOn(AppBootstrap, "sleep").mockImplementation(() => Promise.resolve());
   });
 
   describe("AppBootstrap::injectFile", () => {
@@ -156,7 +155,6 @@ describe("AppBootstrap", () => {
       });
 
       expect(result).toEqual(false);
-    });
     });
   });
 

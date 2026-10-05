@@ -21,12 +21,9 @@ import fs from "fs";
 import { defaultTotpDto } from "../../entity/totp/totpDto.test.data";
 import { defaultIconDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/iconEntity.test.data";
 import { defaultCustomFieldsCollection } from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection.test.data";
-<<<<<<< HEAD
 import { defaultCustomField } from "passbolt-styleguide/src/shared/models/entity/customField/customFieldEntity.test.data";
-=======
 import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
 import { defaultPasskeySecretDto } from "../../../../passkey/passkeySecretDto.test.data";
->>>>>>> f797723c (Import and export passkeys in KDBX files)
 
 global.kdbxweb = kdbxweb;
 kdbxweb.CryptoEngine.argon2 = argon2;
@@ -404,7 +401,6 @@ describe("ResourcesKdbxExporter", () => {
     const kdbxCredentials = new kdbxweb.Credentials(null, kdbxweb.ByteUtils.base64ToBytes(exportEntity.keyfile));
     await kdbxweb.Kdbx.load(exportEntity.file, kdbxCredentials);
   });
-<<<<<<< HEAD
 
   describe("custom field name conflicts", () => {
     async function exportAndLoadFirstEntry(customFields, data = {}) {
@@ -525,7 +521,8 @@ describe("ResourcesKdbxExporter", () => {
       expect(entry.fields.get("otp").getText()).toContain("otpauth://");
       expect(entry.fields.get("otp (1)").getText()).toEqual("custom-otp");
     });
-=======
+  });
+
   it("should export a passkey resource with its secret in a protected field", async () => {
     expect.assertions(5);
 
@@ -576,6 +573,5 @@ describe("ResourcesKdbxExporter", () => {
     const kdbxDb = await kdbxweb.Kdbx.load(exportEntity.file, kdbxCredentials);
 
     expect(kdbxDb.groups[0].entries[0].fields.get(PASSKEY_KDBX_FIELD_NAME)).toBeUndefined();
->>>>>>> f797723c (Import and export passkeys in KDBX files)
   });
 });

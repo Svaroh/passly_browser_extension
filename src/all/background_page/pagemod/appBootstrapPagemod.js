@@ -19,9 +19,6 @@ import BuildApiClientOptionsService from "../service/account/buildApiClientOptio
 import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import isMissingAccountError from "../service/account/isMissingAccountError";
 
-const AUTH_STATUS_RETRY_DELAY = 100;
-const AUTH_STATUS_RETRY_COUNT = 20;
-
 class AppBootstrap extends Pagemod {
   /**
    * @inheritDoc

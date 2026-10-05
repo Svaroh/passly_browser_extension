@@ -97,7 +97,7 @@ class AutofillController {
         // Get information from resource local storage
         resourceEntity = await ResourceLocalStorage.getResourceById(resourceId);
         const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(
-          resourceEntity.resourceTypeId,
+          resourceEntity.resource_type_id || resourceEntity.resourceTypeId,
         );
         if (this.isPasskeySecretSchema(secretSchema)) {
           throw new Error("Passkeys cannot be used with password autofill.");
@@ -106,7 +106,7 @@ class AutofillController {
       }
       const username = resourceEntity.metadata?.username || "";
       const password = plaintextSecretEntity?.password;
-      const totp = plaintextSecretEntity?.totp; (Implement PassKey (#17))
+      const totp = plaintextSecretEntity?.totp;
 
       // WebIntegration Worker
       webIntegrationWorker = await WorkerService.get("WebIntegration", tabId);

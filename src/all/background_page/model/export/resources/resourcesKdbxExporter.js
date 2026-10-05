@@ -16,7 +16,7 @@ import { FORMAT_KDBX, FORMAT_KDBX_OTHERS } from "../../entity/export/exportResou
 import { ICON_TYPE_KEEPASS_ICON_SET } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/IconEntity";
 import { KDBX_SUPPORTED_FIELDS } from "../../import/resources/resourcesKdbxImportParser";
 import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
-import PasskeySecretSerializer from "../../../../passkey/passkeySecretSerializer"; (Import and export passkeys in KDBX files)
+import PasskeySecretSerializer from "../../../../passkey/passkeySecretSerializer";
 
 class ResourcesKdbxExporter {
   /**
@@ -150,7 +150,6 @@ class ResourcesKdbxExporter {
   }
 
   /**
-<<<<<<< HEAD
    * Resolve a custom field key to a name that does not conflict with a reserved KeePass field or an already set field.
    * A name conflicts when it is a reserved field or already present on the entry. The static reserved list is required
    * because some reserved fields (e.g. "Notes") are set after the custom fields, while already set fields (including
@@ -172,7 +171,9 @@ class ResourcesKdbxExporter {
       candidate = `${key} (${index})`;
     }
     return candidate;
-=======
+  }
+
+  /**
    * Set the passkey field according to the kdbx format.
    * The secret is serialized in a protected custom field, so a passkey survives an export / import round trip.
    * @param {kdbxweb.KdbxEntry} kdbxEntry
@@ -185,7 +186,6 @@ class ResourcesKdbxExporter {
       return;
     }
     kdbxEntry.fields.set(PASSKEY_KDBX_FIELD_NAME, kdbxweb.ProtectedValue.fromString(serializedPasskey));
->>>>>>> f797723c (Import and export passkeys in KDBX files)
   }
 
   /**

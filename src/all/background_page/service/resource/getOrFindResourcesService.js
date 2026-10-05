@@ -14,14 +14,9 @@
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import FindAndUpdateResourcesLocalStorage from "./findAndUpdateResourcesLocalStorageService";
-<<<<<<< HEAD
 import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
-=======
-import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
-import { assertArrayUUID } from "../../utils/assertions";
 import { PASSKEY_RESOURCE_TYPE_SLUG } from "../../../passkey/passkeyProviderConstants";
->>>>>>> f6d0dd71 (Implement PassKey (#17))
 
 /**
  * The service aims to get resources from the local storage if it is set, or retrieve them from the API and
@@ -62,11 +57,7 @@ export default class GetOrFindResourcesService {
   /**
    * Returns the possible resources to suggest given an url.
    * @param {string} url The url to suggest for.
-<<<<<<< HEAD
-   * @param {"username"|"password"|"otp"|null} fieldType The field type to suggest for
-=======
-   * @param {"username"|"password"|"otp"|"passkey"} fieldType The field type to suggest for
->>>>>>> f6d0dd71 (Implement PassKey (#17))
+   * @param {"username"|"password"|"otp"|"passkey"|null} fieldType The field type to suggest for
    * @return {Promise<ResourcesCollection>}
    */
   async getOrFindSuggested(url, fieldType = null) {

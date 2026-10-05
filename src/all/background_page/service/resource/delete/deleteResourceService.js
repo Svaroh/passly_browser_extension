@@ -87,7 +87,6 @@ class DeleteResourceService {
    */
   isPermanentDeleteAlreadyApplied(error, recoverable) {
     return recoverable === false && error?.name === "PassboltApiFetchError" && Number(error?.data?.code) === 404;
-  } ([codex] Add trash restore and permanent delete (#18))
   }
 }
 
