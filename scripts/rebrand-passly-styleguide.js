@@ -1298,13 +1298,9 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
     ],
     [
-      `  SHARED_WITH_ME: "FILTER-BY-SHARED-WITH-ME", // Resources shared with the current user (who is not the owner)
-  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
-};`,
-      `  SHARED_WITH_ME: "FILTER-BY-SHARED-WITH-ME", // Resources shared with the current user (who is not the owner)
-  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
-  TRASH: "FILTER-BY-TRASH", // Deleted resources
-};`,
+      `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified`,
+      `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
+  TRASH: "FILTER-BY-TRASH", // Deleted resources`,
     ],
   ]) ? 1 : 0;
 
