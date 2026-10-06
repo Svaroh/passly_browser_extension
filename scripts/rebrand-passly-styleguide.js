@@ -406,6 +406,14 @@ function patchStyleguideRuntimeLogs() {
     [`      ${consoleLog}(error);\n`, `      ${consoleError}(error);\n`],
   ]) ? 1 : 0;
 
+  const extAppContext = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ExtAppContext.js");
+  changed += replaceIfExists(extAppContext, [
+    [
+      `    const storageKey = \`groups-\${this.state.account.id}\`;`,
+      `    const storageKey = this.state.account?.id ? \`groups-\${this.state.account.id}\` : null;`,
+    ],
+  ]) ? 1 : 0;
+
   return changed;
 }
 
@@ -786,6 +794,30 @@ function patchWorkspaceEditFromQueryAction() {
     ["removePasslyEditResourceQuery", "removeEditResourceQuery"],
     ['queryParameters.get("passlyAction")', 'queryParameters.get("action")'],
     ['queryParameters.delete("passlyAction")', 'queryParameters.delete("action")'],
+    [
+      `  openEditResourceFromQuery() {
+    const queryParameters = new URLSearchParams(this.props.location.search);`,
+      `  openEditResourceFromQuery() {
+    if (!this.props.location?.search) {
+      return;
+    }
+
+    const queryParameters = new URLSearchParams(this.props.location.search);`,
+    ],
+    [
+      `  removeEditResourceQuery(queryParameters) {
+    queryParameters.delete("action");`,
+      `  removeEditResourceQuery(queryParameters) {
+    if (!this.props.history || !this.props.location) {
+      return;
+    }
+
+    queryParameters.delete("action");`,
+    ],
+    [
+      "const selectedResourceId = this.props.match.params.selectedResourceId;",
+      "const selectedResourceId = this.props.match?.params?.selectedResourceId;",
+    ],
   ]) ? 1 : 0;
   changed += replaceIfMissing(workspaceMenu, 'import { withRouter } from "react-router-dom";', [
     [
@@ -820,13 +852,17 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
    * Open the edit resource dialog when requested from the URL action parameter.
    */
   openEditResourceFromQuery() {
+    if (!this.props.location?.search) {
+      return;
+    }
+
     const queryParameters = new URLSearchParams(this.props.location.search);
     if (queryParameters.get("action") !== "edit" || !this.hasOneResourceSelected()) {
       return;
     }
 
     const resource = this.selectedResources[0];
-    const selectedResourceId = this.props.match.params.selectedResourceId;
+    const selectedResourceId = this.props.match?.params?.selectedResourceId;
     if (selectedResourceId && selectedResourceId !== resource.id) {
       return;
     }
@@ -853,6 +889,10 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
    * @param {URLSearchParams} queryParameters The current query parameters.
    */
   removeEditResourceQuery(queryParameters) {
+    if (!this.props.history || !this.props.location) {
+      return;
+    }
+
     queryParameters.delete("action");
     const search = queryParameters.toString();
     this.props.history.replace({
@@ -881,12 +921,8 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
   ]) ? 1 : 0;
   changed += replaceIfMissing(workspaceMenu, "withRouter(withTranslation", [
     [
-      `                  withResourceTypesLocalStorage(
-                    withActionFeedback(withTranslation("common")(DisplayResourcesWorkspaceMenu)),
-                  ),`,
-      `                  withResourceTypesLocalStorage(
-                    withActionFeedback(withRouter(withTranslation("common")(DisplayResourcesWorkspaceMenu))),
-                  ),`,
+      'withActionFeedback(withTranslation("common")(DisplayResourcesWorkspaceMenu))',
+      'withActionFeedback(withRouter(withTranslation("common")(DisplayResourcesWorkspaceMenu)))',
     ],
   ]) ? 1 : 0;
 
