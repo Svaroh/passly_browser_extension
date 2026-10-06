@@ -43,6 +43,8 @@ const MV3_EXPECTED_FILES = [
   "serviceWorker/serviceWorker.js",
   "offscreens/offscreen.js",
   "offscreens/offscreen.html",
+  "contentScripts/js/passkey-provider/passkeyProviderBridge.js",
+  "contentScripts/js/passkey-provider/passkeyProviderPageScript.js",
 ];
 
 module.exports = {

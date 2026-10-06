@@ -49,6 +49,10 @@ const buildServiceWorkerConfig = ({ manifestPath } = {}) => ({
           from: path.resolve(__dirname, './src/chrome-mv3/serviceWorker.js'),
           to: path.resolve(__dirname, './build/all/serviceWorker/serviceWorker.js'),
         },
+        {
+          from: path.resolve(__dirname, './src/chrome-mv3/contentScripts/js/passkey-provider'),
+          to: path.resolve(__dirname, './build/all/contentScripts/js/passkey-provider'),
+        },
         ...(manifestPath ? [{
           from: manifestPath,
           to: path.resolve(__dirname, './build/all/manifest.json'),
