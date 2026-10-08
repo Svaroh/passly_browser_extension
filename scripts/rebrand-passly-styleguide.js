@@ -147,7 +147,8 @@ const offlineTranslations = {
     "The session duration is invalid.": "Недійсна тривалість сесії.",
     "Session duration": "Тривалість сесії",
     "Data retention": "Збереження даних",
-    "Last sync": "Остання синхронізація"
+    "Last sync": "Остання синхронізація",
+    "Unlimited": "Без обмежень"
   }
 };
 
@@ -3743,10 +3744,173 @@ function patchQuickAccessOfflineFallback() {
   return changed;
 }
 
+function patchOfflineSettingsEntity() {
+  const entityFile = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.js"
+  );
+  const loginPageFile = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/react-quickaccess/components/Offline/OfflineLoginPage.js"
+  );
+  const adminPageFile = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/react-extension/components/Administration/DisplayOfflineAdministration/DisplayOfflineAdministration.js"
+  );
+  let changed = 0;
+
+  changed += replaceIfExists(entityFile, [
+    [
+      `export const SESSION_DURATION_ALLOWED = Object.freeze([300, 900, 3600, 86400]);`,
+      `export const SESSION_DURATION_ALLOWED = Object.freeze([0, 300, 900, 3600, 86400]);`,
+    ],
+    [
+      `export const DATA_RETENTION_PERIOD_ALLOWED = Object.freeze([1, 7, 14, 30]);`,
+      `export const DATA_RETENTION_PERIOD_ALLOWED = Object.freeze([0, 1, 7, 14, 30]);`,
+    ],
+    [
+      `export const COMMUNITY_EDITION_OFFLINE_SETTINGS = Object.freeze({
+  max_session_duration: 300,
+  data_retention_period: 7,
+});`,
+      `export const COMMUNITY_EDITION_OFFLINE_SETTINGS = Object.freeze({
+  max_session_duration: 0,
+  data_retention_period: 0,
+  max_items: 0,
+});`,
+    ],
+    [
+      `        max_session_duration: {
+          type: "integer",
+          enum: SESSION_DURATION_ALLOWED,
+        },
+        data_retention_period: {
+          type: "integer",
+          enum: DATA_RETENTION_PERIOD_ALLOWED,
+        },
+        max_items: {
+          type: "integer",
+          minimum: 1000,
+          maximum: 1000,
+        },`,
+      `        max_session_duration: {
+          type: "integer",
+          minimum: 0,
+        },
+        data_retention_period: {
+          type: "integer",
+          minimum: 0,
+        },
+        max_items: {
+          type: "integer",
+          minimum: 0,
+        },`,
+    ],
+    [
+      `  marshall() {
+    if (this._props.max_items == null) {
+      this._props.max_items = 1000;
+    }
+  }`,
+      `  marshall() {
+    if (this._props.max_items == null) {
+      this._props.max_items = 0;
+    }
+  }`,
+    ],
+    [
+      `  get sessionDuration() {
+    return this._props.max_session_duration || null;
+  }`,
+      `  get sessionDuration() {
+    return typeof this._props.max_session_duration === "number" ? this._props.max_session_duration : null;
+  }`,
+    ],
+    [
+      `  get maximumRetentionPeriod() {
+    return this._props.data_retention_period || null;
+  }`,
+      `  get maximumRetentionPeriod() {
+    return typeof this._props.data_retention_period === "number" ? this._props.data_retention_period : null;
+  }`,
+    ],
+    [
+      `  get modifiedBy() {
+    return this._props.modified_by || null;
+  }
+}`,
+      `  get modifiedBy() {
+    return this._props.modified_by || null;
+  }
+
+  get maxItems() {
+    return typeof this._props.max_items === "number" ? this._props.max_items : 0;
+  }
+}`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(loginPageFile, [
+    [
+      `const max_session_duration = this.props.offlineSettings?.sessionDuration || 300;`,
+      `const max_session_duration =
+      typeof this.props.offlineSettings?.sessionDuration === "number" && this.props.offlineSettings.sessionDuration <= 0
+        ? -1
+        : (this.props.offlineSettings?.sessionDuration || 300);`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(adminPageFile, [
+    [
+      `  get sessionDurationOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.max_session_duration]
+      : SESSION_DURATION_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: formatSecondsDuration(value, this.props.context.locale),
+    }));
+  }`,
+      `  get sessionDurationOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.max_session_duration]
+      : SESSION_DURATION_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: value === 0 ? "Unlimited" : formatSecondsDuration(value, this.props.context.locale),
+    }));
+  }`,
+    ],
+    [
+      `  get dataRetentionPeriodOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.data_retention_period]
+      : DATA_RETENTION_PERIOD_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: this.props.t("{{count}} day", { count: value }),
+    }));
+  }`,
+      `  get dataRetentionPeriodOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.data_retention_period]
+      : DATA_RETENTION_PERIOD_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: value === 0 ? "Unlimited" : this.props.t("{{count}} day", { count: value }),
+    }));
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
 rebrandStyleguideSource();
 patchQuickAccessPasswordGeneratorSource();
 patchPasskeyResourceTypeSupport();
 patchStyleguideRuntimeLogs();
 patchQuickAccessOfflineFallback();
 patchQuickAccessVaultLocales();
+patchOfflineSettingsEntity();
 rebrandGeneratedBundles();

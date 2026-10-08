@@ -45,7 +45,12 @@ export default class OfflineRetentionDataFlushService {
       const userActiveSessionEntity = await this.getOrFindActiveSessionService.getOrFind();
       const offlineSettingsEntity = await this.getOrFindOfflineSettingsService.getOrFind();
 
-      if (userActiveSessionEntity.lastSeenOnline == null || offlineSettingsEntity === null) {
+      if (
+        userActiveSessionEntity.lastSeenOnline == null ||
+        offlineSettingsEntity === null ||
+        offlineSettingsEntity.maximumRetentionPeriod == null ||
+        offlineSettingsEntity.maximumRetentionPeriod <= 0
+      ) {
         return;
       }
 

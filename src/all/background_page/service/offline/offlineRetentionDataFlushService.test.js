@@ -83,6 +83,22 @@ describe("OfflineRetentionDataFlushService", () => {
       expect(offlineRetentionDataFlushService.offlineSecretsOPFSStorage.flush).not.toHaveBeenCalled();
     });
 
+    it("Do nothing if retention period is 0 or non-positive (perpetual).", async () => {
+      expect.assertions(3);
+      mockActiveSession(defaultUserActiveSessionDto());
+      mockOfflineSettings(defaultOfflineSettingsDto({ data_retention_period: 0 }));
+
+      jest.spyOn(offlineRetentionDataFlushService.metadataKeyOPFSStorage, "flush");
+      jest.spyOn(offlineRetentionDataFlushService.offlineResourcesOPFSStorage, "flush");
+      jest.spyOn(offlineRetentionDataFlushService.offlineSecretsOPFSStorage, "flush");
+
+      await offlineRetentionDataFlushService.flushIfExceeded();
+
+      expect(offlineRetentionDataFlushService.metadataKeyOPFSStorage.flush).not.toHaveBeenCalled();
+      expect(offlineRetentionDataFlushService.offlineResourcesOPFSStorage.flush).not.toHaveBeenCalled();
+      expect(offlineRetentionDataFlushService.offlineSecretsOPFSStorage.flush).not.toHaveBeenCalled();
+    });
+
     it("Do nothing if time is not exceeded.", async () => {
       expect.assertions(3);
       const last_seen_online = new Date().toISOString();

@@ -191,5 +191,6 @@
   "The session duration is invalid.": "Недійсна тривалість сесії.",
   "Session duration": "Тривалість сесії",
   "Data retention": "Збереження даних",
-  "Last sync": "Остання синхронізація"
+  "Last sync": "Остання синхронізація",
+  "Unlimited": "Без обмежень"
 }

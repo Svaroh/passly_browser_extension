@@ -367,20 +367,23 @@ describe("UpdateResourcesLocalStorage", () => {
         expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
       });
 
-      it("flushes both OPFS stores when offline is enabled but no offline-tagged resources are returned.", async () => {
+      it("persists all resources to OPFS when offline is enabled and no explicit offline-tagged resources are returned.", async () => {
         expect.assertions(4);
         jest.spyOn(service.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
         // None of the returned resources carry the offline association.
         jest
           .spyOn(ResourceService.prototype, "findAll")
           .mockImplementation(() => mockPassboltResponse(multipleResourceDtos()));
+        jest
+          .spyOn(service.findResourcesServices, "findAllByIds")
+          .mockResolvedValue(new ResourcesCollection([], { ignoreInvalidEntity: true }));
 
         await service.findAndUpdateAll();
 
-        expect(opfsResourcesFlushSpy).toHaveBeenCalledTimes(1);
-        expect(opfsSecretsFlushSpy).toHaveBeenCalledTimes(1);
-        expect(opfsResourcesSetSpy).not.toHaveBeenCalled();
-        expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
+        expect(opfsResourcesFlushSpy).not.toHaveBeenCalled();
+        expect(opfsSecretsFlushSpy).not.toHaveBeenCalled();
+        expect(opfsResourcesSetSpy).toHaveBeenCalledTimes(1);
+        expect(opfsSecretsDeleteSpy).not.toHaveBeenCalled();
       });
 
       it("persists offline-tagged resources and their secrets to OPFS on first refresh (cache empty).", async () => {
@@ -495,7 +498,7 @@ describe("UpdateResourcesLocalStorage", () => {
         expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
       });
 
-      it("flushes both OPFS stores when offline is enabled but no offline-tagged resources are returned.", async () => {
+      it("persists all resources to OPFS when offline is enabled and no explicit offline-tagged resources are returned.", async () => {
         expect.assertions(4);
         jest.spyOn(service.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
         // None of the returned resources carry the offline association.
@@ -503,13 +506,16 @@ describe("UpdateResourcesLocalStorage", () => {
           .spyOn(service.findResourcesServices, "findAllForLocalStorage")
           .mockResolvedValue(new ResourcesCollection(multipleResourceDtos()));
         jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => multipleResourceDtos());
+        jest
+          .spyOn(service.findResourcesServices, "findAllByIds")
+          .mockResolvedValue(new ResourcesCollection([], { ignoreInvalidEntity: true }));
 
         await service.findAndUpdateAll();
 
-        expect(opfsResourcesFlushSpy).toHaveBeenCalledTimes(1);
-        expect(opfsSecretsFlushSpy).toHaveBeenCalledTimes(1);
-        expect(opfsResourcesSetSpy).not.toHaveBeenCalled();
-        expect(opfsSecretsAddOrReplaceSpy).not.toHaveBeenCalled();
+        expect(opfsResourcesFlushSpy).not.toHaveBeenCalled();
+        expect(opfsSecretsFlushSpy).not.toHaveBeenCalled();
+        expect(opfsResourcesSetSpy).toHaveBeenCalledTimes(1);
+        expect(opfsSecretsDeleteSpy).not.toHaveBeenCalled();
       });
 
       it("persists offline-tagged resources and their secrets to OPFS on first refresh (cache empty).", async () => {
