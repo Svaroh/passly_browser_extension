@@ -108,6 +108,49 @@ const restoreActionTranslations = {
   },
 };
 
+const offlineTranslations = {
+  "uk-UA": {
+    "<0>Unable to reach the server</0>, you are not connected to the network.": "<0>Не вдалося зв\u0027язатися з сервером</0>, ви не підключені до мережі.",
+    "Unable to reach the server, you are not connected to the network": "Не вдалося зв\u0027язатися з сервером, ви не підключені до мережі",
+    "Unable to reach the server, you are not connected to the network.": "Не вдалося зв\u0027язатися з сервером, ви не підключені до мережі.",
+    "Unable to reach the server, an unexpected error occurred": "Не вдалося зв\u0027язатися з сервером, виникла неочікувана помилка",
+    "Unable to reach the server, an unexpected error occurred.": "Не вдалося зв\u0027язатися з сервером, виникла неочікувана помилка.",
+    "Unable to reach the server.": "Не вдалося зв\u0027язатися з сервером.",
+    "Connecting your account": "Підключення вашого облікового запису",
+    "Switch to offline mode": "Перейти в офлайн-режим",
+    "Switch to online mode": "Перейти в онлайн-режим",
+    "Use offline mode": "Використовувати офлайн-режим",
+    "Sign in offline": "Увійти офлайн",
+    "Available offline": "Доступно офлайн",
+    "Available Offline": "Доступно офлайн",
+    "Offline mode": "Офлайн-режим",
+    "Offline Mode": "Офлайн-режим",
+    "Offline mode details": "Деталі офлайн-режиму",
+    "No passwords are offline available yet.": "Офлайн-паролів ще немає.",
+    "Can view offline items": "Може переглядати офлайн-паролі",
+    "Can mark items as available offline": "Може позначати паролі як доступні офлайн",
+    "Can remove offline availability": "Може скасовувати доступність офлайн",
+    "Make available offline": "Зробити доступним офлайн",
+    "Remove offline availability": "Скасувати доступність офлайн",
+    "The offline settings were updated.": "Налаштування офлайн-режиму оновлено.",
+    "The resource has been made available offline.": "Пароль зроблено доступним офлайн.",
+    "The resource is no longer available offline.": "Пароль більше недоступний офлайн.",
+    "Unable to update the offline availability of the resource.": "Не вдалося оновити доступність пароля офлайн.",
+    "You have reached the maximum number of offline items (1000).": "Ви досягли максимальної кількості офлайн-паролів (1000).",
+    "Enabling offline mode allows encrypted data to be cached on user devices. Make sure your retention and session policies align with your organisation security requirements.": "Увімкнення офлайн-режиму дозволяє кешувати зашифровані дані на пристроях користувачів. Переконайтеся, що ваші політики збереження та сесій відповідають вимогам безпеки вашої організації.",
+    "How long a user remains authenticated offline before having to enter their passphrase again.": "Як довго користувач залишається автентифікованим офлайн перед тим, як знову вводити парольну фразу.",
+    "Allow users to access resources when the API is not reachable.": "Дозволити користувачам доступ до паролів, коли API недоступний.",
+    "Enable read-only access to critical credentials when the Passbolt server is unreachable or network connectivity is unavailable.": "Увімкнути доступ лише для читання до важливих облікових даних, коли сервер Passly недоступний або відсутнє підключення до мережі.",
+    "Maximum data retention period": "Максимальний період зберігання даних",
+    "Maximum time encrypted data is stored on a user\u0027s device before it is automatically deleted.": "Максимальний час збереження зашифрованих даних на пристрої користувача перед їх автоматичним видаленням.",
+    "The maximum data retention period is invalid.": "Недійсний максимальний період зберігання даних.",
+    "The session duration is invalid.": "Недійсна тривалість сесії.",
+    "Session duration": "Тривалість сесії",
+    "Data retention": "Збереження даних",
+    "Last sync": "Остання синхронізація"
+  }
+};
+
 const passlyInlineLogo = `<svg xmlns="http://www.w3.org/2000/svg" aria-labelledby="logo-title logo-description" width="151" height="27" viewBox="0 0 151 27" fill="none">
   <title id="logo-title">Passly logo</title>
   <desc id="logo-description">This is the logo of Passly.</desc>
@@ -216,6 +259,11 @@ function updateQuickAccessVaultLocale(file, locale) {
   ] = restoreActionTranslation.permanentDeleteMultiple;
   common["The resource has been restored successfully._one"] = restoreActionTranslation.successOne;
   common["The resource has been restored successfully._other"] = restoreActionTranslation.successOther;
+  if (offlineTranslations[locale]) {
+    for (const [k, v] of Object.entries(offlineTranslations[locale])) {
+      common[k] = v;
+    }
+  }
 
   const nextContent = `${JSON.stringify(common, null, 2)}\n`;
   if (content === nextContent) {
@@ -3578,9 +3626,127 @@ function rebrandGeneratedBundles() {
   return changed;
 }
 
+function patchQuickAccessOfflineFallback() {
+  const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
+  const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
+  const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
+  let changed = 0;
+
+  changed += replaceIfMissing(contextFile, "quickaccess-unreachable-fallback", [
+    [
+      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\n`,
+      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\nimport { Trans } from "react-i18next";\n`,
+    ],
+    [
+      `      if (this.props.activeSession.isSessionOnline) {
+        this.loadOnlineData(siteSettings);
+      } else if (this.props.activeSession.isSessionOffline) {
+        this.loadOfflineData(siteSettings);
+      }
+    } catch (e) {
+      console.error(e);
+      this.setState({`,
+      `      if (this.props.activeSession.isSessionOnline) {
+        await this.loadOnlineData(siteSettings);
+      } else if (this.props.activeSession.isSessionOffline) {
+        await this.loadOfflineData(siteSettings);
+      }
+      // quickaccess-unreachable-fallback: resolve the offline capability from the local caches.
+      if (!this.props.activeSession.isServerReachable) {
+        if (!this.state.loggedInUser) {
+          await this.getLoggedInUser();
+        }
+        if (!this.state.rbacs) {
+          await this.getOrFindRbacs(siteSettings);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      if (!this.props.activeSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }
+      this.setState({`,
+    ],
+    [
+      `      this.getLoggedInUser();
+      this.getOrFindRbacs(siteSettings);
+    }
+  }`,
+      `      await this.getLoggedInUser();
+      await this.getOrFindRbacs(siteSettings);
+    }
+  }`,
+    ],
+    [
+      `  async loadOfflineData(siteSettings) {
+    this.getLoggedInUser();
+    this.getOrFindRbacs(siteSettings);
+  }`,
+      `  async loadOfflineData(siteSettings) {
+    await this.getLoggedInUser();
+    await this.getOrFindRbacs(siteSettings);
+  }`,
+    ],
+    [
+      `await this.props.state.request("passbolt.tabs.open-website-getting-started-page");`,
+      `await this.state.port.request("passbolt.tabs.open-website-getting-started-page");`,
+    ],
+    [
+      `<p className="processing-text">Connecting your account</p>`,
+      `<p className="processing-text">
+                    <Trans>Connecting your account</Trans>
+                  </p>`,
+    ],
+    [
+      `<p className="processing-text">{this.state.errorMessage}</p>`,
+      `<p className="processing-text">
+                    <Trans>{this.state.errorMessage}</Trans>
+                  </p>`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(serverUnavailableFile, "offline-signin-for-configured-account", [
+    [
+      `    const { siteSettings, loggedInUser, rbacs } = this.props.context;
+
+    return (
+      // plugin enabled
+      siteSettings?.canIUse("offlineMode") &&
+      // user has a role (required for rbac)
+      Boolean(loggedInUser?.role) &&
+      // RBAC permission is allowed
+      CanUse.canRoleUseAction(loggedInUser, rbacs, actions.OFFLINE_ITEMS_VIEW) &&
+      // Offline settings is set
+      this.props.offlineSettings != null
+    );`,
+      `    const { siteSettings, loggedInUser, rbacs, account } = this.props.context;
+
+    // Offline mode must be enabled and configured.
+    if (!siteSettings?.canIUse("offlineMode") || this.props.offlineSettings == null) {
+      return false;
+    }
+    // An explicitly empty user means no usable cached identity.
+    if (loggedInUser === null) {
+      return false;
+    }
+    if (loggedInUser?.role) {
+      return CanUse.canRoleUseAction(loggedInUser, rbacs, actions.OFFLINE_ITEMS_VIEW);
+    }
+    // offline-signin-for-configured-account: the user is not loaded yet, allow the offline sign-in.
+    return Boolean(account);`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
 rebrandStyleguideSource();
 patchQuickAccessPasswordGeneratorSource();
 patchPasskeyResourceTypeSupport();
 patchStyleguideRuntimeLogs();
+patchQuickAccessOfflineFallback();
 patchQuickAccessVaultLocales();
 rebrandGeneratedBundles();

@@ -41,25 +41,31 @@ class GetOrFindMeService {
    * @returns {Promise<UserEntity|null>}
    */
   async getOrFindMe(refreshCache = false) {
+    const activeSession = await this.getOrFindActiveSessionService.getOrFind();
     if (!refreshCache) {
-      const activeSession = await this.getOrFindActiveSessionService.getOrFind();
-      // Only an online session refreshes stale data; an offline session cannot reach the API.
+      // Only an online reachable session refreshes stale data; an offline or unreachable session cannot reach the API.
       const isStale =
         activeSession.isSessionOnline &&
+        activeSession.isServerReachable !== false &&
         (await this.userMeLocalStorageService.isStaleSinceLastLoggedIn(activeSession.lastLoggedIn));
       if (!isStale) {
         const userDto = await this.userMeLocalStorageService.getData();
         if (typeof userDto !== "undefined") {
           return new UserEntity(userDto);
-        } else if (activeSession.isSessionOffline) {
+        } else if (activeSession.isSessionOffline || activeSession.isServerReachable === false) {
           return null;
         }
       }
     }
 
+    if (activeSession.isServerReachable === false || activeSession.isSessionOffline) {
+      const userDto = await this.userMeLocalStorageService.getData();
+      return typeof userDto !== "undefined" ? new UserEntity(userDto) : null;
+    }
+
     const contains = { profile: true, role: true, account_recovery_user_setting: true };
     const siteSettings = await this.getOrFindSiteSettingsService.getOrFind();
-    if (siteSettings.isPluginEnabled("metadata")) {
+    if (siteSettings?.isPluginEnabled("metadata")) {
       contains.missing_metadata_key_ids = true;
     }
 
