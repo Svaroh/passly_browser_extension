@@ -38,17 +38,22 @@ export default class GetOrFindRbacService {
    */
   async getOrFindMe() {
     const activeSession = await this.getOrFindActiveSessionService.getOrFind();
-    // Only an online session refreshes stale data; an offline session cannot reach the API.
+    // Only an online reachable session refreshes stale data; an offline or unreachable session cannot reach the API.
     const isStale =
       activeSession.isSessionOnline &&
+      activeSession.isServerReachable !== false &&
       (await this.rbacsLocalStorage.isStaleSinceLastLoggedIn(activeSession.lastLoggedIn));
     if (!isStale) {
       const collectionDto = await this.rbacsLocalStorage.getData();
       if (typeof collectionDto !== "undefined") {
         return new RbacsCollection(collectionDto);
-      } else if (activeSession.isSessionOffline) {
+      } else if (activeSession.isSessionOffline || activeSession.isServerReachable === false) {
         return new RbacsCollection([]);
       }
+    }
+    if (activeSession.isServerReachable === false || activeSession.isSessionOffline) {
+      const collectionDto = await this.rbacsLocalStorage.getData();
+      return typeof collectionDto !== "undefined" ? new RbacsCollection(collectionDto) : new RbacsCollection([]);
     }
     return this.findAndUpdateRbacLocalStorageService.findAndUpdateAll();
   }

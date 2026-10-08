@@ -265,4 +265,31 @@ describe("GetOrFindSiteSettingsService", () => {
       expect(result.toDto()).toEqual(dto);
     });
   });
+
+  describe("when server is unreachable", () => {
+    beforeEach(() => {
+      mockActiveSession({
+        is_authenticated: false,
+        is_server_reachable: false,
+        type: "online",
+      });
+    });
+
+    it("should return local storage without calling the API", async () => {
+      expect.assertions(2);
+
+      const dto = defaultProSiteSettings();
+      await service.siteSettingsLocalStorage.set(new SiteSettingsEntity(dto));
+
+      const apiSpy = jest.spyOn(
+        service.findAndUpdateSiteSettingsLocalStorageService.findSiteSettingsService,
+        "findSiteSettings",
+      );
+
+      const result = await service.getOrFind();
+
+      expect(result.toDto()).toEqual(dto);
+      expect(apiSpy).not.toHaveBeenCalled();
+    });
+  });
 });

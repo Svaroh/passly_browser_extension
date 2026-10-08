@@ -63,9 +63,10 @@ export default class GetOrFindSiteSettingsService {
   async getOrFind() {
     const activeSession = await this.getOrFindActiveSessionService.getOrFind();
 
-    // An offline session cannot reach the API: the persisted store is the only source.
-    if (activeSession.isSessionOffline) {
-      return this._getFromLocalStorage();
+    // An offline or unreachable session cannot reach the API: the persisted store is the only source.
+    if (activeSession.isSessionOffline || activeSession.isServerReachable === false) {
+      const stored = await this._getFromLocalStorage();
+      return stored ?? this._getFromRuntimeCache();
     }
 
     const siteSettings = activeSession.isAuthenticated

@@ -41,17 +41,22 @@ export default class GetOrFindOfflineSettingsService {
    */
   async getOrFind() {
     const activeSession = await this.getOrFindActiveSessionService.getOrFind();
-    // Only an online session refreshes stale data; an offline session cannot reach the API.
+    // Only an online reachable session refreshes stale data; an offline or unreachable session cannot reach the API.
     const isStale =
       activeSession.isSessionOnline &&
+      activeSession.isServerReachable !== false &&
       (await this.offlineSettingsLocalStorage.isStaleSinceLastLoggedIn(activeSession.lastLoggedIn));
     if (!isStale) {
       const offlineSettingsDto = await this.offlineSettingsLocalStorage.getData();
       if (offlineSettingsDto) {
         return new OfflineSettingsEntity(offlineSettingsDto);
-      } else if (activeSession.isSessionOffline) {
+      } else if (activeSession.isSessionOffline || activeSession.isServerReachable === false) {
         return null;
       }
+    }
+    if (activeSession.isServerReachable === false || activeSession.isSessionOffline) {
+      const offlineSettingsDto = await this.offlineSettingsLocalStorage.getData();
+      return offlineSettingsDto ? new OfflineSettingsEntity(offlineSettingsDto) : null;
     }
     return this.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate();
   }

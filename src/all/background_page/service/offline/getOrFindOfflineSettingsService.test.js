@@ -205,5 +205,28 @@ describe("GetOrFindOfflineSettingsService", () => {
       ).not.toHaveBeenCalled();
       expect(entity).toBeNull();
     });
+
+    it("returns storage and does not call API when the session is online but server is unreachable.", async () => {
+      expect.assertions(2);
+      const offlineSettingsDto = defaultOfflineSettingsDto();
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setData(
+        new OfflineSettingsEntity(offlineSettingsDto),
+      );
+      await getOrFindOfflineSettingsService.offlineSettingsLocalStorage.setMetadata(
+        new LocalStorageMetadataEntity({ last_updated: "2025-08-02T00:00:00+00:00" }),
+      );
+      mockActiveSession({
+        is_server_reachable: false,
+        last_logged_in: "2025-08-04T18:58:11+00:00",
+      });
+      jest.spyOn(getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService, "findAndUpdate");
+
+      const entity = await getOrFindOfflineSettingsService.getOrFind();
+
+      expect(
+        getOrFindOfflineSettingsService.findAndUpdateOfflineSettingsLocalStorageService.findAndUpdate,
+      ).not.toHaveBeenCalled();
+      expect(entity.toDto()).toEqual(offlineSettingsDto);
+    });
   });
 });
