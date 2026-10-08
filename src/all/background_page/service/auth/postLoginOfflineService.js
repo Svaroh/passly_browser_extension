@@ -43,7 +43,8 @@ class PostLoginOfflineService {
    * @returns {Promise<void>}
    */
   async exec(passphrase, sessionDuration) {
-    await PassphraseStorageService.set(passphrase, sessionDuration);
+    const storageDuration = typeof sessionDuration === "number" && sessionDuration > 0 ? sessionDuration : -1;
+    await PassphraseStorageService.set(passphrase, storageDuration);
     await this.findAndUpdateActiveSessionLocalStorageService.authenticateOffline();
     await this.findAndUpdateMetadataKeysSessionStorageFromOPFSService.findAndUpdateAll();
     await OfflineSessionExpiryAlarmService.scheduleSessionExpiry(this.account, sessionDuration);

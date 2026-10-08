@@ -102,9 +102,14 @@ class FindAndUpdateResourcesLocalStorage {
       updatedResourcesCollection.filterByResourceTypes(resourceTypes);
 
       // Snapshot offline-tagged items with encrypted metadata before decryption mutates the collection.
-      const offlineEncryptedResourcesCollection = canUseOffline
-        ? updatedResourcesCollection.filterByOffline()
-        : new ResourcesCollection([]);
+      let offlineEncryptedResourcesCollection = new ResourcesCollection([]);
+      if (canUseOffline) {
+        const explicitlyTagged = updatedResourcesCollection.filterByOffline();
+        offlineEncryptedResourcesCollection =
+          explicitlyTagged.length > 0
+            ? explicitlyTagged
+            : new ResourcesCollection(updatedResourcesCollection.items, { clone: true, validate: false });
+      }
 
       updatedResourcesCollection.setDecryptedMetadataFromCollection(localResourcesCollection);
 
@@ -116,7 +121,7 @@ class FindAndUpdateResourcesLocalStorage {
 
       await ResourceLocalStorage.set(updatedResourcesCollection);
 
-      await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection);
+      await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection, canUseOffline);
 
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 
@@ -128,19 +133,23 @@ class FindAndUpdateResourcesLocalStorage {
   /**
    * Refresh the offline OPFS stores from the latest fetch.
    *
-   * - Disabled or no offline-tagged resources -> flush both stores.
+   * - Disabled -> flush both stores.
    * - Otherwise -> persist the offline resources (encrypted metadata) and selectively re-fetch the
    *   secrets only for resources that are new or whose `modified` timestamp changed since the last
    *   cached snapshot. Secrets for resources that left the offline set are deleted.
    *
    * @param {ResourcesCollection} offlineEncryptedResourcesCollection Resources collection (with offline association, encrypted metadata).
+   * @param {boolean} canUseOffline Whether offline storage can be used.
    * @returns {Promise<void>}
    * @private
    */
-  async _refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection) {
-    if (offlineEncryptedResourcesCollection.length === 0) {
+  async _refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection, canUseOffline = false) {
+    if (!canUseOffline) {
       await this.offlineResourcesOPFSStorage.flush();
       await this.offlineSecretsOPFSStorage.flush();
+      return;
+    }
+    if (offlineEncryptedResourcesCollection.length === 0) {
       return;
     }
 
@@ -166,9 +175,13 @@ class FindAndUpdateResourcesLocalStorage {
     }
 
     const resourcesWithSecrets = await this.findResourcesServices.findAllByIdsForOffline(idsRequiringSecretFetch);
-    const secretDtos = resourcesWithSecrets.items.map((resourceEntity) => resourceEntity.secrets.items[0].toDto());
-    const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
-    await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+    const secretDtos = resourcesWithSecrets.items
+      .map((resourceEntity) => resourceEntity.secrets?.items?.[0]?.toDto())
+      .filter(Boolean);
+    if (secretDtos.length > 0) {
+      const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
+      await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+    }
   }
 
   /**

@@ -44,6 +44,12 @@ export default class OfflineSessionExpiryAlarmService {
     const offlineSettings = await new GetOrFindOfflineSettingsService(account, apiClientOptions).getOrFind();
     const maxSessionDuration = offlineSettings?.sessionDuration;
 
+    // Passly: perpetual offline session when maxSessionDuration <= 0.
+    if (!maxSessionDuration || maxSessionDuration <= 0) {
+      await OfflineSessionExpiryAlarmService.clearAlarm();
+      return;
+    }
+
     const sessionDuration = OfflineSessionExpiryAlarmService.resolveSessionDuration(rememberMe, maxSessionDuration);
     await OfflineSessionExpiryAlarmService.clearAlarm();
     // One-shot alarm at the end of the offline session duration.
@@ -63,6 +69,9 @@ export default class OfflineSessionExpiryAlarmService {
   static resolveSessionDuration(rememberMe, maxSessionDuration) {
     assertNumber(rememberMe);
     assertNumber(maxSessionDuration);
+    if (maxSessionDuration <= 0) {
+      return 0;
+    }
     if (rememberMe < 0 || rememberMe > maxSessionDuration) {
       return maxSessionDuration;
     }
