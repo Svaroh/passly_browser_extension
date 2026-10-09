@@ -22,7 +22,7 @@ import GetDecryptedUserPrivateKeyService from "../../../../all/background_page/s
 import GetPassphraseService from "../../../../all/background_page/service/passphrase/getPassphraseService";
 import ResourceCreateService from "../../../../all/background_page/service/resource/create/resourceCreateService";
 import ResourceLocalStorage from "../../../../all/background_page/service/local_storage/resourceLocalStorage";
-import ResourceTypeModel from "../../../../all/background_page/model/resourceType/resourceTypeModel";
+import GetOrFindResourceTypesService from "../../../../all/background_page/service/resourceType/getOrFindResourceTypesService";
 import PassphraseStorageService from "../../../../all/background_page/service/session_storage/passphraseStorageService";
 import { PASSKEY_RESOURCE_TYPE_SLUG } from "../../../../all/passkey/passkeyProviderConstants";
 import PasskeyWebauthnService from "./passkeyWebauthnService";
@@ -46,7 +46,7 @@ class PasskeyVaultResourceService {
   static async createResourceForPasskey(requestDetails, secretDto) {
     const context = await this.getContext();
     const passphrase = await this.requestUserPassphrase(context.account);
-    const resourceType = await this.getPasskeyResourceType(context.resourceTypeModel);
+    const resourceType = await this.getPasskeyResourceType(context.getOrFindResourceTypesService);
     const resourceDto = this.buildResourceDto(requestDetails, secretDto, resourceType);
     const resourceCreateService = new ResourceCreateService(
       context.account,
@@ -65,7 +65,7 @@ class PasskeyVaultResourceService {
   static async findSecretForAssertion(requestDetails) {
     const context = await this.getContext();
     const passphrase = await this.requestUserPassphrase(context.account);
-    const resourceType = await this.getPasskeyResourceType(context.resourceTypeModel);
+    const resourceType = await this.getPasskeyResourceType(context.getOrFindResourceTypesService);
     const resources = await this.getPasskeyResources(context, resourceType, passphrase);
     const options = PasskeyWebauthnService.parseRequestDetails(requestDetails);
     const origin = PasskeyWebauthnService.getOrigin(options);
@@ -126,7 +126,7 @@ class PasskeyVaultResourceService {
     return {
       account,
       apiClientOptions,
-      resourceTypeModel: new ResourceTypeModel(apiClientOptions),
+      getOrFindResourceTypesService: new GetOrFindResourceTypesService(account, apiClientOptions),
     };
   }
 

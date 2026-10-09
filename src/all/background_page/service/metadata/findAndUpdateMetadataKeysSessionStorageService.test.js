@@ -23,6 +23,7 @@ import { defaultMetadataPrivateKeyDto } from "passbolt-styleguide/src/shared/mod
 import { defaultMetadataKeyDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeyEntity.test.data";
 import { v4 as uuidv4 } from "uuid";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -38,8 +39,10 @@ describe("FindAndUpdateMetadataKeysSessionStorageService", () => {
       account,
       apiClientOptions,
     );
+    jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
     // flush account related storage before each.
     findAndUpdateKeysSessionStorageService.metadataKeysSessionStorage.flush();
+    findAndUpdateKeysSessionStorageService.metadataKeyOPFSStorage.flush();
   });
 
   describe("::findAndUpdateAll", () => {
@@ -239,6 +242,67 @@ describe("FindAndUpdateMetadataKeysSessionStorageService", () => {
       expect(resultSecondCall.toDto({ metadata_private_keys: true })).toEqual(expectedMetadataKeysDto);
       const storageValue = await findAndUpdateKeysSessionStorageService.metadataKeysSessionStorage.get();
       await expect(storageValue).toEqual(expectedMetadataKeysDto);
+    });
+
+    describe("offline OPFS storage refresh", () => {
+      let opfsMetadataKeysSetSpy, opfsMetadataKeysFlushSpy, expectedMetadataKeysDto;
+
+      beforeEach(() => {
+        // Spy on the actual instances held by the service under test so we are not at the mercy
+        // of prototype-vs-instance method resolution.
+        opfsMetadataKeysSetSpy = jest.spyOn(findAndUpdateKeysSessionStorageService.metadataKeyOPFSStorage, "set");
+        opfsMetadataKeysFlushSpy = jest.spyOn(findAndUpdateKeysSessionStorageService.metadataKeyOPFSStorage, "flush");
+        // Mock data relative to service call
+        const id = uuidv4();
+        const metadataPrivateKeysDto = [
+          defaultMetadataPrivateKeyDto({
+            metadata_key_id: id,
+            data: pgpKeys.metadataKey.encryptedMetadataPrivateKeyDataMessage,
+          }),
+        ];
+        const metadataKeysDto = [
+          defaultMetadataKeyDto({
+            id: id,
+            metadata_private_keys: metadataPrivateKeysDto,
+            fingerprint: "c0dce0aaea4d8cce961c26bddfb6e74e598f025c",
+          }),
+        ];
+        expectedMetadataKeysDto = JSON.parse(JSON.stringify(metadataKeysDto));
+
+        jest
+          .spyOn(findAndUpdateKeysSessionStorageService.findMetadataKeysService.metadataKeysApiService, "findAll")
+          .mockImplementation(() => metadataKeysDto);
+        jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => pgpKeys.ada.passphrase);
+      });
+
+      it("flushes metadata keys OPFS stores when offline is disabled.", async () => {
+        expect.assertions(2);
+        jest
+          .spyOn(findAndUpdateKeysSessionStorageService.canUseOfflineStorageService, "canUseOfflineStorage")
+          .mockResolvedValue(false);
+
+        await findAndUpdateKeysSessionStorageService.findAndUpdateAll();
+
+        expect(opfsMetadataKeysFlushSpy).toHaveBeenCalledTimes(1);
+        expect(opfsMetadataKeysSetSpy).not.toHaveBeenCalled();
+      });
+
+      it("persists offline metadata keys to OPFS", async () => {
+        expect.assertions(3);
+        jest
+          .spyOn(findAndUpdateKeysSessionStorageService.canUseOfflineStorageService, "canUseOfflineStorage")
+          .mockResolvedValue(true);
+        jest.spyOn(findAndUpdateKeysSessionStorageService.metadataKeyOPFSStorage, "_setOPFSStorage");
+
+        await findAndUpdateKeysSessionStorageService.findAndUpdateAll();
+
+        expect(opfsMetadataKeysSetSpy).toHaveBeenCalledTimes(1);
+        expect(opfsMetadataKeysFlushSpy).not.toHaveBeenCalled();
+        expect(findAndUpdateKeysSessionStorageService.metadataKeyOPFSStorage._setOPFSStorage).toHaveBeenCalledWith(
+          expect.any(String),
+          expectedMetadataKeysDto,
+        );
+      });
     });
   });
 });

@@ -11,8 +11,9 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.4.0
  */
-import UserService from "../api/user/userService";
-import { assertType, assertUuid } from "../../utils/assertions";
+import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import DeleteDryRunError from "../../error/deleteDryRunError";
 import PassboltApiFetchError from "passbolt-styleguide/src/shared/lib/Error/PassboltApiFetchError";
 import UserDeleteTransferEntity from "../../model/entity/user/transfer/userDeleteTransferEntity";
@@ -29,7 +30,7 @@ export default class DeleteUserService {
    */
   constructor(account, apiClientOptions) {
     this.account = account;
-    this.userServiceApi = new UserService(apiClientOptions);
+    this.userApiService = new UserApiService(apiClientOptions);
   }
 
   /**
@@ -49,7 +50,7 @@ export default class DeleteUserService {
   async deleteDryRun(userId) {
     assertUuid(userId, 'The parameter "userId" should be a UUID');
     try {
-      await this.userServiceApi.delete(userId, {}, true);
+      await this.userApiService.delete(userId, {}, true);
     } catch (error) {
       await this.handleError(error);
     }
@@ -70,7 +71,7 @@ export default class DeleteUserService {
     }
     try {
       const deleteData = transfer ? transfer.toDto() : {};
-      await this.userServiceApi.delete(userId, deleteData);
+      await this.userApiService.delete(userId, deleteData);
     } catch (error) {
       await this.handleError(error);
     }

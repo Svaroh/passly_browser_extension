@@ -2,13 +2,13 @@
   "manifest_version": 2,
   "name": "__MSG_appName__",
   "short_name": "passly",
-  "version": "6.0.3",
+  "version": "6.0.9",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
-      "id": "passly@svaroh.github",
-      "strict_min_version": "115.0",
+      "id": "passbolt@passbolt.com",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": [
           "none"
@@ -33,7 +33,7 @@
         "size": 32
       }
     ],
-    "default_title": "Passly Quickaccess",
+    "default_title": "Passbolt Quickaccess",
     "default_popup": "webAccessibleResources/quickaccess.html?passbolt=quickaccess"
   },
   "commands": {
@@ -43,7 +43,7 @@
         "default": "Alt+Shift+P",
         "mac": "Alt+Shift+P"
       },
-      "description": "Open passly in a new tab!"
+      "description": "Open passbolt in a new tab!"
     }
   },
   "permissions": [
@@ -59,5 +59,5 @@
   "web_accessible_resources": [
     "webAccessibleResources/*"
   ],
-  "content_security_policy": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http: ; font-src 'self'; connect-src 'self' https: http: ; form-action 'self' https: ; frame-src 'self' ; frame-ancestors 'self' https: http: ; worker-src 'self' ; base-uri 'none' ;"
+  "content_security_policy": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http: blob:; font-src 'self'; connect-src 'self' https: http: ; form-action 'self' https: ; frame-src 'self' ; frame-ancestors 'self' https: http: ; worker-src 'self' ; base-uri 'none' ;"
 }

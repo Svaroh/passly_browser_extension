@@ -17,7 +17,7 @@
 
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import AccountEntity from "../../model/entity/account/accountEntity";
-import FolderService from "../../service/api/folder/folderService";
+import FolderApiService from "../../service/api/folder/folderApiService";
 import ResourceService from "../../service/api/resource/resourceService";
 import TagApiService from "../../service/api/tag/tagApiService";
 import ImportResourcesFileController from "./importResourcesFileController";
@@ -68,10 +68,20 @@ import {
   RESOURCE_TYPE_V5_DEFAULT_TOTP_SLUG,
 } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypeSchemasDefinition";
 import GetOrFindMetadataSettingsService from "../../service/metadata/getOrFindMetadataSettingsService";
+import GetOrFindResourceTypesService from "../../service/resourceType/getOrFindResourceTypesService";
+import { anonymousSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
+import GetOrFindSiteSettingsService from "../../service/siteSettings/getOrFindSiteSettingsService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(async () => {
   await MockExtension.withConfiguredAccount();
   jest.clearAllMocks();
+  jest
+    .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+    .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
 });
 
 describe("ImportResourcesFileController", () => {
@@ -108,7 +118,7 @@ describe("ImportResourcesFileController", () => {
       //Mock api
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => collection);
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => defaultResourceDto());
-      jest.spyOn(FolderService.prototype, "create").mockImplementation(() => defaultFolderDto());
+      jest.spyOn(FolderApiService.prototype, "create").mockImplementation(() => defaultFolderDto());
       jest
         .spyOn(TagApiService.prototype, "updateResourceTags")
         .mockImplementation(() => [defaultTagDto({ slug: "import-ref" })]);
@@ -119,6 +129,9 @@ describe("ImportResourcesFileController", () => {
       jest
         .spyOn(MetadataKeysSettingsApiService.prototype, "findSettings")
         .mockImplementation(() => defaultMetadataKeysSettingsDto());
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     });
 
     describe("Should assert the fileType param.", () => {
@@ -808,7 +821,7 @@ describe("ImportResourcesFileController", () => {
       expect.assertions(1);
 
       jest.spyOn(controller.progressService, "close");
-      jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => {
+      jest.spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll").mockImplementationOnce(() => {
         throw new Error("API error");
       });
       const file = btoa(BinaryConvert.toBinary(defaultCsvData));

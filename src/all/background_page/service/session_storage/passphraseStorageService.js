@@ -29,7 +29,7 @@ class PassphraseStorageService {
     });
 
     PassphraseStorageService._clearFlushAlarms();
-    if (timeout >= 0) {
+    if (typeof timeout === "number" && timeout > 0) {
       browser.alarms.create(PassphraseStorageService.ALARM_NAME, {
         when: Date.now() + timeout * 1000,
       });

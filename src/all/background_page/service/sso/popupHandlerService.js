@@ -13,7 +13,7 @@
  */
 import UserAbortsOperationError from "../../error/userAbortsOperationError";
 import SsoLoginUrlEntity from "../../model/entity/sso/ssoLoginUrlEntity";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 const POPUP_WINDOW_HEIGHT = 600;
 const POPUP_WINDOW_WIDTH = 380;

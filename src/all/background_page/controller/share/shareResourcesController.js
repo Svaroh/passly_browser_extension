@@ -13,7 +13,8 @@
  */
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 import ProgressService from "../../service/progress/progressService";
-import { assertArray, assertArrayUUID, assertNonEmptyArray } from "../../utils/assertions";
+import { assertArray, assertNonEmptyArray } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import ShareResourceService from "../../service/share/shareResourceService";
 import i18n from "../../sdk/i18n";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";

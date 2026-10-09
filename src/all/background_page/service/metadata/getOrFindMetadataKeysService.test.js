@@ -23,6 +23,7 @@ import MetadataKeyEntity from "passbolt-styleguide/src/shared/models/entity/meta
 import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
 import PassphraseStorageService from "../session_storage/passphraseStorageService";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -64,6 +65,7 @@ describe("GetOrFindMetadataKeysService", () => {
         )
         .mockImplementation(() => apiMetadataKeysCollectionDto);
       jest.spyOn(PassphraseStorageService, "get").mockImplementation(() => pgpKeys.ada.passphrase);
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
 
       // Control initial storage value.
       const initialStorageValue = await getOrFindMetadataKeysService.metadataKeysSessionStorage.get();
@@ -101,6 +103,7 @@ describe("GetOrFindMetadataKeysService", () => {
         )
         .mockImplementation(() => apiMetadataKeysCollectionDto);
       jest.spyOn(PassphraseStorageService, "get");
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
 
       await getOrFindMetadataKeysService.getOrFindAll(pgpKeys.ada.passphrase);
 

@@ -27,6 +27,17 @@ import { defaultResourcesDtos } from "passbolt-styleguide/src/shared/models/enti
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ExternalResourceEntity from "../../model/entity/resource/external/externalResourceEntity";
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
+import { sortResourcesByUriMatchingScore } from "passbolt-styleguide/src/shared/utils/sortUtils";
+import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
+import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data";
+import GetOrFindResourcesService from "../../service/resource/getOrFindResourcesService";
+import GetOrFindOfflineResourcesService from "../../service/resource/getOrFindOfflineResourcesService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import {
+  defaultUserActiveSessionDto,
+  offlineUserActiveSessionDto,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 describe("InformMenuController", () => {
   let requestId, worker, port, controller, webIntegrationPort;
@@ -56,7 +67,13 @@ describe("InformMenuController", () => {
       suggestedResources = new ResourcesCollection(suggestedResourcesDtos);
 
       jest.spyOn(webIntegrationPort, "request").mockResolvedValue({ type: "password", value: "test" });
-      jest.spyOn(controller.getOrFindResourcesService, "getOrFindSuggested").mockResolvedValue(suggestedResources);
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      jest.spyOn(GetOrFindResourcesService.prototype, "getOrFindSuggested").mockResolvedValue(suggestedResources);
+      jest
+        .spyOn(GetOrFindOfflineResourcesService.prototype, "getOrFindSuggested")
+        .mockResolvedValue(suggestedResources);
     });
 
     it("Should emit SUCCESS with configuration containing inputType, inputValue, and suggestedResources", async () => {
@@ -72,15 +89,42 @@ describe("InformMenuController", () => {
         "passbolt.web-integration.last-performed-call-to-action-input",
       );
 
-      expect(controller.getOrFindResourcesService.getOrFindSuggested).toHaveBeenCalledTimes(1);
-      expect(controller.getOrFindResourcesService.getOrFindSuggested).toHaveBeenCalledWith(worker.tab.url, "password");
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledTimes(1);
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledWith(worker.tab.url, "password");
 
       expect(port.emit).toHaveBeenCalledTimes(1);
       expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS", {
         inputType: "password",
         inputValue: "test",
-        suggestedResources: suggestedResourcesDtos,
+        suggestedResources: sortResourcesByUriMatchingScore(suggestedResourcesDtos, worker.tab.url),
       });
+    });
+
+    it("Should sort suggestedResources by URI matching score with the tab url, best match first", async () => {
+      expect.assertions(2);
+
+      const noMatch = defaultResourceDto({ metadata: defaultResourceMetadataDto({ uris: ["https://example.com"] }) });
+      const sameDomain = defaultResourceDto({ metadata: defaultResourceMetadataDto({ uris: ["passbolt.com"] }) });
+      const sameFqdn = defaultResourceDto({
+        metadata: defaultResourceMetadataDto({ uris: ["https://www.passbolt.com/login"] }),
+      });
+      const exactMatch = defaultResourceDto({
+        metadata: defaultResourceMetadataDto({ uris: ["https://www.passbolt.com"] }),
+      });
+
+      const unsortedCollection = new ResourcesCollection([noMatch, sameDomain, sameFqdn, exactMatch]);
+      jest.spyOn(GetOrFindResourcesService.prototype, "getOrFindSuggested").mockResolvedValue(unsortedCollection);
+
+      await controller.getInitialConfiguration(requestId);
+
+      const emittedConfiguration = port.emit.mock.calls[0][2];
+      expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS", expect.anything());
+      expect(emittedConfiguration.suggestedResources.map((resource) => resource.id)).toEqual([
+        exactMatch.id,
+        sameFqdn.id,
+        sameDomain.id,
+        noMatch.id,
+      ]);
     });
 
     it("Should catch and emit ERROR when WorkerService throws an error", async () => {
@@ -109,11 +153,40 @@ describe("InformMenuController", () => {
       expect.assertions(1);
 
       const error = new Error();
-      jest.spyOn(controller.getOrFindResourcesService, "getOrFindSuggested").mockRejectedValue(error);
+      jest.spyOn(GetOrFindResourcesService.prototype, "getOrFindSuggested").mockRejectedValue(error);
 
       await controller.getInitialConfiguration(requestId);
 
       expect(port.emit).toHaveBeenCalledWith(requestId, "ERROR", error);
+    });
+
+    it("Should get the suggested resources from the offline storage when the session is offline", async () => {
+      expect.assertions(3);
+
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(offlineUserActiveSessionDto()));
+
+      await controller.getInitialConfiguration(requestId);
+
+      expect(GetOrFindOfflineResourcesService.prototype.getOrFindSuggested).toHaveBeenCalledWith(
+        worker.tab.url,
+        "password",
+      );
+      expect(GetOrFindResourcesService.prototype.getOrFindSuggested).not.toHaveBeenCalled();
+      expect(port.emit).toHaveBeenCalledWith(requestId, "SUCCESS", {
+        inputType: "password",
+        inputValue: "test",
+        suggestedResources: sortResourcesByUriMatchingScore(suggestedResourcesDtos, worker.tab.url),
+      });
+    });
+
+    it("Should resolve the active session only once", async () => {
+      expect.assertions(1);
+
+      await controller.getInitialConfiguration(requestId);
+
+      expect(GetOrFindActiveSessionService.prototype.getOrFind).toHaveBeenCalledTimes(1);
     });
   });
 

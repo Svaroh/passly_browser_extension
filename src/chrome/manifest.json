@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "__MSG_appName__",
   "short_name": "passly",
-  "version": "6.0.3",
+  "version": "6.0.9",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "externally_connectable": {},
@@ -23,7 +23,7 @@
         "size": 32
       }
     ],
-    "default_title": "Passly Quickaccess",
+    "default_title": "Passbolt Quickaccess",
     "default_popup": "webAccessibleResources/quickaccess.html?passbolt=quickaccess"
   },
   "commands": {
@@ -32,7 +32,7 @@
         "default": "Alt+Shift+P",
         "mac": "Alt+Shift+P"
       },
-      "description": "Open passly in a new tab!"
+      "description": "Open passbolt in a new tab!"
     }
   },
   "permissions": [

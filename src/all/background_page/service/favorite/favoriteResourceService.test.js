@@ -30,6 +30,12 @@ describe("FavoriteResourceService", () => {
   beforeEach(() => {
     favoriteResourceService = new FavoriteResourceService(apiClientOptions, account);
     jest.clearAllMocks();
+    // Default the offline lookup to "not cached" so the local-storage paths under test stay focused
+    // on local storage behavior. Tests that exercise the OPFS mirror override this.
+    jest
+      .spyOn(favoriteResourceService.offlineResourcesOPFSStorage, "getOfflineResourceById")
+      .mockResolvedValue(undefined);
+    jest.spyOn(favoriteResourceService.offlineResourcesOPFSStorage, "updateResourceFavorite").mockResolvedValue();
   });
 
   describe("::addResourceToFavorite", () => {

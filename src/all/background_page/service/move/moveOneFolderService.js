@@ -14,19 +14,20 @@
 import GetOrFindFoldersService from "../folder/getOrFindFoldersService";
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../share/shareResourceService";
-import { assertString, assertType, assertUuid } from "../../utils/assertions";
+import { assertString, assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
 import i18n from "../../sdk/i18n";
-import FolderModel from "../../model/folder/folderModel";
+import MoveService from "../api/move/moveService";
 import ShareFoldersService, { PROGRESS_STEPS_SHARE_FOLDERS_SHARE_ONE } from "../share/shareFoldersService";
 import FindFoldersService from "../folder/findFoldersService";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
 import FindResourcesService from "../resource/findResourcesService";
 import FolderEntity from "../../model/entity/folder/folderEntity";
 import FindAndUpdateFoldersLocalStorageService from "../folder/findAndUpdateFoldersLocalStorageService";
-import ResourceModel from "../../model/resource/resourceModel";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ConfirmMoveStrategyService from "./confirmMoveStrategyService";
+import CalculatePermissionsChangesForMoveService from "./calculatePermissionsChangesForMoveService";
 
 const STEPS_TO_COMPLETE_SHARE = PROGRESS_STEPS_SHARE_FOLDERS_SHARE_ONE + PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL;
 
@@ -59,8 +60,7 @@ class MoveOneFolderService {
     this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
     this.findFoldersService = new FindFoldersService(apiClientOptions);
     this.findResourcesService = new FindResourcesService(account, apiClientOptions);
-    this.folderModel = new FolderModel(apiClientOptions, account);
-    this.resourceModel = new ResourceModel(apiClientOptions);
+    this.moveApiService = new MoveService(apiClientOptions);
     this.findAndUpdateFoldersLocalStorage = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
   }
 
@@ -265,7 +265,7 @@ class MoveOneFolderService {
 
     const permissionChanges = new PermissionChangesCollection([]);
     for (const folderToShare of foldersToShare) {
-      const childrenFolderPermissionChange = this.folderModel.calculatePermissionsChangesForMove(
+      const childrenFolderPermissionChange = CalculatePermissionsChangesForMoveService.forFolder(
         folderToShare,
         parentFolder,
         destinationFolder,
@@ -289,7 +289,7 @@ class MoveOneFolderService {
 
     const resourcePermissionChanges = new PermissionChangesCollection([]);
     for (const resourceToShare of resourcesToShare) {
-      const resourcePermissionChange = this.resourceModel.calculatePermissionsChangesForMove(
+      const resourcePermissionChange = CalculatePermissionsChangesForMoveService.forResource(
         resourceToShare,
         parentFolder,
         destinationFolder,
@@ -365,7 +365,7 @@ class MoveOneFolderService {
    */
   async move(folder, destinationFolderId) {
     this.progressService.finishStep(i18n.t("Moving folder"), true);
-    await this.folderModel.move(folder.id, destinationFolderId);
+    await this.moveApiService.moveFolder(folder.id, destinationFolderId);
   }
 }
 

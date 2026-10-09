@@ -11,12 +11,13 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.0.0
  */
-import GroupModel from "../model/group/groupModel";
+import DeleteGroupController from "../controller/group/deleteGroupController";
+import DeleteDryRunGroupController from "../controller/group/deleteDryRunGroupController";
 import GroupsUpdateController from "../controller/group/groupUpdateController";
 import GroupCreateController from "../controller/group/groupCreateController";
-import GroupDeleteTransferEntity from "../model/entity/group/transfer/groupDeleteTransferEntity";
 import FindMyGroupsController from "../controller/group/findMyGroupsController";
 import UpdateAllGroupsLocalStorageController from "../controller/group/updateAllGroupsLocalStorageController";
+import FindGroupsByIdsForShareController from "../controller/group/findGroupsByIdsForShareController";
 
 /**
  * Listens to the groups events
@@ -46,6 +47,18 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.groups.find-my-groups", async (requestId) => {
     const controller = new FindMyGroupsController(worker, requestId, apiClientOptions);
     controller._exec();
+  });
+
+  /*
+   * Find groups by their ids.
+   *
+   * @listens passbolt.groups.find-by-ids-for-share
+   * @param {uuid} requestId The request identifier
+   * @param {Array<uuid>} groupIds The ids of the groups to retrieve
+   */
+  worker.port.on("passbolt.groups.find-by-ids-for-share", async (requestId, groupIds) => {
+    const controller = new FindGroupsByIdsForShareController(worker, requestId, apiClientOptions);
+    controller._exec(groupIds);
   });
 
   /*
@@ -83,20 +96,11 @@ const listen = function (worker, apiClientOptions, account) {
    * Delete a Group - dry run
    *
    * @param {string} requestId The request identifier uuid
-   * @param {string} groupId The user uuid
-   * @param {object} [transferDto] optional data ownership transfer
-   * example: {owners: [{aco_foreign_key: <UUID>, id: <UUID>}]}
+   * @param {string} groupId The group uuid
    */
-  worker.port.on("passbolt.groups.delete-dry-run", async (requestId, groupId, transferDto) => {
-    try {
-      const groupModel = new GroupModel(apiClientOptions, account);
-      const transferEntity = transferDto ? new GroupDeleteTransferEntity(transferDto) : null;
-      await groupModel.deleteDryRun(groupId, transferEntity);
-      worker.port.emit(requestId, "SUCCESS");
-    } catch (error) {
-      console.error(error);
-      worker.port.emit(requestId, "ERROR", error);
-    }
+  worker.port.on("passbolt.groups.delete-dry-run", async (requestId, groupId) => {
+    const controller = new DeleteDryRunGroupController(worker, requestId, apiClientOptions, account);
+    controller._exec(groupId);
   });
 
   /*
@@ -108,15 +112,8 @@ const listen = function (worker, apiClientOptions, account) {
    * example: {owners: [{aco_foreign_key: <UUID>, id: <UUID>}]}
    */
   worker.port.on("passbolt.groups.delete", async (requestId, groupId, transferDto) => {
-    try {
-      const groupModel = new GroupModel(apiClientOptions, account);
-      const transferEntity = transferDto ? new GroupDeleteTransferEntity(transferDto) : null;
-      await groupModel.delete(groupId, transferEntity);
-      worker.port.emit(requestId, "SUCCESS");
-    } catch (error) {
-      console.error(error);
-      worker.port.emit(requestId, "ERROR", error);
-    }
+    const controller = new DeleteGroupController(worker, requestId, apiClientOptions, account);
+    controller._exec(groupId, transferDto);
   });
 };
 export const GroupEvents = { listen };

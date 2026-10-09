@@ -27,10 +27,18 @@ import EncryptMessageService from "../../service/crypto/encryptMessageService";
 import { defaultResourceV4Dto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import { plaintextSecretPasswordAndDescriptionDto } from "passbolt-styleguide/src/shared/models/entity/plaintextSecret/plaintextSecretEntity.test.data";
 import { simulateShareSecretsChangesDto } from "../../service/share/shareResourceService.test.data";
+import { anonymousSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
+import GetOrFindSiteSettingsService from "../../service/siteSettings/getOrFindSiteSettingsService";
 
 const { pgpKeys } = require("passbolt-styleguide/test/fixture/pgpKeys/keys");
 
 describe("ShareResourcesController", () => {
+  beforeEach(() => {
+    jest
+      .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+      .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
+  });
   describe("::exec", () => {
     let account, controller;
     beforeEach(async () => {
@@ -85,11 +93,11 @@ describe("ShareResourcesController", () => {
         .mockImplementation(() => new ResourcesCollection([resourceDto]));
       // Mock request retrieving the resource types.
       jest
-        .spyOn(controller.shareResourceService.resourceTypeModel, "getOrFindAll")
+        .spyOn(controller.shareResourceService.getOrFindResourceTypesService, "getOrFindAll")
         .mockImplementation(() => new ResourceTypesCollection(resourceTypesCollectionDto()));
       // Mock request simulating the share.
       jest
-        .spyOn(controller.shareResourceService.shareService, "simulateShareResource")
+        .spyOn(controller.shareResourceService.shareApiService, "simulateShareResource")
         .mockImplementation(() => simulateShareSecretsChangesDto([pgpKeys.carol.userId], []));
       // Mock find all for share.
       const secretDto = plaintextSecretPasswordAndDescriptionDto();
@@ -111,7 +119,7 @@ describe("ShareResourcesController", () => {
       // Mock the share request.
       let shareRequestData;
       jest
-        .spyOn(controller.shareResourceService.shareService, "shareResource")
+        .spyOn(controller.shareResourceService.shareApiService, "shareResource")
         .mockImplementation((resourceId, data) => {
           shareRequestData = data;
           return {};

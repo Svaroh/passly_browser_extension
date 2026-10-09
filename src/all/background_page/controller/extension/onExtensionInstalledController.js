@@ -17,13 +17,15 @@ import PagemodManager from "../../pagemod/pagemodManager";
 import WebNavigationService from "../../service/webNavigation/webNavigationService";
 import ParseSetupUrlService from "../../service/setup/parseSetupUrlService";
 import ParseRecoverUrlService from "../../service/recover/parseRecoverUrlService";
-import CheckAuthStatusService from "../../service/auth/checkAuthStatusService";
 import User from "../../model/user";
 import { BrowserExtensionIconService } from "../../service/ui/browserExtensionIcon.service";
 import storage from "../../sdk/storage";
 import { Config } from "../../model/config";
 import AuthModel from "../../model/auth/authModel";
 import AppBootstrapPagemod from "../../pagemod/appBootstrapPagemod";
+import GetActiveAccountService from "../../service/account/getActiveAccountService";
+import BuildApiClientOptionsService from "../../service/account/buildApiClientOptionsService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 
 class OnExtensionInstalledController {
   /**
@@ -83,23 +85,25 @@ class OnExtensionInstalledController {
     if (!user.isValid()) {
       return;
     }
-    let authStatus;
+    let activeSessionEntity, account;
     try {
-      const checkAuthStatusService = new CheckAuthStatusService();
+      account = await GetActiveAccountService.get();
+      const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
       // use the cached data as the worker could wake up every 30 secondes.
-      authStatus = await checkAuthStatusService.checkAuthStatus(false);
+      activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...
       return;
     }
     // Do nothing if user is not authenticated
-    if (!authStatus.isAuthenticated) {
+    if (!activeSessionEntity.isAuthenticated) {
       return;
     }
     // Logout authenticated user to prevent to ask passphrase for SSO users
     const apiClientOptions = await user.getApiClientOptions();
-    const authModel = new AuthModel(apiClientOptions);
+    const authModel = new AuthModel(apiClientOptions, account);
     await authModel.logout();
     /*
      * Reload only tabs that match passbolt app url. Reload is necessary as the application loaded in the tab
@@ -122,18 +126,20 @@ class OnExtensionInstalledController {
       return;
     }
 
-    let authStatus;
+    let activeSessionEntity;
     try {
-      const checkAuthStatusService = new CheckAuthStatusService();
+      const account = await GetActiveAccountService.get();
+      const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
       // use the cached data as the worker could wake up every 30 secondes.
-      authStatus = await checkAuthStatusService.checkAuthStatus(false);
+      activeSessionEntity = await getOrFindActiveSessionService.getOrFind();
     } catch (error) {
       console.error(error);
       // Service is unavailable, do nothing...
       return;
     }
 
-    if (authStatus.isAuthenticated) {
+    if (activeSessionEntity.isAuthenticated) {
       BrowserExtensionIconService.activate();
     } else {
       BrowserExtensionIconService.deactivate();

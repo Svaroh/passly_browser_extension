@@ -190,6 +190,53 @@ describe("CsvBitWardenRowParser", () => {
     expect(externalResourceEntity.toDto()).toEqual(expectedEntity.toDto());
   });
 
+  it("parses resource of type v5-default-with-totp with a totp secret key instead of an otpauth url", () => {
+    expect.assertions(2);
+
+    const data = {
+      name: "EVGA",
+      login_username: "hello@bitwarden.com",
+      login_uri: "https://www.evga.com/support/login.asp",
+      login_password: "fakepassword",
+      login_totp: "TJSNMLGTCYOEMXZG",
+    };
+
+    const importDto = {
+      ref: "import-ref",
+      file_type: "csv",
+      file: btoa(BinaryConvert.toBinary(data)),
+    };
+    const importEntity = new ImportResourcesFileEntity(importDto);
+    const resourceTypesCollection = new ResourceTypesCollection(resourceTypesCollectionDto());
+    const metadataTypesSettings = new MetadataTypesSettingsEntity(defaultMetadataTypesSettingsV50FreshDto());
+    const expectedResourceType = resourceTypesCollection.items.find(
+      (resourceType) => resourceType.slug === RESOURCE_TYPE_V5_DEFAULT_TOTP_SLUG,
+    );
+    const expectedEntity = new ExternalResourceEntity({
+      name: data.name,
+      username: data.login_username,
+      uris: [data.login_uri],
+      resource_type_id: expectedResourceType.id,
+      secret_clear: data.login_password,
+      totp: {
+        period: 30,
+        digits: 6,
+        algorithm: "SHA1",
+        secret_key: "TJSNMLGTCYOEMXZG",
+      },
+    });
+
+    const externalResourceEntity = CsvBitWardenRowParser.parse(
+      data,
+      importEntity,
+      resourceTypesCollection,
+      metadataTypesSettings,
+    );
+
+    expect(externalResourceEntity).toBeInstanceOf(ExternalResourceEntity);
+    expect(externalResourceEntity.toDto()).toEqual(expectedEntity.toDto());
+  });
+
   it("parses resource of type password-description-totp with all properties from csv row", () => {
     expect.assertions(2);
 

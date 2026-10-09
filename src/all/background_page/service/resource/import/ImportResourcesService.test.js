@@ -38,7 +38,7 @@ import DecryptMessageService from "../../crypto/decryptMessageService";
 import BinaryConvert from "../../../utils/format/binaryConvert";
 import ImportError from "../../../error/importError";
 import EntityValidationError from "passbolt-styleguide/src/shared/models/entity/abstract/entityValidationError";
-import FolderService from "../../api/folder/folderService";
+import FolderApiService from "../../api/folder/folderApiService";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import TagApiService from "../../api/tag/tagApiService";
 import { defaultTagDto } from "../../../model/entity/tag/tagEntity.test.data";
@@ -72,19 +72,18 @@ import DecryptMetadataService from "../../metadata/decryptMetadataService";
 import { defaultPasswordExpirySettingsDtoFromApi } from "passbolt-styleguide/src/shared/models/entity/passwordExpiry/passwordExpirySettingsEntity.test.data";
 import PasswordExpirySettingsService from "../../api/passwordExpiry/passwordExpirySettingsService";
 import {
-  defaultCeOrganizationSettings,
-  defaultProOrganizationSettings,
-} from "../../../model/entity/organizationSettings/organizationSettingsEntity.test.data";
-import OrganizationSettingsService from "../../api/organizationSettings/organizationSettingsService";
+  anonymousSiteSettings,
+  defaultCeSiteSettings,
+  defaultProSiteSettings,
+} from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
+import GetOrFindSiteSettingsService from "../../siteSettings/getOrFindSiteSettingsService";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
-import * as kdbxweb from "kdbxweb";
-import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
-import {
-  defaultPasskeySecretDto,
-  keepassPasskeyFieldsDto,
-  passkeyResourceTypeDto,
-} from "../../../../passkey/passkeySecretDto.test.data";
-import { KEEPASS_PASSKEY_FIELDS } from "../../../../passkey/passkeyKeepassImportService";
+import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
+import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -127,8 +126,14 @@ describe("ImportResourcesService", () => {
     };
     decryptMetadataService = new DecryptMetadataService(apiClientOptions, account);
     importResourcesService = new ImportResourcesService(account, apiClientOptions, new ProgressService(worker, ""));
+    jest
+      .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+      .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
     collection = resourceTypesCollectionDto();
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => collection);
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     importResourceFileCSV = new ImportResourcesFileEntity(defaultImportResourceFileCSVDto());
     passphrase = pgpKeys.ada.passphrase;
   });
@@ -136,7 +141,7 @@ describe("ImportResourcesService", () => {
   describe("::importFile", () => {
     beforeEach(async () => {
       jest.spyOn(ResourceService.prototype, "create").mockImplementation(() => defaultResourceDto());
-      jest.spyOn(FolderService.prototype, "create").mockImplementation(() => defaultFolderDto());
+      jest.spyOn(FolderApiService.prototype, "create").mockImplementation(() => defaultFolderDto());
       jest
         .spyOn(TagApiService.prototype, "updateResourceTags")
         .mockResolvedValue(new PassboltResponseEntity({ header: {}, body: [defaultTagDto({ slug: "import-ref" })] }));
@@ -407,120 +412,12 @@ describe("ImportResourcesService", () => {
         expect(importedResources[0].toDto()).toEqual(externalEntity.toDto());
       });
 
-      it(`Should import a passkey exported by Passly - <${test.scenario}>`, async () => {
-        expect.assertions(4);
-        if (test.metadataTypesSettings.default_resource_types === "v4") {
-          // Passkeys are v5 only.
-          expect.assertions(1);
-        }
-
-        const resourceTypes = [...resourceTypesCollectionDto(), passkeyResourceTypeDto()];
-        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypes);
-        const passkey = defaultPasskeySecretDto();
-        const kdbxDb = kdbxweb.Kdbx.create(new kdbxweb.Credentials(null, null), "passbolt export");
-        kdbxDb.setVersion(3);
-        const kdbxEntry = kdbxDb.createEntry(kdbxDb.getDefaultGroup());
-        kdbxEntry.fields.set("Title", "Spaceship passkey");
-        kdbxEntry.fields.set("UserName", "66Ton99");
-        kdbxEntry.fields.set("URL", "https://www.spaceship.com");
-        kdbxEntry.fields.set(PASSKEY_KDBX_FIELD_NAME, kdbxweb.ProtectedValue.fromString(JSON.stringify(passkey)));
-        const importResourceFileKdbx = new ImportResourcesFileEntity({
-          ref: "import-ref",
-          file_type: "kdbx",
-          file: kdbxweb.ByteUtils.bytesToBase64(new Uint8Array(await kdbxDb.save())),
-        });
-
-        await importResourcesService.parseFile(importResourceFileKdbx);
-        const result = await importResourcesService.importFile(importResourceFileKdbx, passphrase);
-
-        const importedResource = result.importResources.items[0];
-        if (test.metadataTypesSettings.default_resource_types === "v4") {
-          // The organization does not support v5 content types, the passkey is not imported.
-          expect(importedResource.resourceTypeId).not.toStrictEqual(passkeyResourceTypeDto().id);
-          return;
-        }
-
-        expect(result.importResourcesErrors.length).toEqual(0);
-        expect(importedResource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
-        const secret = await decryptSecret(
-          importedResource.secrets.items[0].data,
-          pgpKeys.ada.private,
-          pgpKeys.ada.passphrase,
-        );
-        expect(JSON.parse(secret)).toStrictEqual(passkey);
-        // The passkey secret is only kept encrypted once the import is done.
-        expect(importedResource.passkey).toBeNull();
-      });
-
-      it(`Should import a passkey exported by KeePassXC - <${test.scenario}>`, async () => {
-        expect.assertions(3);
-        if (test.metadataTypesSettings.default_resource_types === "v4") {
-          // Passkeys are v5 only.
-          expect.assertions(1);
-        }
-
-        const resourceTypes = [...resourceTypesCollectionDto(), passkeyResourceTypeDto()];
-        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypes);
-        const keepassFields = keepassPasskeyFieldsDto();
-        const kdbxDb = kdbxweb.Kdbx.create(new kdbxweb.Credentials(null, null), "keepassxc export");
-        kdbxDb.setVersion(3);
-        const kdbxEntry = kdbxDb.createEntry(kdbxDb.getDefaultGroup());
-        kdbxEntry.fields.set("Title", "www.spaceship.com");
-        kdbxEntry.fields.set("UserName", "66Ton99");
-        kdbxEntry.fields.set("URL", "https://www.spaceship.com");
-        kdbxEntry.fields.set(KEEPASS_PASSKEY_FIELDS.RELYING_PARTY, keepassFields[KEEPASS_PASSKEY_FIELDS.RELYING_PARTY]);
-        kdbxEntry.fields.set(KEEPASS_PASSKEY_FIELDS.USERNAME, keepassFields[KEEPASS_PASSKEY_FIELDS.USERNAME]);
-        kdbxEntry.fields.set(
-          KEEPASS_PASSKEY_FIELDS.CREDENTIAL_ID,
-          kdbxweb.ProtectedValue.fromString(keepassFields[KEEPASS_PASSKEY_FIELDS.CREDENTIAL_ID]),
-        );
-        kdbxEntry.fields.set(
-          KEEPASS_PASSKEY_FIELDS.USER_HANDLE,
-          kdbxweb.ProtectedValue.fromString(keepassFields[KEEPASS_PASSKEY_FIELDS.USER_HANDLE]),
-        );
-        kdbxEntry.fields.set(
-          KEEPASS_PASSKEY_FIELDS.PRIVATE_KEY_PEM,
-          kdbxweb.ProtectedValue.fromString(keepassFields[KEEPASS_PASSKEY_FIELDS.PRIVATE_KEY_PEM]),
-        );
-        const importResourceFileKdbx = new ImportResourcesFileEntity({
-          ref: "import-ref",
-          file_type: "kdbx",
-          file: kdbxweb.ByteUtils.bytesToBase64(new Uint8Array(await kdbxDb.save())),
-        });
-
-        await importResourcesService.parseFile(importResourceFileKdbx);
-        const result = await importResourcesService.importFile(importResourceFileKdbx, passphrase);
-
-        const importedResource = result.importResources.items[0];
-        if (test.metadataTypesSettings.default_resource_types === "v4") {
-          // The organization does not support v5 content types, the passkey is not imported.
-          expect(importedResource.resourceTypeId).not.toStrictEqual(passkeyResourceTypeDto().id);
-          return;
-        }
-
-        expect(result.importResourcesErrors.length).toEqual(0);
-        expect(importedResource.resourceTypeId).toStrictEqual(passkeyResourceTypeDto().id);
-        // The secret is encrypted, and it validated against the v5-passkey secret schema.
-        const secret = await decryptSecret(
-          importedResource.secrets.items[0].data,
-          pgpKeys.ada.private,
-          pgpKeys.ada.passphrase,
-        );
-        expect(JSON.parse(secret)).toEqual(
-          expect.objectContaining({
-            object_type: "PASSLY_PASSKEY",
-            rp_id: "www.spaceship.com",
-            credential_id: "Y3JlZGVudGlhbC1pZA",
-            user_name: "66Ton99",
-            cose_alg: -7,
-          }),
-        );
-      });
-
       it("Should throw an error if the resource type cannot be found", async () => {
         expect.assertions(5);
 
-        jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => []);
+        jest
+          .spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll")
+          .mockImplementationOnce(() => new ResourceTypesCollection([]));
 
         importResourceFileCSV = new ImportResourcesFileEntity(
           defaultImportResourceFileCSVDto({
@@ -829,8 +726,8 @@ describe("ImportResourcesService", () => {
           expect.assertions(3);
 
           jest
-            .spyOn(OrganizationSettingsService.prototype, "find")
-            .mockImplementation(() => defaultProOrganizationSettings());
+            .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+            .mockImplementation(() => new SiteSettingsEntity(defaultProSiteSettings()));
 
           jest.spyOn(PasswordExpirySettingsService.prototype, "find").mockImplementation(() =>
             defaultPasswordExpirySettingsDtoFromApi({
@@ -855,10 +752,12 @@ describe("ImportResourcesService", () => {
           it("password expiry plugin is disabled", async () => {
             expect.assertions(3);
 
-            const organizationSettings = defaultProOrganizationSettings();
+            const organizationSettings = defaultProSiteSettings();
             organizationSettings.passbolt.plugins.passwordExpiry.enabled = false;
 
-            jest.spyOn(OrganizationSettingsService.prototype, "find").mockImplementation(() => organizationSettings);
+            jest
+              .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+              .mockImplementation(() => new SiteSettingsEntity(organizationSettings));
 
             jest.spyOn(PasswordExpirySettingsService.prototype, "find").mockImplementation(() =>
               defaultPasswordExpirySettingsDtoFromApi({
@@ -882,10 +781,12 @@ describe("ImportResourcesService", () => {
           it("password expiry policies feature is disabled", async () => {
             expect.assertions(3);
 
-            const organizationSettings = defaultProOrganizationSettings();
+            const organizationSettings = defaultProSiteSettings();
             organizationSettings.passbolt.plugins.passwordExpiryPolicies.enabled = false;
 
-            jest.spyOn(OrganizationSettingsService.prototype, "find").mockImplementation(() => organizationSettings);
+            jest
+              .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+              .mockImplementation(() => new SiteSettingsEntity(organizationSettings));
 
             jest.spyOn(PasswordExpirySettingsService.prototype, "find").mockImplementation(() =>
               defaultPasswordExpirySettingsDtoFromApi({
@@ -910,8 +811,8 @@ describe("ImportResourcesService", () => {
             expect.assertions(3);
 
             jest
-              .spyOn(OrganizationSettingsService.prototype, "find")
-              .mockImplementation(() => defaultProOrganizationSettings());
+              .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+              .mockImplementation(() => new SiteSettingsEntity(defaultProSiteSettings()));
 
             jest
               .spyOn(PasswordExpirySettingsService.prototype, "find")
@@ -942,13 +843,15 @@ describe("ImportResourcesService", () => {
         it("Should not set expiry date even when password expiry plugin is enabled", async () => {
           expect.assertions(3);
 
-          const organizationSettings = defaultCeOrganizationSettings();
+          const organizationSettings = defaultCeSiteSettings();
           organizationSettings.passbolt.plugins.passwordExpiry = {
             version: "1.0.0",
             enabled: true,
           };
 
-          jest.spyOn(OrganizationSettingsService.prototype, "find").mockImplementation(() => organizationSettings);
+          jest
+            .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+            .mockImplementation(() => new SiteSettingsEntity(organizationSettings));
 
           jest
             .spyOn(PasswordExpirySettingsService.prototype, "find")

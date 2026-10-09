@@ -40,6 +40,9 @@ describe("DeleteResourceService", () => {
     deleteResourceService = new DeleteResourceService(account, apiClientOptions, new ProgressService(worker, ""));
     jest.spyOn(ResourceLocalStorage, "softDeleteResources");
     jest.spyOn(ResourceLocalStorage, "deleteResources");
+    // Keep OPFS cleanup inert in these unit tests.
+    jest.spyOn(deleteResourceService.offlineResourcesOPFSStorage, "deleteResources").mockResolvedValue();
+    jest.spyOn(deleteResourceService.offlineSecretsOPFSStorage, "deleteByResourceIds").mockResolvedValue();
   });
 
   describe("DeleteResourceService::deleteResources", () => {

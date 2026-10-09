@@ -12,10 +12,11 @@
  * @since         4.9.4
  */
 
-import FolderService from "../api/folder/folderService";
+import FolderApiService from "../api/folder/folderApiService";
 import FolderLocalStorage from "../local_storage/folderLocalStorage";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
-import { assertArrayUUID, assertBoolean, assertUuid } from "../../utils/assertions";
+import { assertBoolean } from "../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FolderEntity from "../../model/entity/folder/folderEntity";
 import splitBySize from "../../utils/array/splitBySize";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
@@ -29,7 +30,7 @@ export default class FindFoldersService {
    * @param {ApiClientOptions} apiClientOptions The api client options
    */
   constructor(apiClientOptions) {
-    this.folderService = new FolderService(apiClientOptions);
+    this.folderService = new FolderApiService(apiClientOptions);
   }
 
   /**
@@ -41,7 +42,7 @@ export default class FindFoldersService {
   async findById(id, contains) {
     //Assert
     assertUuid(id);
-    const supportedContain = FolderService.getSupportedContainOptions();
+    const supportedContain = FolderApiService.getSupportedContainOptions();
 
     if (contains && !Object.keys(contains).every((option) => supportedContain.includes(option))) {
       throw new Error("Unsupported contains parameter used, please check supported contains");
@@ -88,8 +89,8 @@ export default class FindFoldersService {
    */
   async findAll(contains, filters, options) {
     //Assert contains
-    const supportedContain = FolderService.getSupportedContainOptions();
-    const supportedFilter = FolderService.getSupportedFiltersOptions();
+    const supportedContain = FolderApiService.getSupportedContainOptions();
+    const supportedFilter = FolderApiService.getSupportedFiltersOptions();
 
     if (contains && !Object.keys(contains).every((option) => supportedContain.includes(option))) {
       throw new Error("Unsupported contains parameter used, please check supported contains");

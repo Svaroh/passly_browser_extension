@@ -81,7 +81,7 @@
      * @param changes The change from the local storage
      */
     handleStorageChange(changes) {
-      if (changes._passbolt_data && changes._passbolt_data.newValue.config) {
+      if (changes._passbolt_data && changes._passbolt_data.newValue?.config) {
         const config = changes._passbolt_data.newValue.config;
         if (
           config &&

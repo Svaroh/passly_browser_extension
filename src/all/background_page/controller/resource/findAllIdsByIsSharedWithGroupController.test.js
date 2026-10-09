@@ -28,6 +28,10 @@ import { METADATA_KEY_TYPE_USER_KEY } from "../../model/entity/resource/resource
 import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
 import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
+import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 describe("FindAllIdsByIsSharedWithGroupController", () => {
   let controller, worker, groupId;
@@ -44,6 +48,9 @@ describe("FindAllIdsByIsSharedWithGroupController", () => {
     groupId = uuidv4();
     controller = new FindAllIdsByIsSharedWithGroupController(worker, null, apiClientOptions, account);
     jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("FindAllIdsByIsSharedWithGroupController::_exec", () => {
@@ -52,7 +59,9 @@ describe("FindAllIdsByIsSharedWithGroupController", () => {
 
       const resourceCollectionDto = multipleResourceDtos();
       const expectedResult = new ResourcesCollection(resourceCollectionDto).extract("id");
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionDto);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourceCollectionDto));
 
       await controller._exec(groupId);
 
@@ -78,7 +87,9 @@ describe("FindAllIdsByIsSharedWithGroupController", () => {
 
       const resourceCollectionDto = multipleResourceDtos();
       const expectedResult = new ResourcesCollection(resourceCollectionDto).extract("id");
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionDto);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourceCollectionDto));
       jest.spyOn(FindAndUpdateResourcesLocalStorage.prototype, "findAndUpdateByIsSharedWithGroup");
 
       const resourceIds = await controller.exec(groupId);
@@ -102,7 +113,7 @@ describe("FindAllIdsByIsSharedWithGroupController", () => {
         }),
       ];
       jest.spyOn(controller.findAndUpdateResourcesLocalStorage, "findAndUpdateByIsSharedWithGroup");
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourcesDto);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
       jest.spyOn(controller.getPassphraseService, "getPassphrase").mockReturnValue(pgpKeys.ada.passphrase);
 
       const result = await controller.exec(groupId);
@@ -118,7 +129,7 @@ describe("FindAllIdsByIsSharedWithGroupController", () => {
     it("Should allow a group to not include any resources", async () => {
       expect.assertions(2);
 
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => []);
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse([]));
       const resourceIds = await controller.exec(groupId);
 
       expect(resourceIds.length).toEqual(0);

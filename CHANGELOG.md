@@ -3,6 +3,415 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [5.16.1] - 2026-08-17
+### Fixed
+- PB-53792 - Copy/pasting issues on Safari
+
+## [5.16.0] - 2026-08-15
+### Added
+- PB-28188 EPIC - Offline mode
+- PB-51230 OFM WP1.3 Add offline item in ResourceEntity
+- PB-51233 OFM WP2.1 Create OfflineResourcesOPFSStorage
+- PB-51234 OFM WP2.2 Create OfflineSecretsOPFSStorage
+- PB-51239 OFM WP2.6 Create OfflineSettingsLocalStorage
+- PB-51240 OFM WP3.1 Create OfflineSettingsApiService
+- PB-51241 OFM WP3.2 Create MarkOfflineResourceApiService
+- PB-51242 OFM WP3.3 Create UnmarkOfflineItemApiService
+- PB-51452 OFM WP4.1 Create findOfflineSettingsService
+- PB-51453 OFM-WP2.7 Create MetadatakeyOPFSStorage
+- PB-51455 OFM WP4.2 Create getOrFindOfflineSettingsService
+- PB-51456 OFM WP4.3 Create saveOfflineSettingsService
+- PB-51458 OFM WP4.4 Create deleteOfflineSettingsService
+- PB-51462 OFM WP4.5 Update findAndUpdateResourcesLocalStorageService
+- PB-51467 OFM WP4.6 Update ResourceUpdateService to update offline resource and secret local storage
+- PB-51482 OFM WP4.7 Update FavoriteResourceService and deleteResourceService to update offline resource
+- PB-51485 OFM WP7.1 Create OfflineModeServiceWorkerService
+- PB-51486 OFM WP6.1 Create quickAccessEvents to handle offline login and data read
+- PB-51487 OFM WP6.2 Create offlineEvents to handle offline events
+- PB-51489 OFM WP5.8 Create AuthLoginOfflineController
+- PB-51491 OFM WP4.9 Update PostLogoutService to not flush all storage
+- PB-51494 OFM WP4.12 Create FindAndUpdateOfflineSettingsLocalStorageService
+- PB-51497 OFM WP4.14 Create MarkOfflineResourceService
+- PB-51498 OFM WP4.15 Create UnmarkOfflineItemService
+- PB-51500 OFM WP5.6 Create MarkItemOfflineUnavailableController
+- PB-51501 OFM WP5.5. Create MarkResourceOfflineAvailableController
+- PB-51503 OFM WP4.13 Update OnStartUpService to sign-out and flush data
+- PB-51506 OFM WP5.3 Create DeleteOfflineSettingsController
+- PB-51507 OFM WP5.2 Create SaveOfflineSettingsController
+- PB-51508 OFM WP5.1 Create FindOfflineSettingsController
+- PB-52043 OFM WP5.10 Create AuthLocalLogoutController
+- PB-51870 OFM WP5.9 Create getOrFindOfflineSettingsController
+- PB-52137 OFM WP9.19 Update LoginPage to route to appropriate pages
+- PB-52532 OFM WP4.21 Update FindAndUpdateMetadataKeysSessionStorageService to store offline metadata keys
+- PB-52567 OFM WP-10.5 Update markOfflineResourceService and unmarkOfflineItemService to update Offline storage of resources and secrets
+- PB-52949 OFM WP1.5 Create UserActiveSessionEntity
+- PB-52953 OFM WP3.5 Create ServerStatusApiService
+- PB-52958 OFM WP4.22 Create findServerStatusService
+- PB-52964 OFM WP4.23 Create FindAndUpdateActiveSessionService
+- PB-53025 OFM WP10.6 Offline settings API BExt integration fixes
+- PB-53029 OFM WP10.7 Mark/Unmark offline resource API BExt integration fixes
+- PB-53062 OFM WP4.24 Create GetOrFindActiveSessionService
+- PB-53089 OFM WP10.8 RBAC integration with API
+- PB-53101 OFM WP10.9 Refactor OfflineSettingsLocalStorage to extend AbstractLocalStorage
+- PB-53164 OFM WP4.10 Remove CheckAuthStatusService to use FindAndUpdateActiveSessionService
+- PB-53181 OFM WP4.26 Create OfflineSessionExpiryAlarmService
+- PB-53203 OFM WP10.11 Offline feature disabled but RBAC enabled behavior inconsistency
+- PB-53300 OFM WP4.27 Create postLoginOfflineService
+- PB-53337 OFM WP4.28 Update PostLoginService to update user active session last_login date
+- PB-53338 OFM WP4.29 Update GetOrFindRbacService to update storage based on last_logged_in date
+- PB-53352 OFM WP4.30 Update GetOrFindMeService to update storage based on last_login date
+- PB-53354 OFM WP4.31 Update GetOrFindResourceTypesService to update storage based on last_login date
+- PB-53355 OFM WP4.32 Update GetOrFindOfflineSettingsService to update storage based on last_login date
+- PB-53476 OFM WP4.33 Create OfflineRetentionDataFlushService
+- PB-53477 OFM WP4.34 Update StartLoopAuthSessionCheckService to update the last seen online property into the ActiveSessionLocalStorage
+- PB-53569 OFM WP9.22 Create Footer to display server status
+- PB-53624 OFM WP4.35 Create findAndUpdateMetadataKeysSessionStorageFromOfflineService
+- PB-53625 OFM WP4.36 Create findAndUpdateResourcesLocalStorageFromOPFSService
+- PB-53626 OFM WP4.37 Create findSecretOPFSService
+- PB-53627 OFM WP5.12 Create findAndUpdateResourcesLocalStorageFromOPFSController
+- PB-53628 OFM WP5.13 Create FindSecretByResourceIdOPFSController
+- PB-53787 OFM WP-4.38 Update FindAndUpdateSiteSettingsLocalStorageService for Offline mode
+- PB-53903 OFM WP10.21 Rename event passbolt.auth.find-and-update-active-session
+- PB-53910 Update OfflineResourcesOPFSStorage with methods for tags
+- PB-53911 Update UpdateTagService to update the OPFS storage
+- PB-53912 Update UpdateResourceTagsService to call the OPFS service
+- PB-53913 OFM WP4.42 Update DeleteTagsServie for OPFS
+- PB-53967 OFM WP-10.28 Toolbar service should not update resources with offline session
+- PB-54137 OFM WP12.2 Update AskInformMenuDisplay to get suggested from GetOrFindOfflineResourcesService
+- PB-54139 OFM WP12.3 Update DisplayInformMenu to get suggested from GetOrFindOfflineResourcesService
+- PB-54140 OFM WP12.4 Update DisplayInformMenu to hide functionalities not part of offline mode
+- PB-54155 OFM WP10.30 - Offline Footer re-design
+- PB-54249 OFM WP12.5 Update Autofill controller to get secret from FindSecretOPFSService for offline session
+- PB-54261 OFM WP10.35 Update processing of Data retention period from seconds to days
+- PB-54423 OFM WP13.1 Handle offline settings response validation error
+- PB-54464 OFM WP13.3 Flush local storage if user is authenticate offline and sign-in online
+- PB-54469 OFM Resource Workspace bugs: column values, unfavorite, filter
+- PB-54479 OFM WP13.5 Site settings should be stored only for online authenticated session
+- PB-54485 OFM WP13.7 Fix suggested resources counter for inform call to action
+- PB-54518 OFM WP13.9 findAndUpdateAllByParentFolderId method should update the offline storage
+- PB-54523 OFM WP13.10 findAndUpdateByIsSharedWithGroup shoudl update the offline storage
+- PB-54654 OFM 'Unable to reach the server' message when logged in AND MFA is required
+- PB-54579 OFM Able to see remove offline availability option even when the action is denied
+
+### Fixed
+- PB-52720 Folder tree subfolders hoisted to top of tree on collapse of a deep branch
+- PB-53724 Reduce footer padding to 8px
+
+### Security
+- PB-54532 Small upgrade for js-yaml (High)
+- PB-54587 - Fix @xmldom/xmldom GHSA-93r5-fhx6-vmg9 - CVSS4.0 HIGH
+- PB-54644 Fix browserslist GHSA-c83g-rgw3-j3cx - CVSS3.1 HIGH
+- PB-54645 Fix fast-uri GHSA-5jgf-p345-68v8 - CVSS3.1 HIGH
+- PB-54646 Fix svgo GHSA-w27v-7q3p-w38r - CVSS3.1 HIGH
+- PB-54647 Fix @humanfs/node  GHSA-p498-v437-472g - CVSS4.0 MEDIUM
+- PB-54650 Fix qs GHSA-x5fp-wj9c-mxmx - CVSS4.0 MEDIUM
+- PB-54651 Fix joi GHSA-6w3j-5fw6-r9vr - CVSS3.1 LOW
+- PB-54653 Fix postcss-selector-parser GHSA-w9m9-85wc-3x92 - CVSS4.0 LOW
+
+### Maintenance
+- PB-53396 fix progress bar on resource update
+- PB-53720 Apply Title Case to titles across the administration workspace navigation menu, breadcrumb, page title, and section headers
+- PB-53763 Replace the react-list fork with upstream 0.8.19
+- PB-53765 Migrate the group delete capability from direct port request to GroupServiceWorkerService
+- PB-53766 Add unit test coverage for the delete method of GroupApiService
+- PB-53767 Migrate the group delete logic from GroupModel to a dedicated DeleteGroupService
+- PB-53768 Extract the group delete logic from groupEvents into a dedicated DeleteGroupController
+- PB-53769 Migrate the group delete dry run to DeleteGroupService and a dedicated DeleteDryRunGroupController
+- PB-53770 Migrate the folder update capability from direct port.request to FolderServiceWorkerService
+- PB-53771 Rename FolderService to FolderApiService and add unit test coverage for its update method
+- PB-53772 Migrate the folder update logic from FolderModel to a dedicated UpdateFolderService
+- PB-53773 Extract the folder update logic from folderEvents into a dedicated UpdateFolderController
+- PB-53782 Migrate MfaPolicyEntity to EntityV2 and add unit test coverage
+- PB-53783 Migrate PermissionChangeEntity to EntityV2 and add unit test coverage
+- PB-54130 Consolidate UUID assertions on the styleguide assertUuid helper
+- PB-54175 remove the submit confirmation message on the permission confirmation dialog
+- PB-54353 Migrate folder delete capability  to service worker using FolderServiceWorkerService
+- PB-54354 Cover the delete method from FolderApiService with unit tests
+- PB-54360 Migrate the folder delete logic from FolderModel to DeleteFolderService
+- PB-54366 Introduce DeleteFolderController and wire it
+
+
+## [5.15.1] - 2026-08-26
+### Fixed
+- PB-54190 - Firefox crash issues [post v5.15.0 release]
+
+## [5.15.0] - 2026-08-20
+### Added
+- PB-53103 - AUTOFILL EPIC - Autofill improvements
+- PB-53105 - Add ShadowDomDictionary and InFormFieldDictionary
+- PB-53107 - Create ShadowRootResolverService
+- PB-53108 - Add ShadowRootCollectorService
+- PB-53109 - Add ShadowRootCacheService
+- PB-53110 - Add ShadowMutationObserverService
+- PB-53120 - Add ShadowDomQueryService
+- PB-53121 - Add ShadowDomFocusHealerService
+- PB-53122 - Add InFormFieldGeometryService
+- PB-53123 - Update InFormCallToActionField to use ShadowRootCacheService, ShadowDomQueryService and InFormFieldGeometryService
+- PB-53124 - Find username element through shadow doms if needed
+- PB-53125 - Switch from DomUtils to InFormFieldGeometryService in InformMenuField
+- PB-53126 - Listen for focus event on the whole page to detect missed inputs
+- PB-53127 - Refactor InFormManager to use previously created services
+- PB-53128 - Refactor DomUtils
+- PB-53574 - Shadow dom should solve duck-types as a shadow root
+- PB-53619 - Shadow dom piercing is missing on the autofill resolver
+- PB-53394 - Global new design of share dialog
+
+### Fixed
+- PB-48042 - Sign-in with SSO secondary CTA alignment on sign-in with passphrase page
+- PB-52353 - Clicking on several items is not possible when filtering the grid by expired
+- PB-52539 - Left side bar alignment adjustments
+- PB-53329 - Discrepancy in data (group or member) display when we remove and add them again
+- PB-53819 - Fix height for share dialog badges and dropdowns
+- PB-53820 - Fix revert button disappearing at certain widths
+- PB-53921 - Fix application crash after creating a resource in a shared folder while transferring ownership
+- PB-53497 - Fix crash when is-authenticated endpoint response is not JSON
+
+### Security
+- PB-53357 - Fix js-yaml GCVE-0-2026-59869 - HIGH CVSS3.1
+- PB-53358 - Fix brace-expansion GHSA-3jxr-9vmj-r5cp - HIGH CVSS4.0
+- PB-53386 - Potential Cross Site Scripting (XSS) via window.location.href (Low)
+- PB-53391 - Fix svgo GHSA-2p49-hgcm-8545 - HIGH CVSS3.1
+- PB-53392 - Fix fast-uri GHSA-4c8g-83qw-93j6 - HIGH CVSS3.1
+- PB-53401 - Fix shell-quote GHSA-395f-4hp3-45gv - HIGH CVSS4.0
+- PB-53402 - Fix websocket-driver GHSA-xv26-6w52-cph6 - CRITICAL CVSS4.0
+- PB-53403 - Fix postcss GHSA-r28c-9q8g-f849 - HIGH CVSS3.1
+- PB-53404 - Fix webpack-dev-server GHSA-m28w-2pqf-7qgj - MEDIUM CVSS3.1
+- PB-53405 - Fix body-parser GHSA-v422-hmwv-36x6 - LOW CVSS3.1
+- PB-53550 - Small upgrade for js-yaml (Low)
+- PB-53552 - Fix fast-uri GHSA-7p8r-x3mc-p8w7 - HIGH CVSS3.1
+- PB-53559 - Fix brace-expansion GHSA-mh99-v99m-4gvg - HIGH CVSS3.1
+- PB-53942 - Fix image-size GHSA-5p2g-fcmc-qvqq - HIGH CVSS4.0
+- PB-53357 - Fix js-yaml GCVE-0-2026-59869 - HIGH CVSS3.1
+- PB-53358 - Fix brace-expansion GHSA-3jxr-9vmj-r5cp - HIGH CVSS4.0
+- PB-53385 - Fix adm-zip GHSA-xcpc-8h2w-3j85 - HIGH CVSS3.1
+- PB-53391 - Fix svgo GHSA-2p49-hgcm-8545 - HIGH CVSS3.1
+- PB-53392 - Fix fast-uri GHSA-4c8g-83qw-93j6 - HIGH CVSS3.1
+- PB-53401 - Fix shell-quote GHSA-395f-4hp3-45gv - HIGH CVSS4.0
+- PB-53550 - Small upgrade for js-yaml (Low)
+- PB-53552 - Fix fast-uri GHSA-7p8r-x3mc-p8w7 - HIGH CVSS3.1
+- PB-53553 - Fix undici GHSA-4cwx-7wf7-3272 - HIGH CVSS3.1
+- PB-53559 - Fix brace-expansion GHSA-mh99-v99m-4gvg - HIGH CVSS3.1
+- PB-53940 - Small upgrade for @xmldom/xmldom (High)
+
+### Maintenance
+- PB-53204 - Reverse passboltEnvPlugin logic
+- PB-53671 - Replace the forked secrets.js library with a native randomHex 
+- PB-53764 - Update Storybook libraries in passbolt-styleguide to remove vulnerable dependencies while keeping the Storybook scripts functional
+- PB-53934 - Use correct version for github-pages-deploy-action
+- PB-53972 - Clean comment in ShareDialog
+
+## [5.14.4] - 2026-08-10
+### Fixed
+- PB-53681: Safari applies URLs redirection on created resource too early
+
+## [5.14.3] - 2026-08-03
+### Fixed
+- PB-53406: PCD: do not display when editing a shared resource metadata only
+- PB-53471: PCD: creation of a shared resource in a non owned folder should display the PCD in read-only
+- PB-53546: Fix in form menu integration disablement behaviour
+
+### Maintenance
+- PB-53384: Add logs for errors on the process "add user to group"
+
+## [5.14.2] - 2026-07-27
+### Fixed
+- PB-53322: throttle permissions confirmation dialog requests
+- PB-53211: fix an error when creating an account
+- PB-53316: fix edition name translation
+
+## [5.14.1] - 2026-07-23
+### Fixed
+- PB-53277: adapt findAllByIdsForShare to fetch the user profiles
+
+### Maintenance
+- PB-53277: update groupApiService to support 'contains' on 'get' method
+
+
+## [5.14.0] - 2026-07-09
+### Added
+- PB-45405 - Sort suggested resources by relevance instead of URI lengths
+- PB-51236 - OFM - WP2.3 Create SiteSettingsLocalStorage
+- PB-51476 - Add support for ADFS and OIDC on the account recovery with SSO workflow
+- PB-51810 - PCD 2.29 - Create GroupPermissionItem
+- PB-51811 - PCD 2.30 - Remove SharePermissionItem
+- PB-51813 - PCD 2.32 - Update CreateResource to call the workflow handler
+- PB-51814 - PCD 2.33 - Create PermissionServiceWorkerService
+- PB-51826 - PCD 3.01 - Update EditResource to call the workflow handler
+- PB-51828 - PCD 3.03 - Add edition handling in HandlePermissionWorkflow
+- PB-51829 - PCD 3.04 - Update resourceUpdateService to get permissions list from the styleguide
+- PB-51830 - PCD 3.05 - Update EditResource to display dialog
+- PB-51831 - PCD 3.06 - Update DisplayResourcesListContextualMenu to trigger HandlePermissionWorkflow
+- PB-51832 - PCD 3.07 - Update DisplayResourcesWorkspaceMenu to trigger HandlePermissionWorkflow
+- PB-51833 - PCD 3.08 - Handle read-only mode in permission dialog
+- PB-51835 - PCD 4.01 - Add share handling in HandlePermissionWorkflow
+- PB-51836 - PCD 4.02 - Adapt PermissionServiceWorkerService (savePermissions)
+- PB-51838 - PCD 4.04 - Update DisplayResourcesListContextualMenu to trigger HandlePermissionWorkflow from sharing
+- PB-51839 - PCD 4.05 - Update DisplayResourcesWorkspaceMenu to trigger HandlePermissionWorkflow from sharing
+- PB-52205 - OFM - WP1.4 Create SiteSettingsEntity
+- PB-52213 - OFM - WP3.4 Create SiteSettingsApiService
+- PB-52215 - OFM - WP4.18 Create GetOrFindSiteSettingsService
+- PB-52216 - OFM - WP4.19 Create FindSiteSettingsService
+- PB-52217 - OFM - WP4.20 findAndUpdateSiteSettingsLocalStorageService
+- PB-52350 - LS - WP1.1 Create local storage online session entity
+- PB-52352 - LS - WP1.2 Create local storage metadata entity
+- PB-52354 - LS - WP2.1 Create online session local storage
+- PB-52363 - LS - WP2.2 Create abstract local storage
+- PB-52374 - LS - WP2.3 Migrate Rbac local storage
+- PB-52375 - LS - WP2.4 Migrate Resource types local storage
+- PB-52411 - LS - WP2.5 Migrate UserMe local storage
+- PB-52412 - LS - WP2.6 Remove AuthStatus local storage to use ActiveSession local storage
+- PB-52447 - LS - WP3.1 Update GetOrFindRbacService
+- PB-52451 - LS - WP3.2 Create GetOrFindMeService and remove userModel getOrFindMe
+- PB-52460 - LS - WP 3.3 Create GetOrFindResourceTypes and remove resourceTypeModel getOrFindAll
+- PB-52713 - SORTURL - WP 1.1 - Implement url sorting algorithm in sortUtils
+- PB-52714 - SORTURL - WP 1.2 - Use sortUtils in HomePage
+- PB-52715 - SORTURL - WP 1.3 - Use sortUtils in InformMenuController
+- PB-52965 - HLL - WP 4.1 Hide the last logged in column for non admins
+- PB-52977 - PCD 6.26 - Fix group member count display on newly added group
+- PB-53028 - PCD 6.27 - Adapt Permission confirmation dialog title based on the ran process
+- PB-52536 - Display passbolt edition in right sidebar footer
+
+### Fixed
+- PB-50607 - Inject In-form menu CTA container inside Dialog element
+- PB-50876 - Secret history doesn't take in consideration RBAC cfg
+- PB-51920 - Multiple autofill issues
+- PB-52683 - Fix missing translation in healthcheck page
+- PB-52799 - In-Form menu CTA not visible anymore
+- PB-52357 - Mark "OpenId Configuration Path" as a required field in SSO
+- PB-52938 - Fix the subscriptionKey button not appearing when API is below than  5.13
+
+### Maintenance
+- PB-50075 - Remove DisplayUserDetailsActivity
+- PB-51917 - Remove getOrFindAll from UserModel
+- PB-52199 - Remove `formatOrderOptions` reference in API services as it is not in use
+- PB-52298 - Cover admin edition management journeys with end to end tests
+- PB-52467 - Pin js dependencies in lockfile
+- PB-52606 - Assert Subscription Details
+- PB-52607 - Assert Current Subscription Edition
+- PB-52609 - Upgrade to Pro
+- PB-52612 - Downgrade to CE
+- PB-52613 - Edit the organization subscription key in adminer
+- PB-52614 - Notify user of successful downgrade, Expire User's Session and Re-authenticate the user
+- PB-52615 - Assert Subscription Panel
+- PB-52691 - Retry In-form menu CTA injection when DOM changes are detected
+- PB-52711 - Create new subscription key using rsa public/private keys to avoid exposing production valid subscription key
+- PB-52542 - Update subscription page design
+- PB-52584 - Downgrade to CE design
+
+### Security
+- PB-49150 - Aikido#915877 Potential Cross Site Scripting (XSS) via window.location.href - passbolt-styleguide (info)
+- PB-51261 - Major upgrade for i18next (High)
+- PB-52333 - Improper Access Control in portManager (Info)
+- PB-52334 - Improper Input Validation in resourcesKdbxExporter (Medium)
+- PB-52485 - Fix esbuild GHSA-gv7w-rqvm-qjhr - HIGH CVSS3.1
+- PB-52538 - Major upgrade for js-yaml (Medium)
+- PB-52554 - Fix ws GHSA-96hv-2xvq-fx4p - HIGH CVSS 3.1
+- PB-52555 - Fix launch-editor GHSA-v6wh-96g9-6wx3 - MEDIUM CVSS4.0
+- PB-52556 - Fix tmp GHSA-7c78-jf6q-g5cm - HIGH CVSS3.1
+- PB-52557 - Fix form-data GHSA-hmw2-7cc7-3qxx - HIGH CVSS4.0
+- PB-52558 - Fix @babel/core GHSA-4x5r-pxfx-6jf8 - LOW CVSS3.1
+- PB-52601 - Fix undici GHSA-vmh5-mc38-953g - HIGH CVSS3.1
+- PB-52602 - Fix http-proxy-middleware GHSA-64mm-vxmg-q3vj - MEDIUM CVSS4.0
+- PB-52603 - Fix webpack-dev-server GHSA-mx8g-39q3-5c79 - MEDIUM CVSS3.1
+- PB-52611 - Small upgrade for serialize-javascript (High)
+- PB-52621 - Fix undici GHSA-g8m3-5g58-fq7m - HIGH CVSS 3.1
+- PB-52719 - Potential Cross Site Scripting (XSS) via window.location.href (Medium)
+
+
+## [5.13.4] - 2026-06-18
+### Fixed
+- PB-52569 Add user to group freezing the page
+
+## [5.13.3] - 2026-06-17
+### Fixed
+- Fix version mismatch between tag and package.json
+
+## [5.13.2] - 2026-06-17
+### Fixed
+- PB-51699 Fix adding a user to a large group
+
+## [5.13.1] - 2026-06-15
+### Fixed
+- PB-52478 Remove subscription CTA when edition plugin is not enabled
+
+### Maintenance
+- PB-52428 Update subscription links
+
+## [5.13.0] - 2026-06-11
+### Added
+- PB-51594 Move findAllForActionLogController and test to the correct location
+- PB-48516 Build process improvement - Webpack
+- PB-51534 Update group edit call in groupApiService to contain "my_group_user" as urlOptions
+- PB-51580 PCD 1.1 - Migrate SearchUsersAndGroupsController off ShareModel
+- PB-51585 PCD 1.2 - Migrate resourceCreateService ShareModel usage to ShareResourceService
+- PB-51586 PCD 1.3 - Move passbolt.share.get-folders to controller pattern
+- PB-51587 PCD 1.4 - Clear ShareModel
+- PB-51588 PCD 1.5 - Migrate MoveFolderController off FolderModel
+- PB-51589 PCD 1.6 - Migrate MoveOneFolderService off FolderModel
+- PB-51590 PCD 1.7 - Migrate MoveResourcesService off FolderModel + ResourceModel
+- PB-51782 PCD 2.01 - Create SynchroniseKeyringController and binding
+- PB-51783 PCD 2.02 - Create KeyringServiceWorkerService
+- PB-51785 PCD 2.04 - Create GetOrFindGroupService
+- PB-51786 PCD 2.05 - Create GetOrFindGroupController and binding
+- PB-51787 PCD 2.06 - Create GetOrFindGroupsUsersService
+- PB-51788 PCD 2.07 - Create GetOrFindGroupsUsersController and binding
+- PB-51789 PCD 2.08 - Create GetOrFindUsersService
+- PB-51790 PCD 2.09 - Create GetOrFindUsersController and binding
+- PB-51791 PCD 2.10 - Add new methods getByIds, getGroupsUsersByGropuId on GroupServiceWorkerService
+- PB-51999 PCD 2.10.B - Consolidate UserEntity between browser extension and styleguide
+- PB-52000 PCD 2.10.C - Move GroupEntity + GroupsCollection to the styleguide
+- PB-51792 PCD 2.11 - Create UserServiceWorkerService
+- PB-51793 PCD 2.12 - Create PermissionServiceWorkerService
+- PB-51794 PCD 2.13 - Create SearchUsersAndGroupsService
+- PB-51795 PCD 2.14 - Refactor ShareService into ShareApiService
+- PB-51796 PCD 2.15 - Update GroupApiService to support the new filter
+- PB-51798 PCD 2.17 - Update FindAndUpdateGroupsLocalStorageService to add a method findForLocalStorageByIds
+- PB-51799 PCD 2.18 - Align UserLocalStorage to add memory cache
+- PB-51800 PCD 2.19 - Rename UserService to UserApiService
+- PB-52047 CE/PRO upgrade
+- PB-49605 Grid columns min-width
+- PB-51808 PCD 2.27 - Create UserPermissionItem
+- PB-51809 PCD 2.28 - Create GroupUserPermissionItem
+- PB-47929 PAG - WP1.1 Add pagination support to ResourceService
+- PB-47930 PAG - WP1.2 Paginate resource fetch for updating local storage in FindResourceService
+- PB-52056 Add create method to SubscriptionKeyServiceWorkerService
+- PB-52057 Add delete method to SubscriptionKeyServiceWorkerService
+- PB-52058 Adapt EditSubscriptionKey to be customizable
+- PB-52061 Adapt DisplaySubscriptionKeyTeasing to handle upgrade from app
+- PB-52064 Create ConfirmDowngradeSubscriptionDialog
+- PB-52062 Adapt DisplaySubscriptionKey to handle downgrading
+- PB-52128 DisplaySubscriptionKey new layout
+
+### Security
+- PB-51937 Fix ws GHSA-58qx-3vcg-4xpx - MEDIUM CVSS3.1
+- PB-51938 Fix brace-expansion GHSA-jxxr-4gwj-5jf2 - MEDIUM CVSS3.1
+- PB-52029 Fix tmp GHSA-ph9p-34f9-6g65 - HIGH CVSS4.0
+- PB-51532 Include GitLab file from ci-definitions repo
+- PB-51642 Fix fast-uri GHSA-q3j6-qgpj-74h6 - HIGH CVSS3.1
+- PB-51643 Fix @babel/plugin-transform-modules-systemjs GHSA-fv7c-fp4j-7gwp - HIGH CVSS3.1
+- PB-51940 Fix qs GHSA-q8mj-m7cp-5q26 - MEDIUM CVSS4.0
+- PB-52030 Fix webpack-dev-server GHSA-79cf-xcqc-c78w - MEDIUM CVSS3.1
+- PB-51698 Use correct passbolt repo names in safe-chain whitelist
+
+### Fixed
+- PB-52148 CSP is blocking upload to TOTP QRCode on Firefox
+- PB-50949 Fix MetadataKeysSettingsLocalStorageContext and MetadataTypesSettingsLocalStorageContext entity issue on storage changes
+- PB-52047 Fix Passbolt Pro Edition wording
+- PB-52156 Fix password preview button min-width
+
+### Maintenance
+- PB-48560 Use NODE_ENV for webpack mode config
+- PB-48564 Remove grunt-header
+- PB-48528 Transpile LESS from webpack
+- PB-48558 Extract translations directly from webpack
+- PB-48559 Remove rimraf
+- PB-49064 Remove Grunt
+- PB-48516 Replace eval sourcemap by inline
+- PB-48516 Prevent br tags to be added in translations.
+- PB-48516 Remove duplicated translations
+- PB-51793: Add PermissionServiceWorkerService and transfer Permission entity and collection on styleguide
+- PB-51160 Update Firefox manifest to avoid Mozilla warnings
+- PB-52155 Update github issue template
 
 ## [5.12.2] - 2026-05-19
 ### Fixed
@@ -2725,7 +3134,20 @@ self registration settings option in the left-side bar
 - AP: User with plugin installed
 - LU: Logged in user
 
-[Unreleased]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.12.2...HEAD
+[Unreleased]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.16.0...HEAD
+[5.16.0]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.15.1...v5.16.0
+[5.15.1]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.15.0...v5.15.1
+[5.15.0]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.14.4...v5.15.0
+[5.14.4]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.14.3...v5.14.4
+[5.14.3]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.14.2...v5.14.3
+[5.14.2]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.14.1...v5.14.2
+[5.14.1]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.14.0...v5.14.1
+[5.14.0]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.13.4...v5.14.0
+[5.13.4]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.13.3...v5.13.4
+[5.13.3]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.13.2...v5.13.3
+[5.13.2]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.13.1...v5.13.2
+[5.13.1]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.13.0...v5.13.1
+[5.13.0]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.12.1...v5.13.0
 [5.12.2]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.12.1...v5.12.2
 [5.12.1]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.12.0...v5.12.1
 [5.12.0]: https://github.com/passbolt/passbolt_browser_extension/compare/v5.11.3...v5.12.0
