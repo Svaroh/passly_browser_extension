@@ -96,8 +96,15 @@ class OfflineResourcesOPFSStorage {
     await navigator.locks.request(this.storageKey, async () => {
       const resources = [];
       resourcesCollection.items.forEach((resourceEntity) => {
-        OfflineResourcesOPFSStorage.assertEntityBeforeSave(resourceEntity);
-        resources.push(resourceEntity.toDto(OfflineResourcesOPFSStorage.DEFAULT_CONTAIN));
+        try {
+          OfflineResourcesOPFSStorage.assertEntityBeforeSave(resourceEntity);
+          resources.push(resourceEntity.toDto(OfflineResourcesOPFSStorage.DEFAULT_CONTAIN));
+        } catch (error) {
+          Log.write({
+            level: "warn",
+            message: `OfflineResourcesOPFSStorage::set skipped resource ${resourceEntity?.id}: ${error?.message}`,
+          });
+        }
       });
       await this._setOPFSStorage(this.storageKey, resources);
       OfflineResourcesOPFSStorage._runtimeCachedData[this.account.id] = resources;

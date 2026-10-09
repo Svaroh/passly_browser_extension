@@ -88,6 +88,9 @@ class MarkOfflineResourceService {
         await this.metadataKeyOPFSStorage.set(metadataKeys);
       }
     }
+    if (resourceEntity.isMetadataDecrypted()) {
+      return;
+    }
     await this.offlineResourcesOPFSStorage.addResource(resourceEntity);
     await this.offlineSecretsOPFSStorage.addSecret(resourceEntity.secrets.items[0]);
   }

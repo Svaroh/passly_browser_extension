@@ -124,6 +124,20 @@ describe("OfflineResourcesOPFSStorage", () => {
         resources.toDto(OfflineResourcesOPFSStorage.DEFAULT_CONTAIN),
       );
     });
+
+    it("Should skip decrypted or invalid resources without throwing", async () => {
+      expect.assertions(3);
+      const validEncryptedDto = resourceMetadataEncryptedDto();
+      const decryptedDto = defaultResourceDto({ metadata: metadata.withSharedKey.decryptedMetadata[0] });
+      const resources = new ResourcesCollection([
+        new ResourceEntity(validEncryptedDto),
+        new ResourceEntity(decryptedDto),
+      ]);
+      await expect(storage.set(resources)).resolves.not.toThrow();
+      const storageData = await storage.opfsStorage.get(storage.storageKey);
+      expect(storageData).toHaveLength(1);
+      expect(storageData[0].id).toEqual(validEncryptedDto.id);
+    });
   });
 
   describe("::getOfflineResourceById", () => {
