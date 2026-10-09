@@ -237,6 +237,88 @@ function BiometricQuickAccessActions({ port, options, detached }) {
   );
 }
 
+class QuickAccessErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("QuickAccess ErrorBoundary caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            padding: "20px",
+            minWidth: "360px",
+            minHeight: "260px",
+            boxSizing: "border-box",
+            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            color: "#333",
+            background: "#fff",
+          }}
+        >
+          <h3 style={{ color: "#d9534f", marginTop: 0, marginBottom: "8px", fontSize: "16px" }}>
+            Помилка інтерфейсу Passly
+          </h3>
+          <p style={{ fontSize: "13px", margin: "0 0 12px 0", color: "#666" }}>
+            Виникла неочікувана помилка при завантаженні вікна швидкого доступу.
+          </p>
+          <pre
+            style={{
+              fontSize: "11px",
+              background: "#f8f9fa",
+              border: "1px solid #e9ecef",
+              padding: "8px",
+              borderRadius: "4px",
+              overflowX: "auto",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+              maxHeight: "140px",
+              margin: "0 0 12px 0",
+            }}
+          >
+            {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
+          </pre>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              padding: "8px 16px",
+              background: "#0070ba",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "13px",
+              fontWeight: 500,
+            }}
+          >
+            Перезавантажити
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("error", (event) => {
+    console.error("QuickAccess uncaught window error:", event.error || event.message);
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("QuickAccess unhandled rejection:", event.reason);
+  });
+}
+
 export async function main() {
   // The QuickAccess is only ever rendered as a top-level extension surface (toolbar popup or detached window).
   // If it is running inside a frame, a remote page has embedded it; refuse to initialise to prevent
@@ -284,7 +366,7 @@ export async function main() {
 
   const root = createRoot(domContainer);
   root.render(
-    <>
+    <QuickAccessErrorBoundary>
       <ExtQuickAccess
         port={quickAccessPort}
         storage={storage}
@@ -294,7 +376,7 @@ export async function main() {
         detached={detached}
       />
       <BiometricQuickAccessActions port={port} options={biometricOptions} detached={detached} />
-    </>,
+    </QuickAccessErrorBoundary>,
   );
 }
 
