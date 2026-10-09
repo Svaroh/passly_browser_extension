@@ -3631,7 +3631,24 @@ function patchQuickAccessOfflineFallback() {
   const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
   const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
   const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
+  const activeSessionFile = path.join(root, "node_modules/passbolt-styleguide/src/shared/context/ActiveSession/ActiveSessionLocalStorageContext.js");
+  const handleBootstrapRouteFile = path.join(base, "components/HandleBootstrapRoute/HandleBootstrapRoute.js");
+  const privateRouteFile = path.join(base, "components/PrivateRoute/PrivateRoute.js");
+  const prepareResourceContextFile = path.join(base, "contexts/PrepareResourceContext.js");
   let changed = 0;
+
+  // Clean up any duplicate Trans imports in ExtQuickAccessContext
+  if (fs.existsSync(contextFile)) {
+    const rawContext = fs.readFileSync(contextFile, "utf8");
+    const dedupedContext = rawContext.replace(
+      /import { Trans } from "react-i18next";\s*import { Trans } from "react-i18next";/g,
+      'import { Trans } from "react-i18next";'
+    );
+    if (dedupedContext !== rawContext) {
+      fs.writeFileSync(contextFile, dedupedContext, "utf8");
+      changed++;
+    }
+  }
 
   changed += replaceIfMissing(contextFile, "quickaccess-unreachable-fallback", [
     [
@@ -3639,7 +3656,16 @@ function patchQuickAccessOfflineFallback() {
       `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\nimport { Trans } from "react-i18next";\n`,
     ],
     [
-      `      if (this.props.activeSession.isSessionOnline) {
+      `  async initialize() {
+    try {
+      await this.props.activeSessionLocalStorageContext.updateLocalStorage();
+      await this.getUserSettings();
+      await this.getLocale();
+      const siteSettings =
+        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable
+          ? await this.findAndUpdateSiteSettings()
+          : await this.getOrFindSiteSettings();
+      if (this.props.activeSession.isSessionOnline) {
         this.loadOnlineData(siteSettings);
       } else if (this.props.activeSession.isSessionOffline) {
         this.loadOfflineData(siteSettings);
@@ -3647,13 +3673,29 @@ function patchQuickAccessOfflineFallback() {
     } catch (e) {
       console.error(e);
       this.setState({`,
-      `      if (this.props.activeSession.isSessionOnline) {
-        await this.loadOnlineData(siteSettings);
-      } else if (this.props.activeSession.isSessionOffline) {
+      `  async initialize() {
+    try {
+      const activeSession =
+        (await this.props.activeSessionLocalStorageContext.updateLocalStorage()) ||
+        this.props.activeSessionLocalStorageContext.get() ||
+        this.props.activeSession;
+      await this.getUserSettings();
+      await this.getLocale();
+      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+      const isServerReachable = Boolean(activeSession?.isServerReachable);
+      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+      const siteSettings =
+        isSessionOnline && isServerReachable
+          ? await this.findAndUpdateSiteSettings()
+          : await this.getOrFindSiteSettings();
+      if (isSessionOnline) {
+        await this.loadOnlineData(siteSettings, activeSession);
+      } else if (isSessionOffline) {
         await this.loadOfflineData(siteSettings);
       }
       // quickaccess-unreachable-fallback: resolve the offline capability from the local caches.
-      if (!this.props.activeSession.isServerReachable) {
+      if (!isServerReachable) {
         if (!this.state.loggedInUser) {
           await this.getLoggedInUser();
         }
@@ -3663,7 +3705,8 @@ function patchQuickAccessOfflineFallback() {
       }
     } catch (e) {
       console.error(e);
-      if (!this.props.activeSession?.isServerReachable) {
+      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
         if (typeof this.state.siteSettings === "undefined") {
           this.setState({ siteSettings: null });
         }
@@ -3672,11 +3715,26 @@ function patchQuickAccessOfflineFallback() {
       this.setState({`,
     ],
     [
-      `      this.getLoggedInUser();
+      `  async loadOnlineData(siteSettings) {
+    if (this.props.activeSession.isAuthenticated) {
+      if (this.props.activeSession.isMfaRequired) {
+        await this.redirectToMfaAuthentication();
+        return;
+      }
+      this.getLoggedInUser();
       this.getOrFindRbacs(siteSettings);
     }
   }`,
-      `      await this.getLoggedInUser();
+      `  async loadOnlineData(siteSettings, activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get()) {
+    if (activeSession?.isAuthenticated) {
+      if (activeSession?.isMfaRequired) {
+        await this.redirectToMfaAuthentication();
+        return;
+      }
+      await this.getLoggedInUser();
+      await this.getOrFindRbacs(siteSettings);
+    } else if (!activeSession?.isServerReachable) {
+      await this.getLoggedInUser();
       await this.getOrFindRbacs(siteSettings);
     }
   }`,
@@ -3690,6 +3748,34 @@ function patchQuickAccessOfflineFallback() {
     await this.getLoggedInUser();
     await this.getOrFindRbacs(siteSettings);
   }`,
+    ],
+    [
+      `  isReady() {
+    return (
+      this.props.activeSession?.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
+    );
+  }`,
+      `  isReady() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    if (!activeSession) {
+      return false;
+    }
+    return (
+      activeSession.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+    );
+  }`,
+    ],
+    [
+      `await this.checkPluginIsConfigured();\n`,
+      `// quickaccess-addon-check-handled-in-root\n`,
     ],
     [
       `await this.props.state.request("passbolt.tabs.open-website-getting-started-page");`,
@@ -3706,6 +3792,243 @@ function patchQuickAccessOfflineFallback() {
       `<p className="processing-text">
                     <Trans>{this.state.errorMessage}</Trans>
                   </p>`,
+    ],
+  ]) ? 1 : 0;
+
+  // Extra safety guards for ExtQuickAccessContext
+  changed += replaceIfExists(contextFile, [
+    [
+      `import { Trans } from "react-i18next";\nimport { Trans } from "react-i18next";\n`,
+      `import { Trans } from "react-i18next";\n`,
+    ],
+    [
+      `      const siteSettings =
+        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable`,
+      `      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+      const isServerReachable = Boolean(activeSession?.isServerReachable);
+      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+      const siteSettings =
+        isSessionOnline && isServerReachable`,
+    ],
+    [
+      `      if (this.props.activeSession.isSessionOnline) {
+        await this.loadOnlineData(siteSettings);
+      } else if (this.props.activeSession.isSessionOffline) {
+        await this.loadOfflineData(siteSettings);
+      }`,
+      `      if (isSessionOnline) {
+        await this.loadOnlineData(siteSettings, activeSession);
+      } else if (isSessionOffline) {
+        await this.loadOfflineData(siteSettings);
+      }`,
+    ],
+    [
+      `      if (!this.props.activeSession.isServerReachable) {`,
+      `      if (!isServerReachable) {`,
+    ],
+    [
+      `      if (!this.props.activeSession.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }`,
+      `      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }`,
+    ],
+    [
+      `  isReady() {
+    return (
+      this.props.activeSession?.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
+    );
+  }`,
+      `  isReady() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    if (!activeSession) {
+      return false;
+    }
+    return (
+      activeSession.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+    );
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard ActiveSessionLocalStorageContext
+  changed += replaceIfExists(activeSessionFile, [
+    [
+      `  set(activeSession) {
+    const activeSessionEntity = new ActiveSessionEntity(activeSession);
+    this.setState({ activeSession: activeSessionEntity });
+  }`,
+      `  set(activeSession) {
+    const activeSessionEntity = new ActiveSessionEntity(activeSession);
+    this._activeSession = activeSessionEntity;
+    this.setState({ activeSession: activeSessionEntity });
+    return activeSessionEntity;
+  }`,
+    ],
+    [
+      `  get() {
+    if (this.state.activeSession === null) {
+      this.loadLocalStorage();
+      return null;
+    }
+
+    return this.state.activeSession;
+  }`,
+      `  get() {
+    if (this.state.activeSession === null && !this._activeSession) {
+      this.loadLocalStorage();
+      return null;
+    }
+
+    return this.state.activeSession || this._activeSession;
+  }`,
+    ],
+    [
+      `  async updateLocalStorage() {
+    if (this.runningLocalStorageUpdatePromise === null) {
+      this.runningLocalStorageUpdatePromise =
+        this.activeSessionServiceWorkerService.findAndUpdateAuthenticationStatus();
+      const activeSession = await this.runningLocalStorageUpdatePromise;
+      if (activeSession) {
+        this.set(activeSession);
+      }
+      this.runningLocalStorageUpdatePromise = null;
+    } else {
+      await this.runningLocalStorageUpdatePromise;
+    }
+  }`,
+      `  async updateLocalStorage() {
+    if (this.runningLocalStorageUpdatePromise === null) {
+      this.runningLocalStorageUpdatePromise =
+        this.activeSessionServiceWorkerService.findAndUpdateAuthenticationStatus();
+      try {
+        const activeSession = await this.runningLocalStorageUpdatePromise;
+        if (activeSession) {
+          return this.set(activeSession);
+        }
+      } catch (error) {
+        console.error("Failed to update active session status:", error);
+      } finally {
+        this.runningLocalStorageUpdatePromise = null;
+      }
+    } else {
+      await this.runningLocalStorageUpdatePromise;
+    }
+    return this.state.activeSession || this._activeSession;
+  }`,
+    ],
+    [
+      `            <WrappedComponent
+              activeSessionLocalStorageContext={activeSessionLocalStorageContext}
+              activeSession={activeSessionLocalStorageContext.get()}
+              {...this.props}
+            />`,
+      `            <WrappedComponent
+              activeSessionLocalStorageContext={activeSessionLocalStorageContext}
+              activeSession={
+                activeSessionLocalStorageContext.activeSession || activeSessionLocalStorageContext.get()
+              }
+              {...this.props}
+            />`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard HandleBootstrapRoute
+  changed += replaceIfExists(handleBootstrapRouteFile, [
+    [
+      `import { withRouter } from "react-router-dom";`,
+      `import { withRouter, Redirect } from "react-router-dom";`,
+    ],
+    [
+      `  getBootstrapRoute() {
+    const activeSession = this.props.activeSession;`,
+      `  getBootstrapRoute() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    if (!activeSession) {
+      return "/webAccessibleResources/quickaccess/login";
+    }`,
+    ],
+    [
+      `  render() {
+    return this.props.history.push(this.getBootstrapRoute());
+  }`,
+      `  render() {
+    const route = this.getBootstrapRoute();
+    if (this.props.history?.push) {
+      this.props.history.push(route);
+    }
+    return <Redirect to={route} />;
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard PrivateRoute
+  changed += replaceIfExists(privateRouteFile, [
+    [
+      `  render() {
+    const { component: Component, exact, strict, path, ...componentProps } = this.props;
+
+    return (
+      <Route
+        exact={exact}
+        strict={strict}
+        path={path}
+        render={(props) => (
+          <React.Fragment>
+            {this.props.activeSession.isAuthenticated &&`,
+      `  render() {
+    const { component: Component, exact, strict, path, ...componentProps } = this.props;
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+
+    if (!activeSession) {
+      return null;
+    }
+
+    return (
+      <Route
+        exact={exact}
+        strict={strict}
+        path={path}
+        render={(props) => (
+          <React.Fragment>
+            {Boolean(activeSession.isAuthenticated) &&`,
+    ],
+    [
+      `            {!this.props.activeSession.isAuthenticated && this.props.activeSession.isSessionOnline && (`,
+      `            {!activeSession.isAuthenticated && Boolean(activeSession.isSessionOnline) && (`,
+    ],
+    [
+      `            {!this.props.activeSession.isAuthenticated && !this.props.activeSession.isServerReachable && (`,
+      `            {!activeSession.isAuthenticated && !activeSession.isServerReachable && (`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard PrepareResourceContext
+  changed += replaceIfExists(prepareResourceContextFile, [
+    [
+      `    if (this.props.activeSession && !this.props.activeSession.isSessionOnline) {`,
+      `    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();\n    if (activeSession && !activeSession.isSessionOnline) {`,
+    ],
+    [
+      `    if (this.props.activeSession.isSessionOnline) {`,
+      `    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();\n    if (activeSession && !activeSession.isSessionOnline) {`,
     ],
   ]) ? 1 : 0;
 
