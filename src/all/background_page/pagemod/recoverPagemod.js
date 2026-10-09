@@ -17,7 +17,7 @@ import { RecoverEvents } from "../event/recoverEvents";
 import BuildAccountRecoverService from "../service/recover/buildAccountRecoverService";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
-import OrganizationSettingsModel from "../model/organizationSettings/organizationSettingsModel";
+import FindAndUpdateSiteSettingsLocalStorageService from "../service/siteSettings/findAndUpdateSiteSettingsLocalStorageService";
 import { MobileEvents } from "../event/mobileEvents";
 
 class Recover extends Pagemod {
@@ -46,7 +46,7 @@ class Recover extends Pagemod {
       const tab = port._port.sender.tab;
       const account = BuildAccountRecoverService.buildFromRecoverUrl(tab.url);
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
-      await new OrganizationSettingsModel(apiClientOptions).getOrFind(true);
+      await new FindAndUpdateSiteSettingsLocalStorageService(account, apiClientOptions).findAndUpdateAll();
       for (const event of this.events) {
         event.listen({ port, tab, name: this.appName }, apiClientOptions, account);
       }

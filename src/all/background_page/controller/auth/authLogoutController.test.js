@@ -15,18 +15,22 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 import AuthLogoutController from "./authLogoutController";
 import AuthModel from "../../model/auth/authModel";
 import { v4 as uuid } from "uuid";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 beforeEach(async () => {
   jest.clearAllMocks();
 });
 
 describe("AuthLogoutController", () => {
+  const account = new AccountEntity(defaultAccountDto());
+
   describe("AuthLogoutController::exec", () => {
     it("Should sign-out the user and not redirect after for the quickaccess.", async () => {
       expect.assertions(2);
       const logoutSpy = jest.spyOn(AuthModel.prototype, "logout").mockImplementation(() => {});
 
-      const controller = new AuthLogoutController(null, null, defaultApiClientOptions());
+      const controller = new AuthLogoutController(null, null, defaultApiClientOptions(), account);
       await controller.exec(false);
 
       expect(logoutSpy).toHaveBeenCalledTimes(1);
@@ -44,7 +48,7 @@ describe("AuthLogoutController", () => {
       };
       const apiClientOptions = defaultApiClientOptions();
 
-      const controller = new AuthLogoutController(worker, null, apiClientOptions);
+      const controller = new AuthLogoutController(worker, null, apiClientOptions, account);
       await controller.exec(true);
 
       expect(logoutSpy).toHaveBeenCalledTimes(1);

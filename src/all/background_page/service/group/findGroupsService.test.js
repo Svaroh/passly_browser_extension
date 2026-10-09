@@ -12,10 +12,12 @@
  * @since         5.7.0
  */
 
+import { v4 as uuidv4 } from "uuid";
 import User from "../../model/user";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
-import GroupsCollection from "../../model/entity/group/groupsCollection";
+import GroupsCollection from "passbolt-styleguide/src/shared/models/entity/group/groupsCollection";
+import { defaultGroupDto } from "passbolt-styleguide/src/shared/models/entity/group/groupEntity.test.data";
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import FindGroupsService from "./findGroupsService";
 import MockExtension from "../../../../../test/mocks/mockExtension";
@@ -36,40 +38,35 @@ describe("FindGroupsService", () => {
     /**
      * Tests the findAll method of the findGroupsService
      */
-    const testFindAll = async (contains, filters, orders, ignoreInvalidEntity) => {
+    const testFindAll = async (contains, filters, ignoreInvalidEntity) => {
       // Setup mock data for the test
       const groupsDtos = setupMockData();
       // Create a spy on the findAll method of groupApiService and mock its return value
       const spy = jest.spyOn(findGroupsService.groupApiService, "findAll").mockResolvedValue(groupsDtos);
       // Call the findAll method of findGroupsService with the provided parameters
-      const result = await findGroupsService.findAll(contains, filters, orders, ignoreInvalidEntity);
+      const result = await findGroupsService.findAll(contains, filters, ignoreInvalidEntity);
       // Assert that the spy was called with the correct parameters
-      expect(spy).toHaveBeenCalledWith(contains, filters, orders);
+      expect(spy).toHaveBeenCalledWith(contains, filters);
       // Assert that the result is an instance of GroupsCollection
       expect(result).toBeInstanceOf(GroupsCollection);
       // Assert that the result's id matches the mock data's id
       expect(result.id).toBe(groupsDtos.id);
     };
 
-    it("should find groups with contains, filters, and orders", async () => {
-      await testFindAll(
-        { groups_users: true, my_group_user: true, modifier: false },
-        { "has-users": "user123" },
-        { name: "asc" },
-        true,
-      );
+    it("should find groups with contains and filters", async () => {
+      await testFindAll({ groups_users: true, my_group_user: true, modifier: false }, { "has-users": "user123" }, true);
     });
 
     it("should find groups with empty contains, filters, and orders", async () => {
-      await testFindAll({}, {}, {}, true);
+      await testFindAll({}, {}, true);
     });
 
     it("should find groups with null contains, filters, and orders", async () => {
-      await testFindAll(null, null, null, true);
+      await testFindAll(null, null, true);
     });
 
     it("should find groups with ignoreInvalidEntity set to false", async () => {
-      await testFindAll({ groups_users: true, my_group_user: true, modifier: false }, null, null, false);
+      await testFindAll({ groups_users: true, my_group_user: true, modifier: false }, null, false);
     });
 
     /*
@@ -125,9 +122,89 @@ describe("FindGroupsService", () => {
 
       const result = await findGroupsService.findAllForLocalStorage();
 
-      expect(findGroupsService.findAll).toHaveBeenCalledWith(contains, null, null, true);
+      expect(findGroupsService.findAll).toHaveBeenCalledWith(contains, null, true);
       expect(result).toBeInstanceOf(Array);
       expect(result.id).toBe(groupsDtos.id);
+    });
+  });
+
+  describe("::findAllByIdsForShare", () => {
+    it("should delegate to findAllByIds with the contains tailored for the share process", async () => {
+      const groupIds = [uuidv4(), uuidv4()];
+      const expectedContains = { "groups_users.user.profile": true };
+      const expectedCollection = new GroupsCollection();
+      jest.spyOn(findGroupsService, "findAllByIds").mockResolvedValue(expectedCollection);
+
+      const result = await findGroupsService.findAllByIdsForShare(groupIds);
+
+      expect(findGroupsService.findAllByIds).toHaveBeenCalledWith(groupIds, expectedContains);
+      expect(result).toBe(expectedCollection);
+    });
+
+    it("should throw if the given group ids are not an array of uuids", async () => {
+      expect.assertions(3);
+      const spy = jest.spyOn(findGroupsService, "findAllByIds");
+
+      await expect(findGroupsService.findAllByIdsForShare("not-an-array")).rejects.toThrow();
+      await expect(findGroupsService.findAllByIdsForShare(["not-a-uuid"])).rejects.toThrow();
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("::findAllByIds", () => {
+    it("should find all the groups given their ids", async () => {
+      const groupDtos = [
+        defaultGroupDto({ name: "Group 0" }),
+        defaultGroupDto({ name: "Group 1" }),
+        defaultGroupDto({ name: "Group 2" }),
+      ];
+      expect.assertions(4 + groupDtos.length);
+      const groupIds = groupDtos.map((groupDto) => groupDto.id);
+      const contains = { groups_users: true, my_group_user: false, modifier: false };
+      // The API returns a single group per id, wrapped in a PassboltResponseEntity like object.
+      const spy = jest
+        .spyOn(findGroupsService.groupApiService, "get")
+        .mockImplementation(async (id) => ({ body: groupDtos.find((groupDto) => groupDto.id === id) }));
+
+      const result = await findGroupsService.findAllByIds(groupIds, contains);
+
+      expect(spy).toHaveBeenCalledTimes(groupIds.length);
+      groupIds.forEach((groupId) => expect(spy).toHaveBeenCalledWith(groupId, contains));
+      expect(result).toBeInstanceOf(GroupsCollection);
+      expect(result).toHaveLength(groupIds.length);
+      expect(result.items.map((group) => group.id).sort()).toEqual([...groupIds].sort());
+    });
+
+    it("should return an empty collection without calling the API when the given group ids are empty", async () => {
+      expect.assertions(3);
+      const spy = jest.spyOn(findGroupsService.groupApiService, "get");
+
+      const result = await findGroupsService.findAllByIds([]);
+
+      expect(result).toBeInstanceOf(GroupsCollection);
+      expect(result).toHaveLength(0);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("should reject if the API returns an invalid group", async () => {
+      const validGroupDto = defaultGroupDto();
+      const invalidGroupDto = defaultGroupDto({ name: 42 });
+      const groupIds = [validGroupDto.id, invalidGroupDto.id];
+      jest
+        .spyOn(findGroupsService.groupApiService, "get")
+        .mockImplementation(async (id) => ({ body: id === validGroupDto.id ? validGroupDto : invalidGroupDto }));
+
+      const collection = await findGroupsService.findAllByIds(groupIds);
+      expect(collection).toHaveLength(1);
+    });
+
+    it("should throw if the given group ids are not an array of uuids", async () => {
+      expect.assertions(3);
+      const spy = jest.spyOn(findGroupsService.groupApiService, "get");
+
+      await expect(findGroupsService.findAllByIds("not-an-array")).rejects.toThrow();
+      await expect(findGroupsService.findAllByIds(["not-a-uuid"])).rejects.toThrow();
+      expect(spy).not.toHaveBeenCalled();
     });
   });
 });

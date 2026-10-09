@@ -18,8 +18,11 @@ import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity
 import TagsCollection from "../../model/entity/tag/tagsCollection";
 import UpdateResourceTagsController from "./updateResourceTagsController";
 import { defaultTagsCollectionDto } from "../../model/entity/tag/tagsCollection.test.data";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("UpdateResourceTagsController", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let resourceDto, tagsDto, tags, updatedResource;
 
   beforeEach(() => {
@@ -38,7 +41,7 @@ describe("UpdateResourceTagsController", () => {
     it("should update a resource's tags collection", async () => {
       expect.assertions(2);
 
-      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions());
+      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "updateResourceTags").mockResolvedValue(updatedResource);
 
       const result = await controller.exec(resourceDto.id, tagsDto);
@@ -50,7 +53,7 @@ describe("UpdateResourceTagsController", () => {
     it("should throw an Error when resourceId is not an uuid", async () => {
       expect.assertions(2);
 
-      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions());
+      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "updateResourceTags").mockResolvedValue(updatedResource);
 
       try {
@@ -65,7 +68,7 @@ describe("UpdateResourceTagsController", () => {
     it("should throw EntityValidationError if tagsDto is malformed", async () => {
       expect.assertions(2);
 
-      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions());
+      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "updateResourceTags");
 
       try {
@@ -81,7 +84,7 @@ describe("UpdateResourceTagsController", () => {
       expect.assertions(1);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions());
+      const controller = new UpdateResourceTagsController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "updateResourceTags").mockRejectedValue(expectedError);
 
       try {

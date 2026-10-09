@@ -14,6 +14,7 @@
 import { v4 as uuidv4 } from "uuid";
 import ResourceLocalStorage, { RESOURCES_LOCAL_STORAGE_KEY } from "./resourceLocalStorage";
 import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
+import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
@@ -129,6 +130,39 @@ describe("ResourceLocalStorage", () => {
       const result = await ResourceLocalStorage.getResourceById(resourcesDto[0].id);
       expect(result).toEqual(expect.any(Object));
       expect(result).toEqual(resourcesDto[0]);
+    });
+  });
+
+  describe("::getResourceByOfflineItemId", () => {
+    it("Should return undefined if the local storage is not yet initialized", async () => {
+      expect.assertions(1);
+      const result = await ResourceLocalStorage.getResourceByOfflineItemId(uuidv4());
+      expect(result).toBeUndefined();
+    });
+
+    it("Should return nothing if no resource matches the given offline item id", async () => {
+      expect.assertions(1);
+      const resourcesDto = [defaultResourceDto(), defaultResourceDto()];
+      await browser.storage.local.set({ [RESOURCES_LOCAL_STORAGE_KEY]: resourcesDto });
+      const result = await ResourceLocalStorage.getResourceByOfflineItemId(uuidv4());
+      expect(result).toBeUndefined();
+    });
+
+    it("Should return the resource whose offline item id matches", async () => {
+      expect.assertions(2);
+      const offlineItemId = uuidv4();
+      const resourceId = uuidv4();
+      const resourcesDto = [
+        defaultResourceDto(),
+        defaultResourceDto({
+          id: resourceId,
+          offline: defaultOfflineItemDto({ id: offlineItemId, foreign_key: resourceId }),
+        }),
+      ];
+      await browser.storage.local.set({ [RESOURCES_LOCAL_STORAGE_KEY]: resourcesDto });
+      const result = await ResourceLocalStorage.getResourceByOfflineItemId(offlineItemId);
+      expect(result).toEqual(expect.any(Object));
+      expect(result).toEqual(resourcesDto[1]);
     });
   });
 

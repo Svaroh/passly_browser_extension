@@ -16,11 +16,14 @@ import FetchOffscreenService, { SEND_MESSAGE_TARGET_FETCH_OFFSCREEN } from "../n
 import WriteClipobardOffscreenService, {
   SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN,
 } from "../clipboard/writeClipobardOffscreenService";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
+import AddUsersToGroupOffscreenService, {
+  SEND_MESSAGE_TARGET_ADD_USERS_TO_GROUP_OFFSCREEN,
+} from "../group/addUsersToGroupOffscreenService";
 import PasskeyKeepAliveOffscreenService, {
   SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_START,
   SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_STOP,
-} from "../passkey/passkeyKeepAliveOffscreenService";
-import { assertUuid } from "../../../../all/background_page/utils/assertions";
+} from "../passkey/passkeyKeepAliveOffscreenService"; (Implement PassKey (#17))
 
 export const SEND_MESSAGE_TARGET_OFFSCREEN_ERROR_RESPONSE_HANDLER = "service-worker-offscreen-error-response-handler";
 
@@ -34,8 +37,9 @@ export default class HandleOffscreenRequestService {
     const REQUEST_HANDLE_MAP = {
       [SEND_MESSAGE_TARGET_FETCH_OFFSCREEN]: FetchOffscreenService.handleFetchRequest,
       [SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN]: WriteClipobardOffscreenService.handleClipboardRequest,
+[SEND_MESSAGE_TARGET_ADD_USERS_TO_GROUP_OFFSCREEN]: AddUsersToGroupOffscreenService.handleRequest,
       [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_START]: PasskeyKeepAliveOffscreenService.handleStartRequest,
-      [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_STOP]: PasskeyKeepAliveOffscreenService.handleStopRequest,
+      [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_STOP]: PasskeyKeepAliveOffscreenService.handleStopRequest, (Implement PassKey (#17))
     };
 
     const requestHandler = REQUEST_HANDLE_MAP[message?.target];

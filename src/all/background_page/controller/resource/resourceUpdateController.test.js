@@ -24,16 +24,21 @@ import { pgpKeys } from "passbolt-styleguide/test/fixture/pgpKeys/keys";
 import { enableFetchMocks } from "jest-fetch-mock";
 import { mockApiResponse } from "../../../../../test/mocks/mockApiResponse";
 import EncryptMessageService from "../../service/crypto/encryptMessageService";
-import ResourceLocalStorage from "../../service/local_storage/resourceLocalStorage";
 import ResourceTypeService from "../../service/api/resourceType/resourceTypeService";
 import { resourceTypesCollectionDto } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection.test.data";
 import PermissionService from "../../service/api/permission/permissionService";
+import { anonymousSiteSettings } from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity.test.data";
+import SiteSettingsEntity from "passbolt-styleguide/src/shared/models/entity/siteSettings/siteSettingsEntity";
+import GetOrFindSiteSettingsService from "../../service/siteSettings/getOrFindSiteSettingsService";
 
 jest.mock("../../service/passphrase/getPassphraseService");
 jest.mock("../../service/progress/progressService");
 
 beforeEach(() => {
   enableFetchMocks();
+  jest
+    .spyOn(GetOrFindSiteSettingsService.prototype, "getOrFind")
+    .mockImplementation(() => new SiteSettingsEntity(anonymousSiteSettings()));
 });
 
 describe("ResourceUpdateController", () => {
@@ -63,7 +68,12 @@ describe("ResourceUpdateController", () => {
       await controller._exec(resourceDTO, null);
 
       expect(controller.resourceUpdateService.exec).toHaveBeenCalledTimes(1);
-      expect(controller.resourceUpdateService.exec).toHaveBeenCalledWith(resourceDTO, null, pgpKeys.ada.passphrase);
+      expect(controller.resourceUpdateService.exec).toHaveBeenCalledWith(
+        resourceDTO,
+        null,
+        pgpKeys.ada.passphrase,
+        undefined,
+      );
       expect(controller.worker.port.emit).toHaveBeenCalledWith(null, "SUCCESS", resourceDTO);
     });
 
@@ -75,7 +85,29 @@ describe("ResourceUpdateController", () => {
       await controller._exec(resourceDTO, secret);
 
       expect(controller.resourceUpdateService.exec).toHaveBeenCalledTimes(1);
-      expect(controller.resourceUpdateService.exec).toHaveBeenCalledWith(resourceDTO, secret, pgpKeys.ada.passphrase);
+      expect(controller.resourceUpdateService.exec).toHaveBeenCalledWith(
+        resourceDTO,
+        secret,
+        pgpKeys.ada.passphrase,
+        undefined,
+      );
+      expect(controller.worker.port.emit).toHaveBeenCalledWith(null, "SUCCESS", resourceDTO);
+    });
+
+    it("Should forward the permission changes to the resourceUpdateService", async () => {
+      expect.assertions(2);
+
+      const resourceDTO = defaultResourceDto();
+      const permissionChanges = [{ aro_foreign_key: "aro-id", aco_foreign_key: null, type: 1, is_new: true }];
+      jest.spyOn(controller.resourceUpdateService, "exec").mockImplementationOnce(() => resourceDTO);
+      await controller._exec(resourceDTO, secret, permissionChanges);
+
+      expect(controller.resourceUpdateService.exec).toHaveBeenCalledWith(
+        resourceDTO,
+        secret,
+        pgpKeys.ada.passphrase,
+        permissionChanges,
+      );
       expect(controller.worker.port.emit).toHaveBeenCalledWith(null, "SUCCESS", resourceDTO);
     });
 
@@ -116,10 +148,10 @@ describe("ResourceUpdateController", () => {
 
     it("Should close progressService when update succeed", async () => {
       expect.assertions(2);
-      jest.spyOn(ResourceLocalStorage, "updateResource").mockImplementationOnce(jest.fn);
       jest
         .spyOn(controller.verifyOrTrustMetadataKeyService, "verifyTrustedOrTrustNewMetadataKey")
         .mockImplementationOnce(jest.fn);
+      jest.spyOn(controller.resourceUpdateService, "exec").mockImplementationOnce(jest.fn);
       await controller.exec(defaultResourceDto(), null);
       expect(controller.progressService.close).toHaveBeenCalledTimes(1);
       expect(controller.progressService.close).toHaveBeenCalled();

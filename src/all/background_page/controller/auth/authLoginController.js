@@ -21,6 +21,8 @@ import PassphraseStorageService from "../../service/session_storage/passphraseSt
 import PostLoginService from "../../service/auth/postLoginService";
 import AuthVerifyLoginChallengeService from "../../service/auth/authVerifyLoginChallengeService";
 import KeepSessionAliveService from "../../service/session_storage/keepSessionAliveService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import ActiveSessionLocalStorage from "../../service/local_storage/activeSessionLocalStorage";
 
 class AuthLoginController {
   /**
@@ -34,10 +36,13 @@ class AuthLoginController {
     this.worker = worker;
     this.requestId = requestId;
     this.account = account;
+    this.apiClientOptions = apiClientOptions;
     this.authVerifyLoginChallengeService = new AuthVerifyLoginChallengeService(apiClientOptions);
-    this.updateSsoCredentialsService = new UpdateSsoCredentialsService(apiClientOptions);
+    this.updateSsoCredentialsService = new UpdateSsoCredentialsService(apiClientOptions, account);
     this.checkPassphraseService = new CheckPassphraseService(new Keyring());
     this.userRememberMeLatestChoiceLocalStorage = new UserRememberMeLatestChoiceLocalStorage(account);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+    this.activeSessionLocalStorage = new ActiveSessionLocalStorage(account);
   }
 
   /**
@@ -104,7 +109,7 @@ class AuthLoginController {
        * MFA may not be complete yet, so no need to preload things here
        */
       await this.rememberPassphrase(passphrase, rememberMe);
-      await PostLoginService.exec();
+      await PostLoginService.exec(this.account, this.apiClientOptions);
       await this.registerRememberMeOption(rememberMe);
     } catch (error) {
       if (!(error instanceof UserAlreadyLoggedInError)) {

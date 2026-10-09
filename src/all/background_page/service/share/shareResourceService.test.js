@@ -54,12 +54,12 @@ import PermissionChangesCollection from "../../model/entity/permission/change/pe
 import MockPort from "passbolt-styleguide/src/react-extension/test/mock/MockPort";
 import ProgressService from "../progress/progressService";
 import { METADATA_KEY_TYPE_METADATA_KEY, METADATA_KEY_TYPE_USER_KEY } from "../../model/entity/resource/resourceEntity";
-import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
 import { defaultMetadataPrivateKeyDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataPrivateKeyEntity.test.data";
 import { defaultMetadataKeyDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeyEntity.test.data";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import MetadataKeysSettingsEntity from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity";
+import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 beforeEach(() => {
   MetadataKeysSessionStorage._runtimeCachedData = {};
@@ -153,7 +153,7 @@ describe("ShareResourceService", () => {
         // Mock request simulating the share.
         let simulateRequestPermissions;
         const simulationResult = simulateShareSecretsChangesDto([pgpKeys.betty.userId], [pgpKeys.ada.userId]);
-        jest.spyOn(service.shareService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
+        jest.spyOn(service.shareApiService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
           simulateRequestPermissions = permissions;
           return simulationResult;
         });
@@ -165,13 +165,13 @@ describe("ShareResourceService", () => {
 
         // Mock request retrieving the resource types.
         jest
-          .spyOn(service.resourceTypeModel, "getOrFindAll")
+          .spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll")
           .mockImplementation(() => new ResourceTypesCollection(resourceTypesCollectionDto()));
 
         // Mock the share request.
 
         let shareRequestData;
-        jest.spyOn(service.shareService, "shareResource").mockImplementation((resourceId, data) => {
+        jest.spyOn(service.shareApiService, "shareResource").mockImplementation((resourceId, data) => {
           shareRequestData = data;
           return {};
         });
@@ -290,7 +290,7 @@ describe("ShareResourceService", () => {
         // Mock request simulating the share.
         let simulateRequestPermissions;
         const simulationResult = simulateShareSecretsChangesDto([pgpKeys.betty.userId], [pgpKeys.ada.userId]);
-        jest.spyOn(service.shareService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
+        jest.spyOn(service.shareApiService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
           simulateRequestPermissions = permissions;
           return simulationResult;
         });
@@ -302,13 +302,13 @@ describe("ShareResourceService", () => {
 
         // Mock request retrieving the resource types.
         jest
-          .spyOn(service.resourceTypeModel, "getOrFindAll")
+          .spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll")
           .mockImplementation(() => new ResourceTypesCollection(resourceTypesCollectionDto()));
 
         // Mock the share request.
 
         let shareRequestData;
-        jest.spyOn(service.shareService, "shareResource").mockImplementation((resourceId, data) => {
+        jest.spyOn(service.shareApiService, "shareResource").mockImplementation((resourceId, data) => {
           shareRequestData = data;
           return {};
         });
@@ -410,7 +410,7 @@ describe("ShareResourceService", () => {
 
         // Mock service retrieving the resource types.
         jest
-          .spyOn(ResourceTypeModel.prototype, "getOrFindAll")
+          .spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll")
           .mockImplementation(() => new ResourceTypesCollection(resourceTypesCollectionDto()));
 
         // Mock service retrieving metadata keys settings.
@@ -449,7 +449,7 @@ describe("ShareResourceService", () => {
 
         let simulateRequestPermissions;
         const simulationResult = simulateShareSecretsChangesDto([pgpKeys.betty.userId], [pgpKeys.ada.userId]);
-        jest.spyOn(service.shareService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
+        jest.spyOn(service.shareApiService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
           simulateRequestPermissions = permissions;
           return simulationResult;
         });
@@ -457,7 +457,7 @@ describe("ShareResourceService", () => {
         // Mock the share request.
 
         let shareRequestData;
-        jest.spyOn(service.shareService, "shareResource").mockImplementation((resourceId, data) => {
+        jest.spyOn(service.shareApiService, "shareResource").mockImplementation((resourceId, data) => {
           shareRequestData = data;
           return {};
         });
@@ -670,7 +670,7 @@ describe("ShareResourceService", () => {
 
       // Mock service retrieving the resource types.
       jest
-        .spyOn(ResourceTypeModel.prototype, "getOrFindAll")
+        .spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll")
         .mockImplementation(() => new ResourceTypesCollection(resourceTypesCollectionDto()));
 
       // Mock service retrieving metadata keys settings.
@@ -723,7 +723,7 @@ describe("ShareResourceService", () => {
       const simulateR1V5Result = simulateShareSecretsChangesDto([pgpKeys.betty.userId, pgpKeys.carol.userId]);
       const simulateR2V5Result = simulateShareSecretsChangesDto([pgpKeys.betty.userId, pgpKeys.carol.userId]);
       const simulateR3V5Result = simulateShareSecretsChangesDto([pgpKeys.betty.userId, pgpKeys.carol.userId]);
-      jest.spyOn(service.shareService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
+      jest.spyOn(service.shareApiService, "simulateShareResource").mockImplementation((resourceId, permissions) => {
         switch (resourceId) {
           case resourceId1V4:
             simulateR1V4RequestPermissions = permissions;
@@ -750,13 +750,13 @@ describe("ShareResourceService", () => {
 
       // Mock request retrieving the resource types.
       jest
-        .spyOn(service.resourceTypeModel, "getOrFindAll")
+        .spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll")
         .mockImplementation(() => new ResourceTypesCollection(resourceTypesCollectionDto()));
 
       // Mock the share request.
 
       let shareR1V4RequestData, shareR2V4RequestData, shareR1V5RequestData, shareR2V5RequestData, shareR3V5RequestData;
-      jest.spyOn(service.shareService, "shareResource").mockImplementation((resourceId, data) => {
+      jest.spyOn(service.shareApiService, "shareResource").mockImplementation((resourceId, data) => {
         switch (resourceId) {
           case resourceId1V4:
             shareR1V4RequestData = data;

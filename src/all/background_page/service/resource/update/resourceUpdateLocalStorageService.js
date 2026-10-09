@@ -13,7 +13,7 @@
  */
 import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../../model/entity/resource/resourcesCollection";
-import { assertArrayUUID, assertUuid } from "../../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class ResourceUpdateLocalStorageService {
   /**

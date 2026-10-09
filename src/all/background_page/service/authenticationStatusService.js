@@ -13,22 +13,30 @@
  */
 import MfaAuthenticationRequiredError from "../error/mfaAuthenticationRequiredError";
 import NotFoundError from "../error/notFoundError";
-import { ApiClient } from "passbolt-styleguide/src/shared/lib/apiClient/apiClient";
 import PassboltBadResponseError from "../error/passboltBadResponseError";
-import GetActiveAccountService from "./account/getActiveAccountService";
-import BuildApiClientOptionsService from "./account/buildApiClientOptionsService";
+import AbstractService from "passbolt-styleguide/src/shared/services/api/abstract/abstractService";
 
 const AUTH_RESOURCE_NAME = "/auth";
-const MFA_VERIFY_ERROR_REGEXP = /mfa\/verify\/error\.json$/;
+export const MFA_VERIFY_ERROR_REGEXP = /mfa\/verify\/error\.json$/;
 
-class AuthenticationStatusService {
+class AuthenticationStatusService extends AbstractService {
+  /**
+   * @constructor
+   * @param {ApiClientOptions} apiClientOptions
+   * @public
+   */
+  constructor(apiClientOptions) {
+    super(apiClientOptions, AUTH_RESOURCE_NAME);
+  }
   /**
    * Check if the current user is authenticated.
    * @returns {Promise<boolean>}
+   * @throws {PassboltBadResponseError} If the response can't be parsed
+   * @throws {MfaAuthenticationRequiredError} If there was an error during the MFA
+   * @throws {NotFoundError} If the server answered with 404
    */
-  static async isAuthenticated() {
-    const apiClient = new ApiClient(await this.getApiClientOptions());
-    const url = apiClient.buildUrl(`${apiClient.baseUrl.toString()}/is-authenticated`, null);
+  async isAuthenticated() {
+    const url = this.apiClient.buildUrl(`${this.apiClient.baseUrl.toString()}/is-authenticated`, null);
 
     const fetchOptions = {
       credentials: "include",
@@ -37,7 +45,7 @@ class AuthenticationStatusService {
         "content-type": "application/json",
       },
     };
-    const response = await apiClient.sendRequest("GET", url, null, fetchOptions);
+    const response = await this.apiClient.sendRequest("GET", url, null, fetchOptions);
 
     let responseJson;
     try {
@@ -63,16 +71,6 @@ class AuthenticationStatusService {
     }
 
     return false;
-  }
-
-  /**
-   * Return a built ApiClientOptions for requesting the API.
-   * @returns {ApiClientOptions}
-   * @private
-   */
-  static async getApiClientOptions() {
-    const account = await GetActiveAccountService.get();
-    return BuildApiClientOptionsService.buildFromAccount(account).setResourceName(AUTH_RESOURCE_NAME);
   }
 }
 

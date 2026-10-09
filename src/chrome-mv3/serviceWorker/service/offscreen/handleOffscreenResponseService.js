@@ -11,7 +11,7 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         5.3.2
  */
-import { assertUuid } from "../../../../all/background_page/utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import { SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN_RESPONSE_HANDLER } from "../../../offscreens/service/clipboard/writeClipobardOffscreenService";
 import {
   SEND_MESSAGE_TARGET_FETCH_OFFSCREEN_POLLING_HANDLER,
@@ -21,6 +21,11 @@ import { SEND_MESSAGE_TARGET_OFFSCREEN_ERROR_RESPONSE_HANDLER } from "../../../o
 import { SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_RESPONSE } from "../../../offscreens/service/passkey/passkeyKeepAliveOffscreenService";
 import ResponseClipboardOffscreenService from "../clipboard/responseClipboardOffscreenService";
 import ResponseFetchOffscreenService from "../network/responseFetchOffscreenService";
+import {
+  SEND_MESSAGE_TARGET_ADD_USERS_TO_GROUP_OFFSCREEN_RESPONSE_HANDLER,
+  SEND_MESSAGE_TARGET_OFFSCREEN_PROGRESS_SERVICE_HANDLER,
+} from "../../../offscreens/service/group/addUsersToGroupOffscreenService";
+import ResponseAddUsersToGroupOffscreenService from "../addUsersToGroup/responseAddUsersToGroupOffscreenService";
 
 export default class HandleOffscreenResponseService {
   /**
@@ -37,6 +42,10 @@ export default class HandleOffscreenResponseService {
     [SEND_MESSAGE_TARGET_FETCH_OFFSCREEN_RESPONSE_HANDLER]: ResponseFetchOffscreenService.handleFetchResponse,
     [SEND_MESSAGE_TARGET_CLIPBOARD_WRITE_OFFSCREEN_RESPONSE_HANDLER]:
       ResponseClipboardOffscreenService.handleClipboardResponse,
+    [SEND_MESSAGE_TARGET_ADD_USERS_TO_GROUP_OFFSCREEN_RESPONSE_HANDLER]:
+      ResponseAddUsersToGroupOffscreenService.handleAddUsersToGroupResponse,
+    [SEND_MESSAGE_TARGET_OFFSCREEN_PROGRESS_SERVICE_HANDLER]:
+      ResponseAddUsersToGroupOffscreenService.handleAddUsersToGroupProgress,
     [SEND_MESSAGE_TARGET_OFFSCREEN_ERROR_RESPONSE_HANDLER]: HandleOffscreenResponseService.handleOffscreenError,
     [SEND_MESSAGE_TARGET_PASSKEY_KEEPALIVE_RESPONSE]: HandleOffscreenResponseService.handlePasskeyKeepAliveResponse,
   };
@@ -56,6 +65,12 @@ export default class HandleOffscreenResponseService {
     }
 
     const responseHandler = HandleOffscreenResponseService.REPONSE_HANDLE_MAP[message.target];
+
+    if (message.target === SEND_MESSAGE_TARGET_OFFSCREEN_PROGRESS_SERVICE_HANDLER) {
+      responseHandler(message);
+      return;
+    }
+
     if (!responseHandler) {
       return;
     }

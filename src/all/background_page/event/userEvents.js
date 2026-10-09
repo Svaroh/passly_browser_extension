@@ -14,6 +14,8 @@ import SecurityTokenEntity from "../model/entity/securityToken/securityTokenEnti
 import AvatarUpdateEntity from "../model/entity/avatar/update/avatarUpdateEntity";
 import UpdateUserLocalStorageController from "../controller/user/updateUserLocalStorageController";
 import GetOrFindLoggedInUserController from "../controller/user/getOrFindLoggedInUserController";
+import GetOrFindUsersController from "../controller/user/getOrFindUsersController";
+import GetOrFindAllUsersController from "../controller/user/getOrFindAllUsersController";
 import UpdateUserController from "../controller/user/updateUserController";
 import DeleteDryRunUserController from "../controller/user/deleteDryRunUserController";
 import DeleteUserController from "../controller/user/deleteUserController";
@@ -37,13 +39,20 @@ const listen = function (worker, apiClientOptions, account) {
    * @param requestId {uuid} The request identifier
    */
   worker.port.on("passbolt.users.get-all", async (requestId) => {
-    try {
-      const userModel = new UserModel(apiClientOptions, account);
-      const users = await userModel.getOrFindAll();
-      worker.port.emit(requestId, "SUCCESS", users);
-    } catch (error) {
-      worker.port.emit(requestId, "ERROR", error);
-    }
+    const controller = new GetOrFindAllUsersController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
+  });
+
+  /*
+   * Find users by their ids.
+   *
+   * @listens passbolt.users.get-by-ids
+   * @param {uuid} requestId The request identifier
+   * @param {Array<uuid>} userIds The ids of the users to retrieve
+   */
+  worker.port.on("passbolt.users.get-by-ids", async (requestId, userIds) => {
+    const controller = new GetOrFindUsersController(worker, requestId, apiClientOptions, account);
+    controller._exec(userIds);
   });
 
   /*
@@ -145,7 +154,7 @@ const listen = function (worker, apiClientOptions, account) {
    * @param newPassphrase {string} The new passphrase
    */
   worker.port.on("passbolt.user.update-private-key", async (requestId, oldPassphrase, newPassphrase) => {
-    const controller = new UpdatePrivateKeyController(worker, requestId, apiClientOptions);
+    const controller = new UpdatePrivateKeyController(worker, requestId, apiClientOptions, account);
     await controller._exec(oldPassphrase, newPassphrase);
   });
 

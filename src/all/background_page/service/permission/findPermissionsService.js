@@ -12,8 +12,8 @@
  * @since         4.10.0
  */
 import PermissionService from "../api/permission/permissionService";
-import { assertUuid } from "../../utils/assertions";
-import PermissionsCollection from "../../model/entity/permission/permissionsCollection";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
+import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/permission/permissionsCollection";
 
 class FindPermissionsService {
   /**
