@@ -30,7 +30,7 @@ class TagController {
     this.resourceModel = new ResourceModel(apiClientOptions, account);
 
     // Progress
-    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions);
+    this.updateResourceTagsService = new UpdateResourceTagsService(apiClientOptions, account);
     this.progressService = new ProgressService(this.worker, i18n.t("Adding tag..."));
   }
 

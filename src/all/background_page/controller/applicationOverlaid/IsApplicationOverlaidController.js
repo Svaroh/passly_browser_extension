@@ -12,7 +12,7 @@
  * @since         6.0.0
  */
 import WorkerService from "../../service/worker/workerService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 /**
  * Controller related to check if application is overlaid (specific to inform manager)

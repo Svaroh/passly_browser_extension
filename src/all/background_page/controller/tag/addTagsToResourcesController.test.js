@@ -19,8 +19,11 @@ import CollectionValidationError from "passbolt-styleguide/src/shared/models/ent
 import TagsCollection from "../../model/entity/tag/tagsCollection";
 import AddTagsToResourcesController from "./addTagsToResourcesController";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("AddTagsToResourcesController", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let resourcesDto, resourceIds, tagsDto, tags, updatedResources;
 
   beforeEach(() => {
@@ -42,7 +45,7 @@ describe("AddTagsToResourcesController", () => {
     it("should add tags to resources", async () => {
       expect.assertions(2);
 
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources").mockResolvedValue(updatedResources);
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "finishStep").mockImplementation(() => {});
@@ -61,7 +64,7 @@ describe("AddTagsToResourcesController", () => {
     it("should throw TypeError when resourceIds is not an Array", async () => {
       expect.assertions(2);
 
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources");
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "close").mockImplementation(() => {});
@@ -73,7 +76,7 @@ describe("AddTagsToResourcesController", () => {
     it("should throw Error when any resourceId is not a valid UUID", async () => {
       expect.assertions(2);
 
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources");
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "close").mockImplementation(() => {});
@@ -87,7 +90,7 @@ describe("AddTagsToResourcesController", () => {
     it("should throw TypeError when tagsDto is not an Array", async () => {
       expect.assertions(2);
 
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources");
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "close").mockImplementation(() => {});
@@ -99,7 +102,7 @@ describe("AddTagsToResourcesController", () => {
     it("should throw CollectionValidationError if tagsDto is malformed", async () => {
       expect.assertions(2);
 
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources");
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "finishStep").mockImplementation(() => {});
@@ -113,7 +116,7 @@ describe("AddTagsToResourcesController", () => {
       expect.assertions(1);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources").mockRejectedValue(expectedError);
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "finishStep").mockImplementation(() => {});
@@ -125,7 +128,7 @@ describe("AddTagsToResourcesController", () => {
     it("should close progressService in case of success", async () => {
       expect.assertions(1);
 
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources").mockResolvedValue(updatedResources);
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "finishStep").mockImplementation(() => {});
@@ -140,7 +143,7 @@ describe("AddTagsToResourcesController", () => {
       expect.assertions(1);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions());
+      const controller = new AddTagsToResourcesController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.updateResourceTagsService, "addTagsToResources").mockRejectedValue(expectedError);
       jest.spyOn(controller.progressService, "start").mockImplementation(() => {});
       jest.spyOn(controller.progressService, "finishStep").mockImplementation(() => {});

@@ -15,7 +15,8 @@
 import FindAndUpdateSessionKeysSessionStorageService from "./findAndUpdateSessionKeysSessionStorageService";
 import SessionKeysBundlesSessionStorageService from "../sessionStorage/sessionKeysBundlesSessionStorageService";
 import SessionKeysBundlesCollection from "passbolt-styleguide/src/shared/models/entity/sessionKey/sessionKeysBundlesCollection";
-import { assertArrayUUID, assertNonEmptyString } from "../../utils/assertions";
+import { assertNonEmptyString } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import SessionKeysCollection from "passbolt-styleguide/src/shared/models/entity/sessionKey/sessionKeysCollection";
 
 /**

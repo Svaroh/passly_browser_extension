@@ -21,8 +21,22 @@ import AccountRecoverEntity from "../../model/entity/account/accountRecoverEntit
 import MockExtension from "../../../../../test/mocks/mockExtension";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import AccountTemporarySessionStorageService from "../../service/sessionStorage/accountTemporarySessionStorageService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity, {
+  USER_ACTIVE_SESSION_ONLINE,
+} from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
 
 describe("GenerateRecoverAccountRecoveryRequestKeyController", () => {
+  beforeEach(() => {
+    jest.spyOn(GetOrFindActiveSessionService.prototype, "getOrFind").mockResolvedValue(
+      new UserActiveSessionEntity({
+        is_authenticated: false,
+        is_mfa_required: false,
+        type: USER_ACTIVE_SESSION_ONLINE,
+      }),
+    );
+  });
+
   describe("GenerateRecoverAccountRecoveryRequestKeyController::exec", () => {
     it("Should assert provided generate key pair dto is valid.", async () => {
       await MockExtension.withConfiguredAccount();

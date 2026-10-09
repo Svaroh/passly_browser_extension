@@ -39,9 +39,16 @@ import PlaintextEntity from "../../model/entity/plaintext/plaintextEntity";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { adminAccountDto, defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(() => {
   enableFetchMocks();
+  // GetOrFindResourceTypesService resolves the active session before deciding whether the cache is stale.
+  jest
+    .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+    .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
 });
 
 jest.mock("../../service/passphrase/getPassphraseService");
@@ -75,6 +82,12 @@ describe("SecretDecryptController", () => {
 
       const controller = new FindSecretByResourceIdController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.resourceModel, "getById").mockImplementationOnce(() => resourceEntity);
+      jest
+        .spyOn(
+          controller.getSecretSchemaResourceTypeService.getOrFindResourceTypesService.resourceTypeLocalStorage,
+          "getData",
+        )
+        .mockImplementation(() => undefined);
       controller.getPassphraseService.getPassphrase.mockResolvedValue(pgpKeys.ada.passphrase);
 
       const plaintextSecret = await controller.exec(resourceDto.id);
@@ -109,6 +122,12 @@ describe("SecretDecryptController", () => {
 
       const controller = new FindSecretByResourceIdController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.resourceModel, "getById").mockImplementationOnce(() => resourceEntity);
+      jest
+        .spyOn(
+          controller.getSecretSchemaResourceTypeService.getOrFindResourceTypesService.resourceTypeLocalStorage,
+          "getData",
+        )
+        .mockImplementation(() => undefined);
       controller.getPassphraseService.getPassphrase.mockResolvedValue(pgpKeys.ada.passphrase);
 
       const plaintextSecret = await controller.exec(resourceDto.id);
@@ -143,6 +162,12 @@ describe("SecretDecryptController", () => {
 
       const controller = new FindSecretByResourceIdController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.resourceModel, "getById").mockImplementationOnce(() => resourceEntity);
+      jest
+        .spyOn(
+          controller.getSecretSchemaResourceTypeService.getOrFindResourceTypesService.resourceTypeLocalStorage,
+          "getData",
+        )
+        .mockImplementation(() => undefined);
       controller.getPassphraseService.getPassphrase.mockResolvedValue(pgpKeys.admin.passphrase);
 
       const plaintextSecret = await controller.exec(resourceDto.id);
@@ -182,6 +207,12 @@ describe("SecretDecryptController", () => {
 
       const controller = new FindSecretByResourceIdController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.resourceModel, "getById").mockImplementationOnce(() => resourceEntity);
+      jest
+        .spyOn(
+          controller.getSecretSchemaResourceTypeService.getOrFindResourceTypesService.resourceTypeLocalStorage,
+          "getData",
+        )
+        .mockImplementation(() => undefined);
       controller.getPassphraseService.getPassphrase.mockResolvedValue(pgpKeys.admin.passphrase);
 
       const plaintextSecret = await controller.exec(resourceDto.id);

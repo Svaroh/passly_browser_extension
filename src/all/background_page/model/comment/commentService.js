@@ -14,7 +14,8 @@
 import CommentEntity from "../entity/comment/commentEntity";
 import CommentsCollection from "../entity/comment/commentsCollection";
 import CommentApiService from "../../service/api/comment/commentApiService";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class CommentService {
   /**

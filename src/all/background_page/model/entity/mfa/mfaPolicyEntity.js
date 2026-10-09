@@ -12,19 +12,9 @@
  * @since         3.11.0
  */
 
-import Entity from "passbolt-styleguide/src/shared/models/entity/abstract/entity";
-import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
+import EntityV2 from "passbolt-styleguide/src/shared/models/entity/abstract/entityV2";
 
-const ENTITY_NAME = "Mfa-Policy";
-
-class MfaPolicyEntity extends Entity {
-  /**
-   * @inheritDoc
-   */
-  constructor(mfaPolicyDto, options = {}) {
-    super(EntitySchema.validate(MfaPolicyEntity.ENTITY_NAME, mfaPolicyDto, MfaPolicyEntity.getSchema()), options);
-  }
-
+class MfaPolicyEntity extends EntityV2 {
   /**
    * Get mfa policy entity schema
    * @returns {Object} schema
@@ -72,13 +62,6 @@ class MfaPolicyEntity extends Entity {
    * Static properties getters
    * ==================================================
    */
-  /**
-   * MfaPolicyEntity.ENTITY_NAME
-   * @returns {string}
-   */
-  static get ENTITY_NAME() {
-    return ENTITY_NAME;
-  }
 
   /**
    * MfaPolicyEntity.SUPPORTED_POLICY_TYPE

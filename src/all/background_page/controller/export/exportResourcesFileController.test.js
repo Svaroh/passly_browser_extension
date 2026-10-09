@@ -50,6 +50,11 @@ import { resourceCollectionV4ToExport } from "../../service/resource/export/expo
 import { defaultDecryptedSharedMetadataKeysDtos } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection.test.data";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import GetOrFindMetadataKeysService from "../../service/metadata/getOrFindMetadataKeysService";
+import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import GetOrFindResourceTypesService from "../../service/resourceType/getOrFindResourceTypesService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 beforeEach(async () => {
   await MockExtension.withConfiguredAccount();
@@ -91,6 +96,9 @@ describe("ExportResourcesFileController", () => {
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypeCollection);
       jest.spyOn(FileService, "saveFile").mockImplementation(jest.fn());
       jest.spyOn(GetOrFindMetadataKeysService.prototype, "getOrFindAll").mockImplementation(() => metadataKeys);
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
     });
     describe("Should export the csv file.", () => {
       describe.each([
@@ -112,13 +120,15 @@ describe("ExportResourcesFileController", () => {
             folder_parent_id: foldersDto[0].id,
             totp: defaultTotpDto({ secret_key: "THISISASECRET" }),
           });
-          jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionV4);
+          jest
+            .spyOn(ResourceService.prototype, "findAll")
+            .mockImplementation(() => mockPassboltResponse(resourceCollectionV4));
           const result = await controller.exec(file);
 
-          const blobFile = new Blob([result.file], { type: "text/csv" });
+          const blobFile = new Blob([KdbxCsvFile], { type: "text/csv" });
 
           expect(FileService.saveFile).toHaveBeenCalledWith(filename, blobFile, "text/csv", 1);
-          expect(result.file).toEqual(KdbxCsvFile);
+          expect(result).toEqual({ customFieldsConflicts: [] });
         });
       });
     });
@@ -169,14 +179,45 @@ describe("ExportResourcesFileController", () => {
           });
 
           const exportResourcesFileEntity = new ExportResourcesFileEntity(file);
-          jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionV4);
+          jest
+            .spyOn(ResourceService.prototype, "findAll")
+            .mockImplementation(() => mockPassboltResponse(resourceCollectionV4));
           await getKDBXContent(exportResourcesFileEntity, new ResourcesCollection(resourceCollectionV4));
 
           const result = await controller.exec(file);
 
-          expect(result.file).toEqual(exportResourcesFileEntity.file);
+          expect(result).toEqual({ customFieldsConflicts: [] });
         });
       });
+    });
+
+    it("should return the custom fields renamed to avoid conflicting with reserved field names", async () => {
+      expect.assertions(1);
+      const conflicts = [{ resourceName: "GitHub", originalKey: "Password", newKey: "Password (1)" }];
+      jest.spyOn(ResourcesKdbxExporter.prototype, "export").mockImplementation(async function () {
+        this.exportEntity.file = new ArrayBuffer(0);
+        return conflicts;
+      });
+      const resourceType = resourceTypeCollection.find(
+        (resourceType) => resourceType.slug === RESOURCE_TYPE_V5_DEFAULT_TOTP_SLUG,
+      );
+      const file = {
+        format: FORMAT_KDBX,
+        resources_ids: [uuidv4()],
+        folders_ids: [foldersDto[0].id],
+      };
+      const resourceCollectionV4 = await resourceCollectionV4ToExport({
+        resourceType: resourceType,
+        folder_parent_id: foldersDto[0].id,
+        totp: defaultTotpDto({ secret_key: "THISISASECRET" }),
+      });
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourceCollectionV4));
+
+      const result = await controller.exec(file);
+
+      expect(result).toEqual({ customFieldsConflicts: conflicts });
     });
 
     describe.each([
@@ -238,7 +279,7 @@ describe("ExportResourcesFileController", () => {
       expect.assertions(1);
 
       jest.spyOn(controller.progressService, "close");
-      jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => {
+      jest.spyOn(GetOrFindResourceTypesService.prototype, "getOrFindAll").mockImplementation(() => {
         throw new Error("API error");
       });
       const file = {

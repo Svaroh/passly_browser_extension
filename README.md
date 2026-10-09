@@ -10,7 +10,7 @@ notice intact while using Passly as the product name for Svaroh builds.
 
 Passly browser extension, based on Passbolt.
 
-(c) 2025 Passbolt SA
+(c) 2026 Passbolt SA
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
 Public License (AGPL) as published by the Free Software Foundation version 3.
@@ -52,9 +52,9 @@ such as auto filling your passwords when visiting known websites.
 
 # Contributing
 
-Please check ```CONTRIBUTING.md``` for more information about how to get involved.
+Please check [CONTRIBUTING.md](CONTRIBUTING.md) for more information about how to get involved.
 
-### Reporting a security Issue
+## Reporting a security Issue
 
 If you've found a security related issue in Passly, please don't open an issue in GitHub.
 Instead contact us at security@passbolt.com. In the spirit of responsible disclosure we ask that the reporter keep the

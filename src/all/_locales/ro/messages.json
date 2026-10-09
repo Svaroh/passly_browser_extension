@@ -1,6 +1,6 @@
 {
   "appName": {
-    "message": "Passly - Manager open source de parole",
+    "message": "Passly",
     "description": "The application name of the extension, displayed in the web store. 45 characters max."
   },
   "appDescription": {

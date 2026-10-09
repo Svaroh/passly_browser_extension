@@ -23,7 +23,7 @@ import ValidatePrivateGpgKeyRecoverController from "../controller/crypto/validat
 import AbortAndRequestHelp from "../controller/recover/abortAndRequestHelpController";
 import SignInSetupController from "../controller/setup/signInSetupController";
 import SetSetupLocaleController from "../controller/setup/setSetupLocaleController";
-import GetOrganizationSettingsController from "../controller/organizationSettings/getOrganizationSettingsController";
+import FindAndUpdateSiteSettingsLocalStorageController from "../controller/siteSettings/findAndUpdateSiteSettingsLocalStorageController";
 import GetAndInitializeAccountLocaleController from "../controller/account/getAndInitializeAccountLocaleController";
 import IsExtensionFirstInstallController from "../controller/extension/isExtensionFirstInstallController";
 import IsLostPassphraseCaseController from "../controller/accountRecovery/isLostPassphraseCaseController";
@@ -51,8 +51,14 @@ const listen = (worker, apiClientOptions, account) => {
     await controller._exec();
   });
 
-  worker.port.on("passbolt.organization-settings.get", async (requestId) => {
-    const controller = new GetOrganizationSettingsController(worker, requestId, apiClientOptions);
+  // The authentication screens bootstrap against a reachable server and need current settings.
+  worker.port.on("passbolt.site-settings.find-and-update", async (requestId) => {
+    const controller = new FindAndUpdateSiteSettingsLocalStorageController(
+      worker,
+      requestId,
+      apiClientOptions,
+      account,
+    );
     await controller._exec();
   });
 

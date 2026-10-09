@@ -1,0 +1,89 @@
+/**
+ * Passbolt ~ Open source password manager for teams
+ * Copyright (c) Passbolt SA (https://www.passbolt.com)
+ *
+ * Licensed under GNU Affero General Public License version 3 of the or any later version.
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Passbolt SA (https://www.passbolt.com)
+ * @license       https://opensource.org/licenses/AGPL-3.0 AGPL License
+ * @link          https://www.passbolt.com Passbolt(tm)
+ * @since         6.0.0
+ */
+import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
+import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
+import FindAndUpdateResourcesLocalStorageFromOPFSService from "./findAndUpdateResourcesLocalStorageFromOPFSService";
+
+/**
+ * The service aims to get resources from the local storage if it is set, or retrieve them from the Offline storage (OPFS)
+ * and set the local storage.
+ */
+export default class GetOrFindOfflineResourcesService {
+  /**
+   *
+   * @param {AccountEntity} account The user account
+   * @param {ApiClientOptions} apiClientOptions The api client options
+   */
+  constructor(account, apiClientOptions) {
+    this.account = account;
+    this.getOrFindResourceTypesService = new GetOrFindResourceTypesService(account, apiClientOptions);
+    this.findAndUpdateResourcesLocalStorageFromOPFSService = new FindAndUpdateResourcesLocalStorageFromOPFSService(
+      account,
+      apiClientOptions,
+    );
+  }
+
+  /**
+   * Get or find all the resources.
+   * @returns {Promise<ResourcesCollection>}
+   */
+  async getOrFindAll() {
+    const hasRuntimeCache = ResourceLocalStorage.hasCachedData();
+    const resourcesDto = await ResourceLocalStorage.get();
+    // Return local storage data if the storage was initialized.
+    if (resourcesDto) {
+      // No validation if data were in runtime cache, they were validate by the one which set it.
+      return new ResourcesCollection(resourcesDto, { validate: !hasRuntimeCache });
+    }
+
+    // Otherwise retrieve the resources from offline storage and update the local storage.
+    const resourcesCollection = await this.findAndUpdateResourcesLocalStorageFromOPFSService.findAndUpdateAll();
+
+    // Validation is not necessary has the data have been refreshed in the runtime cache and validated by the update all.
+    return resourcesCollection;
+  }
+
+  /**
+   * Returns the possible resources to suggest given an url.
+   * @param {string} url The url to suggest for.
+   * @param {"username"|"password"|"otp" | null} fieldType The field type to suggest for
+   * @return {Promise<ResourcesCollection>}
+   */
+  async getOrFindSuggested(url, fieldType = null) {
+    if (!url) {
+      return new ResourcesCollection([]);
+    }
+
+    const resourcesCollection = await this.getOrFindAll();
+    const resourceTypesCollection = await this.getOrFindResourceTypesService.getOrFindAll();
+
+    // Filter resource types according to what we need
+    if (fieldType === null) {
+      resourceTypesCollection.filterByPasswordAndTOTPResourceTypes();
+    } else if (fieldType === "otp") {
+      resourceTypesCollection.filterByTOTPResourceTypes();
+    } else {
+      resourceTypesCollection.filterByPasswordResourceTypes();
+    }
+
+    // Filter by resource types.
+    resourcesCollection.filterByResourceTypes(resourceTypesCollection);
+
+    // Filter by suggested resources.
+    resourcesCollection.filterBySuggestResources(url);
+
+    return resourcesCollection;
+  }
+}

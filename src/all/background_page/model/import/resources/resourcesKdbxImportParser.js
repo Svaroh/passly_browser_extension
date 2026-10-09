@@ -28,7 +28,7 @@ import PasskeyKeepassImportService, {
 
 const RESOURCE_NAME_MAX_LENGTH = 255;
 
-const KDBX_SUPPORTED_FIELDS = [
+export const KDBX_SUPPORTED_FIELDS = [
   "Title",
   "URL",
   "UserName",

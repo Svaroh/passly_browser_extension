@@ -11,17 +11,17 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.10.1
  */
-import ResourceModel from "../../model/resource/resourceModel";
-import FolderModel from "../../model/folder/folderModel";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
 import i18n from "../../sdk/i18n";
 import FindResourcesService from "../../service/resource/findResourcesService";
 import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../share/shareResourceService";
-import { assertArrayUUID, assertNonEmptyArray, assertString, assertUuid } from "../../utils/assertions";
+import { assertNonEmptyArray, assertString } from "../../utils/assertions";
+import { assertArrayUUID, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FindFoldersService from "../folder/findFoldersService";
 import MoveService from "../api/move/moveService";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
 import ResourceUpdateLocalStorageService from "../resource/update/resourceUpdateLocalStorageService";
+import CalculatePermissionsChangesForMoveService from "./calculatePermissionsChangesForMoveService";
 
 export const PROGRESS_STEPS_MOVE_RESOURCES_MOVE_ALL =
   1 + // Retrieving destination folder permissions
@@ -41,8 +41,6 @@ class MoveResourcesService {
    */
   constructor(apiClientOptions, account, progressService) {
     this.progressService = progressService;
-    this.folderModel = new FolderModel(apiClientOptions, account);
-    this.resourceModel = new ResourceModel(apiClientOptions);
     this.findResourcesService = new FindResourcesService(account, apiClientOptions);
     this.shareResourceService = new ShareResourceService(apiClientOptions, account, progressService);
     this.findFoldersService = new FindFoldersService(apiClientOptions);
@@ -196,7 +194,7 @@ class MoveResourcesService {
 
       const parentFolder = resource.folderParentId ? resourcesParentFolders.getById(resource.folderParentId) : null;
 
-      const changes = this.resourceModel.calculatePermissionsChangesForMove(resource, parentFolder, destinationFolder);
+      const changes = CalculatePermissionsChangesForMoveService.forResource(resource, parentFolder, destinationFolder);
       resultingChanges.merge(changes);
     }
 

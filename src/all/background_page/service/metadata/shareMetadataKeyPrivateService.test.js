@@ -25,7 +25,7 @@ import {
   usersWithoutMissingMetadataKeysDto,
 } from "./shareMetadataKeyPrivateService.test.data";
 import RoleEntity from "passbolt-styleguide/src/shared/models/entity/role/roleEntity";
-import UsersCollection from "../../model/entity/user/usersCollection";
+import UsersCollection from "passbolt-styleguide/src/shared/models/entity/user/usersCollection";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import Keyring from "../../model/keyring";
@@ -85,7 +85,7 @@ describe("ShareMetadataKeyPrivateService", () => {
       expect.assertions(1);
 
       const users = new UsersCollection(usersWithoutMissingMetadataKeysDto());
-      jest.spyOn(service.userModel, "getOrFindAll").mockImplementationOnce(() => users);
+      jest.spyOn(service.getOrFindUsersService, "getOrFindAll").mockImplementationOnce(() => users);
       jest.spyOn(service.getOrFindMetadataKeysService, "getOrFindAll");
 
       await service.shareOneMissing(pgpKeys.betty.userId, pgpKeys.ada.passphrase);

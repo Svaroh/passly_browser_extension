@@ -12,7 +12,8 @@
  * @since         5.7.0
  */
 
-import { assertType, assertUuid } from "../../../utils/assertions";
+import { assertType } from "../../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AbstractService from "../abstract/abstractService";
 import PassboltResponseEntity from "passbolt-styleguide/src/shared/models/entity/apiService/PassboltResponseEntity";
 

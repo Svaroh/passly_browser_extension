@@ -19,12 +19,13 @@ class AuthLogoutController {
    * @param {Worker} worker
    * @param {string} requestId uuid
    * @param {ApiClientOptions} apiClientOptions the api client options
+   * @param {AccountEntity} account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
     this.apiClientOptions = apiClientOptions;
-    this.authModel = new AuthModel(this.apiClientOptions);
+    this.authModel = new AuthModel(this.apiClientOptions, account);
   }
 
   /**

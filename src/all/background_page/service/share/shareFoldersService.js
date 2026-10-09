@@ -13,8 +13,9 @@
  */
 
 import i18n from "../../sdk/i18n";
-import ShareService from "../api/share/shareService";
-import { assertString, assertType, assertUuid } from "../../utils/assertions";
+import ShareApiService from "../api/share/shareApiService";
+import { assertString, assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
 import FindResourcesService from "../resource/findResourcesService";
 import FindFoldersService from "../folder/findFoldersService";
@@ -37,7 +38,7 @@ class ShareFoldersService {
   constructor(apiClientOptions, account, progressService) {
     this.account = account;
     this.progressService = progressService;
-    this.shareService = new ShareService(apiClientOptions);
+    this.shareApiService = new ShareApiService(apiClientOptions);
     this.getOrFindFoldersService = new GetOrFindFoldersService(account, apiClientOptions);
     this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
     this.findFoldersService = new FindFoldersService(apiClientOptions);
@@ -221,7 +222,7 @@ class ShareFoldersService {
       const folderPermissionChanges = permissionChanges.items.filter(
         (permissionChange) => permissionChange.acoForeignKey === folderId,
       );
-      await this.shareService.shareFolder(folderId, { permissions: folderPermissionChanges });
+      await this.shareApiService.shareFolder(folderId, { permissions: folderPermissionChanges });
     }
   }
 }

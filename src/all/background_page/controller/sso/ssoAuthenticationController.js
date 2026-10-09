@@ -39,6 +39,7 @@ class SsoAuthenticationController {
     this.worker = worker;
     this.requestId = requestId;
     this.account = account;
+    this.apiClientOptions = apiClientOptions;
     this.ssoKitServerPartModel = new SsoKitServerPartModel(apiClientOptions);
     this.ssoLoginModel = new SsoLoginModel(apiClientOptions);
     this.popupHandler = new PopupHandlerService(account.domain, worker?.tab?.id, false);
@@ -106,7 +107,7 @@ class SsoAuthenticationController {
         passphrase,
       );
       await Promise.all([PassphraseStorageService.set(passphrase, -1), KeepSessionAliveService.start()]);
-      await PostLoginService.exec();
+      await PostLoginService.exec(this.account, this.apiClientOptions);
       if (isInQuickAccessMode) {
         await this.ensureRedirectionInQuickaccessMode();
       }

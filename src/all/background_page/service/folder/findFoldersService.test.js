@@ -16,7 +16,7 @@ import { ApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/a
 import FindFoldersService from "./findFoldersService";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
 import FolderLocalStorage from "../local_storage/folderLocalStorage";
-import FolderService from "../api/folder/folderService";
+import FolderApiService from "../api/folder/folderApiService";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
 import { defaultPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data.js";
 import { v4 as uuidv4 } from "uuid";
@@ -40,7 +40,7 @@ describe("FindFoldersService", () => {
       const folderDto1 = defaultFolderDto();
       const folderDto2 = defaultFolderDto();
       const foldersDto = [folderDto1, folderDto2];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
 
       const folders = await service.findAll();
 
@@ -69,7 +69,7 @@ describe("FindFoldersService", () => {
   describe("::findAllForLocalStorage", () => {
     it("uses the contains required by the local storage.", async () => {
       expect.assertions(3);
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => []);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => []);
       jest.spyOn(FindFoldersService.prototype, "findAll");
 
       const folders = await service.findAllForLocalStorage();
@@ -91,7 +91,7 @@ describe("FindFoldersService", () => {
           name: null,
         }),
       ]);
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersCollectionDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersCollectionDto);
       const expectedRetainedFolder = [multipleFolders[0], multipleFolders[1]];
 
       const collection = await service.findAllForLocalStorage();
@@ -106,7 +106,7 @@ describe("FindFoldersService", () => {
       expect.assertions(1);
       const folderId = uuidv4();
       const folderDto = defaultFolderDto({ id: folderId });
-      jest.spyOn(FolderService.prototype, "get").mockImplementation(() => folderDto);
+      jest.spyOn(FolderApiService.prototype, "get").mockImplementation(() => folderDto);
 
       const folder = await service.findById(folderDto.id);
 
@@ -137,7 +137,7 @@ describe("FindFoldersService", () => {
           defaultPermissionDto({ aco: "Folder", aco_foreign_key: folderId }, { withGroup: true }),
         ],
       });
-      jest.spyOn(FolderService.prototype, "get").mockImplementation(() => folderDto);
+      jest.spyOn(FolderApiService.prototype, "get").mockImplementation(() => folderDto);
       jest.spyOn(FindFoldersService.prototype, "findById");
 
       const folder = await service.findByIdWithPermissions(folderDto.id);
@@ -161,7 +161,7 @@ describe("FindFoldersService", () => {
     it("retrieves folder with permissions contains.", async () => {
       expect.assertions(2);
       const folderDto = defaultFolderDto({}, { withCreator: true, withModifier: true });
-      jest.spyOn(FolderService.prototype, "get").mockImplementation(() => folderDto);
+      jest.spyOn(FolderApiService.prototype, "get").mockImplementation(() => folderDto);
       jest.spyOn(FindFoldersService.prototype, "findById");
 
       const folder = await service.findByIdWithCreatorAndModifier(folderDto.id);

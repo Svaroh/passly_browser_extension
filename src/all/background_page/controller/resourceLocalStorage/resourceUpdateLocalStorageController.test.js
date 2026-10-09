@@ -27,6 +27,11 @@ import { TEST_RESOURCE_TYPE_V5_DEFAULT } from "passbolt-styleguide/src/shared/mo
 import { METADATA_KEY_TYPE_USER_KEY } from "../../model/entity/resource/resourceEntity";
 import { v4 as uuidv4 } from "uuid";
 import { metadata } from "passbolt-styleguide/test/fixture/encryptedMetadata/metadata";
+import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import CanUseOfflineStorageService from "../../service/offline/canUseOfflineStorageService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 describe("ResourceUpdateLocalStorageController", () => {
   let controller, worker;
@@ -73,18 +78,24 @@ describe("ResourceUpdateLocalStorageController", () => {
     it("requests the user passphrase whenever the decryption of the metadata requires it and try to load the data again", async () => {
       expect.assertions(4);
 
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => [
+      const resources = [
         defaultResourceDto({
           resource_type_id: TEST_RESOURCE_TYPE_V5_DEFAULT,
           metadata_key_type: METADATA_KEY_TYPE_USER_KEY,
           metadata_key_id: uuidv4(),
           metadata: metadata.withAdaKey.encryptedMetadata[0],
         }),
-      ]);
+      ];
+
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resources));
       jest.spyOn(ResourceTypeService.prototype, "findAll").mockImplementation(() => resourceTypesCollectionDto());
       jest.spyOn(GetPassphraseService.prototype, "requestPassphrase").mockImplementation(() => pgpKeys.ada.passphrase);
       jest.spyOn(PassphraseStorageService, "set").mockImplementation(() => {});
+      jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
       jest.spyOn(controller.findAndUpdateResourcesLocalStorage, "findAndUpdateAll");
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
 
       await controller._exec();
 

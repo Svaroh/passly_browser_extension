@@ -14,7 +14,7 @@
 
 import ScimSettingsEntity from "passbolt-styleguide/src/shared/models/entity/scimSettings/scimSettingsEntity";
 import UpdateScimSettingsService from "../../service/scimSettings/updateScimSettingsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class UpdateScimSettingsController {
   /**

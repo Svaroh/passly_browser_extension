@@ -13,7 +13,7 @@
  */
 
 import FavoriteResourceService from "../../service/favorite/favoriteResourceService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class UnfavoriteResourceController {
   /**

@@ -354,6 +354,30 @@ describe("ResourcesCollection", () => {
     });
   });
 
+  describe("::filterByOffline", () => {
+    it("should filter resources by offline item.", () => {
+      expect.assertions(3);
+
+      const resourceDecrypted1 = defaultResourceDto();
+      const resourceDecrypted2 = defaultResourceDto();
+      const resourceOffline1 = defaultResourceDto({}, { withOffline: true });
+      const resourceOffline2 = defaultResourceDto({}, { withOffline: true });
+
+      const resources = new ResourcesCollection([
+        resourceDecrypted1,
+        resourceDecrypted2,
+        resourceOffline1,
+        resourceOffline2,
+      ]);
+
+      const resourcesFiltered = resources.filterByOffline();
+
+      expect(resourcesFiltered).toHaveLength(2);
+      expect(resourcesFiltered.items[0].toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toStrictEqual(resourceOffline1);
+      expect(resourcesFiltered.items[1].toDto(ResourceEntity.ALL_CONTAIN_OPTIONS)).toStrictEqual(resourceOffline2);
+    });
+  });
+
   describe("::filterOutMetadataEncrypted", () => {
     it("should filter out the resource which metadata are encrypted.", () => {
       expect.assertions(3);
@@ -378,6 +402,33 @@ describe("ResourcesCollection", () => {
       expect(resources).toHaveLength(2);
       expect(resources.items[0].toDto()).toStrictEqual(resourceDecrypted1);
       expect(resources.items[1].toDto()).toStrictEqual(resourceDecrypted2);
+    });
+  });
+
+  describe("::filterOutMetadataDecrypted", () => {
+    it("should filter out the resource which metadata are decrypted.", () => {
+      expect.assertions(3);
+
+      const resourceDecrypted1 = defaultResourceDto();
+      const resourceDecrypted2 = defaultResourceDto();
+      const resourceEncrypted1 = defaultResourceDto({ metadata: metadata.withAdaKey.encryptedMetadata[0] });
+      const resourceEncrypted2 = defaultResourceDto({ metadata: metadata.withSharedKey.encryptedMetadata[1] });
+
+      delete resourceEncrypted1.permission;
+      delete resourceEncrypted2.permission;
+
+      const resources = new ResourcesCollection([
+        resourceDecrypted1,
+        resourceEncrypted1,
+        resourceDecrypted2,
+        resourceEncrypted2,
+      ]);
+
+      resources.filterOutMetadataDecrypted();
+
+      expect(resources).toHaveLength(2);
+      expect(resources.items[0].toDto()).toStrictEqual(resourceEncrypted1);
+      expect(resources.items[1].toDto()).toStrictEqual(resourceEncrypted2);
     });
   });
 

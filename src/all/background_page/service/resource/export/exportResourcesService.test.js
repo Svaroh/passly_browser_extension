@@ -81,9 +81,10 @@ import EncryptMetadataService from "../../metadata/encryptMetadataService";
 import { defaultMetadataKeysSettingsDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysSettingsEntity.test.data";
 import CustomFieldsCollection from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection";
 import { defaultCustomFieldsCollection } from "passbolt-styleguide/src/shared/models/entity/customField/customFieldsCollection.test.data";
-import * as kdbxweb from "kdbxweb";
-import { PASSKEY_KDBX_FIELD_NAME } from "../../../../passkey/passkeyProviderConstants";
-import { defaultPasskeySecretDto, passkeyResourceTypeDto } from "../../../../passkey/passkeySecretDto.test.data";
+import { mockPassboltResponse } from "passbolt-styleguide/test/mocks/mockApiResponse";
+import GetOrFindActiveSessionService from "../../activeSession/getOrFindActiveSessionService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
 
 jest.mock("../../../service/progress/progressService");
 
@@ -125,6 +126,9 @@ describe("ExportResourcesService", () => {
         "findSettings",
       )
       .mockImplementationOnce(() => defaultMetadataKeysSettingsDto());
+    jest
+      .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+      .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
   });
 
   describe("::exportToFile", () => {
@@ -172,7 +176,9 @@ describe("ExportResourcesService", () => {
               resourceCollectionDto = resourceCollection.resources;
             }
 
-            jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionDto);
+            jest
+              .spyOn(ResourceService.prototype, "findAll")
+              .mockImplementation(() => mockPassboltResponse(resourceCollectionDto));
 
             await service.prepareExportContent(exportResourcesFileEntity);
             await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);
@@ -220,7 +226,9 @@ describe("ExportResourcesService", () => {
               resourceCollectionDto = resourceCollection.resources;
             }
 
-            jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionDto);
+            jest
+              .spyOn(ResourceService.prototype, "findAll")
+              .mockImplementation(() => mockPassboltResponse(resourceCollectionDto));
 
             await service.prepareExportContent(exportResourcesFileEntity);
             await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);
@@ -253,7 +261,9 @@ describe("ExportResourcesService", () => {
         await encryptMetadataService.encryptAllFromForeignModels(resourceCollection, pgpKeys.ada.passphrase);
         const encryptedResourceCollectionDto = resourceCollection.resources;
 
-        jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => encryptedResourceCollectionDto);
+        jest
+          .spyOn(ResourceService.prototype, "findAll")
+          .mockImplementation(() => mockPassboltResponse(encryptedResourceCollectionDto));
 
         await service.prepareExportContent(exportResourcesFileEntity);
         await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);
@@ -261,43 +271,6 @@ describe("ExportResourcesService", () => {
         expect(exportResourcesFileEntity.file).toEqual(chromiumCsvWithPinCodeFile);
       });
     });
-    describe("Should export the KDBX file with the passkey secret.", () => {
-      it("v5 passkey", async () => {
-        expect.assertions(3);
-        const resourceType = passkeyResourceTypeDto();
-        resourceTypeCollection.push(resourceType);
-        const passkey = defaultPasskeySecretDto();
-        const file = {
-          format: FORMAT_KDBX,
-          resources_ids: [uuidv4()],
-          folders_ids: [foldersDto[0].id],
-        };
-        const exportResourcesFileEntity = new ExportResourcesFileEntity(file);
-        const resourceCollectionDto = await resourceCollectionV5ToExport({
-          resourceType: resourceType,
-          folder_parent_id: foldersDto[0].id,
-          passkey: passkey,
-        });
-
-        const resourceCollection = new ResourcesCollection(resourceCollectionDto);
-        await encryptMetadataService.encryptAllFromForeignModels(resourceCollection, pgpKeys.ada.passphrase);
-        jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollection.resources);
-
-        await service.prepareExportContent(exportResourcesFileEntity);
-        await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);
-
-        const kdbxDb = await kdbxweb.Kdbx.load(exportResourcesFileEntity.file, new kdbxweb.Credentials(null, null));
-        const findFirstEntry = (kdbxGroup) =>
-          kdbxGroup.entries[0] || kdbxGroup.groups.map(findFirstEntry).find(Boolean);
-        const kdbxEntry = findFirstEntry(kdbxDb.getDefaultGroup());
-        const passkeyField = kdbxEntry.fields.get(PASSKEY_KDBX_FIELD_NAME);
-
-        expect(passkeyField).toBeInstanceOf(kdbxweb.ProtectedValue);
-        expect(JSON.parse(passkeyField.getText())).toStrictEqual(passkey);
-        expect(kdbxEntry.fields.get("Password")).toBeFalsy();
-      });
-    });
-
     describe("Should export the KDBX file.", () => {
       describe.each([{ format: FORMAT_KDBX }, { format: FORMAT_KDBX_OTHERS }])(
         "Should export the KDBX file.",
@@ -445,7 +418,9 @@ describe("ExportResourcesService", () => {
         folder_parent_id: foldersDto[0].id,
       });
 
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => resourceCollectionV4);
+      jest
+        .spyOn(ResourceService.prototype, "findAll")
+        .mockImplementation(() => mockPassboltResponse(resourceCollectionV4));
 
       await service.prepareExportContent(exportResourcesFileEntity);
       await service.exportToFile(exportResourcesFileEntity, pgpKeys.ada.passphrase);

@@ -12,9 +12,6 @@
  * @since         4.10.0
  */
 
-import FolderModel from "../../../model/folder/folderModel";
-import Keyring from "../../../model/keyring";
-import ShareModel from "../../../model/share/shareModel";
 import { OpenpgpAssertion } from "../../../utils/openpgp/openpgpAssertions";
 import EncryptMessageService from "../../crypto/encryptMessageService";
 import ResourceSecretsCollection from "../../../model/entity/secret/resource/resourceSecretsCollection";
@@ -24,10 +21,12 @@ import ResourceLocalStorage from "../../local_storage/resourceLocalStorage";
 import i18n from "../../../sdk/i18n";
 import ResourceModel from "../../../model/resource/resourceModel";
 import DecryptPrivateKeyService from "../../crypto/decryptPrivateKeyService";
-import FindAndUpdateResourcesLocalStorage from "../findAndUpdateResourcesLocalStorageService";
-import ResourceTypeModel from "../../../model/resourceType/resourceTypeModel";
 import EncryptMetadataKeysService from "../../metadata/encryptMetadataService";
 import PermissionChangesCollection from "../../../model/entity/permission/change/permissionChangesCollection";
+import ShareResourceService, { PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL } from "../../share/shareResourceService";
+import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
+import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/permission/permissionsCollection";
+import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
 
 class ResourceCreateService {
   /**
@@ -38,45 +37,36 @@ class ResourceCreateService {
   constructor(account, apiClientOptions, progressService) {
     this.account = account;
     this.resourceService = new ResourceService(apiClientOptions);
-    this.resourceTypeModel = new ResourceTypeModel(apiClientOptions);
-    this.folderModel = new FolderModel(apiClientOptions, account);
-    this.shareModel = new ShareModel(apiClientOptions);
-    this.keyring = new Keyring();
+    this.getOrFindResourceTypesService = new GetOrFindResourceTypesService(account, apiClientOptions);
     this.progressService = progressService;
     this.resourceModel = new ResourceModel(apiClientOptions, this.account);
     this.encryptMetadataKeysService = new EncryptMetadataKeysService(apiClientOptions, this.account);
-    this.findAndUpdateResourcesLocalStorage = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
+    this.shareResourceService = new ShareResourceService(apiClientOptions, account, progressService);
   }
 
   /**
-   * Create a resource.
-   *
+   * Create a resource operator-only, then optionally extend the share with the caller-provided
+   * permission changes (spec-mandated safe order: no secret is encrypted for an ARO the caller
+   * hasn't confirmed).
    * @param {object} resourceDto The resource data
    * @param {string|object} secretDto The secret to encrypt
    * @param {string} passphrase The user passphrase
+   * @param {Array<object>} [permissionChanges] Optional permission changes to apply after create.
    * @return {Promise<ResourceEntity>} resourceEntity
    */
-  async create(resourceDto, secretDto, passphrase) {
+  async create(resourceDto, secretDto, passphrase, permissionChanges) {
+    // Port serialization replaces an omitted arg with `null`, sliding past a `= []` default;
+    // normalize defensively so the rest of the method can assume an array.
+    permissionChanges = permissionChanges ?? [];
     const resource = new ResourceEntity(resourceDto);
-    const resourceTypes = await this.resourceTypeModel.getOrFindAll();
+    const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
     const resourceType = resourceTypes.getFirstById(resource.resourceTypeId);
     // Keep a copy of the metadata. It will be used after creation on the API, to persist it decrypted into the local storage.
     const resourceMetadata = resource.metadata;
     // Get private key decrypted to encrypt data
     const privateKey = await DecryptPrivateKeyService.decryptArmoredKey(this.account.userPrivateArmoredKey, passphrase);
-    let permissionChanges = new PermissionChangesCollection([]);
-    let destinationFolder;
-    if (resource.folderParentId) {
-      destinationFolder = await this.folderModel.findForShare(resource.folderParentId);
-      if (
-        destinationFolder.permissions.length > 1 ||
-        destinationFolder.permissions.items[0].aroForeignKey !== this.account.userId
-      ) {
-        permissionChanges = destinationFolder.permissions;
-      }
-    }
     this.updateGoals(resourceType.isV5(), permissionChanges.length);
-    await this.encryptMetadata(resource, resourceType, permissionChanges, passphrase);
+    await this.encryptMetadata(resource, resourceType, passphrase);
     await this.buildAndEncryptUserSecret(resource, secretDto, privateKey);
     const createdResource = await this.save(resource, resourceType);
     // If resource v5, metadata will be returned encrypted, replace it with the original decrypted copy.
@@ -84,8 +74,23 @@ class ResourceCreateService {
       createdResource.metadata = resourceMetadata;
     }
     await ResourceLocalStorage.addResource(createdResource);
-    // Share the resource with the metadata decrypted
-    await this.share(createdResource, privateKey, destinationFolder, permissionChanges);
+
+    const isAnOperatorPersonalResource =
+      permissionChanges.length === 1 &&
+      permissionChanges[0].aro === PermissionEntity.ARO_USER &&
+      permissionChanges[0].aro_foreign_key === this.account.userId;
+
+    if (!isAnOperatorPersonalResource && permissionChanges.length > 0) {
+      // The styleguide can't know the resource id at confirm time so the deltas arrive with
+      // aco_foreign_key unset (or null). Stamp the real id before handing them to the share API.
+      const stampedChanges = permissionChanges.map((change) => ({ ...change, aco_foreign_key: createdResource.id }));
+      const originalPermissionSet = new PermissionsCollection([createdResource.permission]);
+      const permissionChangesToApply = PermissionChangesCollection.calculateChanges(
+        originalPermissionSet,
+        new PermissionsCollection(stampedChanges),
+      );
+      await this.shareResourceService.shareAll([createdResource.id], permissionChangesToApply, passphrase);
+    }
     return createdResource;
   }
 
@@ -126,66 +131,33 @@ class ResourceCreateService {
   }
 
   /**
-   * Share the resource.
-   *
-   * @param {ResourceEntity} resource The resource to share.
-   * @param {openpgp.PrivateKey} privateKey The user decrypted private key
-   * @param {FolderEntity} folder The folder entity
-   * @param {PermissionChangesCollection} permissionChangesFromFolder The permission changes
-   * @returns {Promise<void>}
-   * @private
-   */
-  async share(resource, privateKey, folder, permissionChangesFromFolder) {
-    if (!folder || !permissionChangesFromFolder.length) {
-      return;
-    }
-    // Calculate resource creation share permission changes.
-    await this.progressService.finishStep(i18n.t("Calculate permissions"), true);
-    // Whenever a resource is created into a folder, its creation will be followed by a share operation
-    const permissionChanges = await this.resourceModel.calculatePermissionsChangesForCreate(resource, folder);
-
-    await this.progressService?.finishStep(i18n.t("Synchronizing keys"), true);
-    await this.keyring.sync();
-
-    await this.progressService?.finishStep(i18n.t("Start sharing"), true);
-    const resourcesToShare = [resource.toDto({ secrets: true })];
-    await this.shareModel.bulkShareResources(
-      resourcesToShare,
-      permissionChanges.toDto(),
-      privateKey,
-      async (message) => await this.progressService?.finishStep(message),
-    );
-    await this.findAndUpdateResourcesLocalStorage.findAndUpdateAll();
-  }
-
-  /**
-   * Encrypt resource metadata if v5.
+   * Encrypt resource metadata if v5. The resource is always created as `personal` at this stage —
+   * the workflow extends sharing afterwards via `passbolt.share.resources.save`, which re-encrypts
+   * the metadata with the shared key when (and only when) the resource actually gets shared.
    * @param {ResourceEntity} resource The resource
    * @param {ResourceTypeEntity} resourceType The resource type
-   * @param {PermissionChangesCollection} permissionChanges The permission changes
    * @param {string} passphrase The user passphrase
    * @private
    */
-  async encryptMetadata(resource, resourceType, permissionChanges, passphrase) {
+  async encryptMetadata(resource, resourceType, passphrase) {
     if (!resourceType.isV5()) {
       return;
     }
     await this.progressService.finishStep(i18n.t("Encrypting Metadata"), true);
-    resource.personal = !permissionChanges.length;
+    resource.personal = true;
     await this.encryptMetadataKeysService.encryptOneForForeignModel(resource, passphrase);
   }
 
   /**
    * Update goals
    * @param {boolean} shouldEncryptMetadata if metadata should be encrypted
-   * @param {number} changesLength number of permissions changes
+   * @param {number} permissionChangesLength number of permission changes that will be applied after create
    * @private
    */
-  updateGoals(shouldEncryptMetadata, changesLength = 0) {
-    const stepToCreate = shouldEncryptMetadata ? 4 : 3; // number of step to create a resource;
-    const stepPreparingShare = changesLength > 0 ? 3 : 0; // number of step preparing a share;
-    // Goals = number of share (with 3 steps each time) + number of step to create a resource
-    this.progressService.updateGoals(changesLength * 3 + stepPreparingShare + stepToCreate);
+  updateGoals(shouldEncryptMetadata, permissionChangesLength = 0) {
+    const stepsToCreate = shouldEncryptMetadata ? 4 : 3;
+    const shareSteps = permissionChangesLength > 0 ? PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL : 0;
+    this.progressService.updateGoals(stepsToCreate + shareSteps);
   }
 }
 
