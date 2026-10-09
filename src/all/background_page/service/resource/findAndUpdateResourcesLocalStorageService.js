@@ -23,6 +23,7 @@ import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage"
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
+import Log from "../../model/log";
 
 const RESOURCES_UPDATE_ALL_LS_LOCK_PREFIX = "RESOURCES_UPDATE_LS_LOCK_";
 
@@ -105,18 +106,29 @@ class FindAndUpdateResourcesLocalStorage {
       // Persist offline resources (with encrypted metadata) before decryption mutates the collection.
       if (canUseOffline) {
         const explicitlyTagged = updatedResourcesCollection.filterByOffline();
-        const baseItems =
-          explicitlyTagged.length > 0
-            ? explicitlyTagged.items
-            : updatedResourcesCollection.items;
+        const baseItems = explicitlyTagged.length > 0 ? explicitlyTagged.items : updatedResourcesCollection.items;
         const eligibleItems = baseItems.filter((resource) => resource && Boolean(resource.permission));
         const clonedEncryptedItems = eligibleItems.map(
-          (resource) => new ResourceEntity(resource.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS), { validate: false })
+          (resource) => new ResourceEntity(resource.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS), { validate: false }),
         );
         const offlineEncryptedResourcesCollection = new ResourcesCollection(clonedEncryptedItems, { validate: false });
-        await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection, canUseOffline);
+        try {
+          await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection, canUseOffline);
+        } catch (error) {
+          Log.write({
+            level: "warn",
+            message: `Offline storage refresh encountered an error: ${error?.message}`,
+          });
+        }
       } else {
-        await this._refreshOfflineOPFSStorage(new ResourcesCollection([]), false);
+        try {
+          await this._refreshOfflineOPFSStorage(new ResourcesCollection([]), false);
+        } catch (error) {
+          Log.write({
+            level: "warn",
+            message: `Offline storage flush encountered an error: ${error?.message}`,
+          });
+        }
       }
 
       updatedResourcesCollection.setDecryptedMetadataFromCollection(localResourcesCollection);
@@ -159,34 +171,41 @@ class FindAndUpdateResourcesLocalStorage {
       return;
     }
 
-    // Diff against the cached snapshot. Resources whose "modified" matches the cache are unchanged
-    // and their secrets are still valid - skip them entirely.
-    const cachedResources = (await this.offlineResourcesOPFSStorage.get()) || [];
-    const cachedById = new Map(cachedResources.map((r) => [r.id, r]));
-    const freshIds = new Set(offlineEncryptedResourcesCollection.items.map((r) => r.id));
+    try {
+      // Diff against the cached snapshot. Resources whose "modified" matches the cache are unchanged
+      // and their secrets are still valid - skip them entirely.
+      const cachedResources = (await this.offlineResourcesOPFSStorage.get()) || [];
+      const cachedById = new Map(cachedResources.map((r) => [r.id, r]));
+      const freshIds = new Set(offlineEncryptedResourcesCollection.items.map((r) => r.id));
 
-    const idsRequiringSecretFetch = offlineEncryptedResourcesCollection.items
-      .filter((fresh) => cachedById.get(fresh.id)?.modified !== fresh.modified)
-      .map((fresh) => fresh.id);
-    const removedResourceIds = cachedResources.filter((r) => !freshIds.has(r.id)).map((r) => r.id);
+      const idsRequiringSecretFetch = offlineEncryptedResourcesCollection.items
+        .filter((fresh) => cachedById.get(fresh.id)?.modified !== fresh.modified)
+        .map((fresh) => fresh.id);
+      const removedResourceIds = cachedResources.filter((r) => !freshIds.has(r.id)).map((r) => r.id);
 
-    await this.offlineResourcesOPFSStorage.set(offlineEncryptedResourcesCollection);
+      await this.offlineResourcesOPFSStorage.set(offlineEncryptedResourcesCollection);
 
-    if (removedResourceIds.length > 0) {
-      await this.offlineSecretsOPFSStorage.deleteByResourceIds(removedResourceIds);
-    }
+      if (removedResourceIds.length > 0) {
+        await this.offlineSecretsOPFSStorage.deleteByResourceIds(removedResourceIds);
+      }
 
-    if (idsRequiringSecretFetch.length === 0) {
-      return;
-    }
+      if (idsRequiringSecretFetch.length === 0) {
+        return;
+      }
 
-    const resourcesWithSecrets = await this.findResourcesServices.findAllByIdsForOffline(idsRequiringSecretFetch);
-    const secretDtos = resourcesWithSecrets.items
-      .map((resourceEntity) => resourceEntity.secrets?.items?.[0]?.toDto())
-      .filter(Boolean);
-    if (secretDtos.length > 0) {
-      const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
-      await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+      const resourcesWithSecrets = await this.findResourcesServices.findAllByIdsForOffline(idsRequiringSecretFetch);
+      const secretDtos = resourcesWithSecrets.items
+        .map((resourceEntity) => resourceEntity.secrets?.items?.[0]?.toDto())
+        .filter(Boolean);
+      if (secretDtos.length > 0) {
+        const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
+        await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+      }
+    } catch (error) {
+      Log.write({
+        level: "warn",
+        message: `Offline OPFS storage refresh failed: ${error?.message}`,
+      });
     }
   }
 
@@ -335,7 +354,7 @@ class FindAndUpdateResourcesLocalStorage {
     }
 
     const safeEncryptedItems = offlineEncryptedResourcesCollection.items.filter(
-      (r) => r && !r.isMetadataDecrypted() && Boolean(r.permission)
+      (r) => r && !r.isMetadataDecrypted() && Boolean(r.permission),
     );
     if (safeEncryptedItems.length === 0) {
       return;

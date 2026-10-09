@@ -110,5 +110,26 @@ describe("ResourceUpdateLocalStorageController", () => {
         pgpKeys.ada.passphrase,
       );
     });
+
+    it("requests the user passphrase when error is wrapped with cause UserPassphraseRequiredError", async () => {
+      expect.assertions(3);
+
+      const cause = new Error("The user passphrase is required.");
+      cause.name = "UserPassphraseRequiredError";
+      const wrappedError = new Error("Unable to decrypt metadata", { cause });
+
+      jest
+        .spyOn(controller.findAndUpdateResourcesLocalStorage, "findAndUpdateAll")
+        .mockRejectedValueOnce(wrappedError)
+        .mockResolvedValueOnce({});
+      jest.spyOn(GetPassphraseService.prototype, "getPassphrase").mockResolvedValue("test-passphrase");
+      jest.spyOn(PassphraseStorageService, "set").mockImplementation(() => {});
+
+      await controller._exec();
+
+      expect(GetPassphraseService.prototype.getPassphrase).toHaveBeenCalledTimes(1);
+      expect(PassphraseStorageService.set).toHaveBeenCalledWith("test-passphrase", 60);
+      expect(controller.worker.port.emit).toHaveBeenCalledWith(null, "SUCCESS");
+    });
   });
 });

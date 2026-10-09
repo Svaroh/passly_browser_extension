@@ -180,6 +180,28 @@ describe("FindAndUpdateResourcesLocalStorageFromOPFSController", () => {
       expect(PassphraseStorageService.set).not.toHaveBeenCalled();
     });
 
+    it("requests the user passphrase when error is wrapped with cause UserPassphraseRequiredError.", async () => {
+      expect.assertions(3);
+
+      const cause = new Error("The user passphrase is required.");
+      cause.name = "UserPassphraseRequiredError";
+      const wrappedError = new Error("Unable to decrypt metadata", { cause });
+
+      jest
+        .spyOn(service, "findAndUpdateAll")
+        .mockImplementationOnce(() => {
+          throw wrappedError;
+        })
+        .mockImplementationOnce(jest.fn());
+      jest.spyOn(GetPassphraseService.prototype, "getPassphrase").mockImplementation(() => pgpKeys.ada.passphrase);
+
+      await controller.exec();
+
+      expect(GetPassphraseService.prototype.getPassphrase).toHaveBeenCalledWith(worker);
+      expect(service.findAndUpdateAll).toHaveBeenCalledTimes(2);
+      expect(service.findAndUpdateAll).toHaveBeenNthCalledWith(2, pgpKeys.ada.passphrase);
+    });
+
     it(
       "updates the resources local storage with the resources retrieved from the OPFS storage.",
       async () => {

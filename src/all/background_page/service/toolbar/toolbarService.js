@@ -239,10 +239,7 @@ class ToolbarService {
       if (isMissingAccountError(error)) {
         return;
       }
-      if (
-        error instanceof UserPassphraseRequiredError ||
-        error?.name === "UserPassphraseRequiredError"
-      ) {
+      if (error instanceof UserPassphraseRequiredError || error?.name === "UserPassphraseRequiredError") {
         BrowserExtensionIconService.setSuggestedResourcesCount(0);
         return;
       }

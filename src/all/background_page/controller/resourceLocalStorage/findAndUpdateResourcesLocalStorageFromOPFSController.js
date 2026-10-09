@@ -62,7 +62,14 @@ class FindAndUpdateResourcesLocalStorageFromOPFSController {
        */
       await this.findAndUpdateResourcesLocalStorageFromOPFSService.findAndUpdateAll();
     } catch (error) {
-      if (!(error instanceof UserPassphraseRequiredError)) {
+      const isPassphraseRequired =
+        error instanceof UserPassphraseRequiredError ||
+        error?.name === "UserPassphraseRequiredError" ||
+        error?.cause instanceof UserPassphraseRequiredError ||
+        error?.cause?.name === "UserPassphraseRequiredError" ||
+        (typeof error?.message === "string" && error.message.includes("passphrase is required"));
+
+      if (!isPassphraseRequired) {
         throw error;
       }
       const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
