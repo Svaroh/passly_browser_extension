@@ -16,6 +16,7 @@ import { assertNumber } from "../../utils/assertions";
 import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FindResourcesService from "./findResourcesService";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
+import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
 import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
@@ -101,14 +102,21 @@ class FindAndUpdateResourcesLocalStorage {
       const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
       updatedResourcesCollection.filterByResourceTypes(resourceTypes);
 
-      // Snapshot offline-tagged items with encrypted metadata before decryption mutates the collection.
-      let offlineEncryptedResourcesCollection = new ResourcesCollection([]);
+      // Persist offline resources (with encrypted metadata) before decryption mutates the collection.
       if (canUseOffline) {
         const explicitlyTagged = updatedResourcesCollection.filterByOffline();
-        offlineEncryptedResourcesCollection =
+        const baseItems =
           explicitlyTagged.length > 0
-            ? explicitlyTagged
-            : new ResourcesCollection(updatedResourcesCollection.items, { clone: true, validate: false });
+            ? explicitlyTagged.items
+            : updatedResourcesCollection.items;
+        const eligibleItems = baseItems.filter((resource) => resource && Boolean(resource.permission));
+        const clonedEncryptedItems = eligibleItems.map(
+          (resource) => new ResourceEntity(resource.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS), { validate: false })
+        );
+        const offlineEncryptedResourcesCollection = new ResourcesCollection(clonedEncryptedItems, { validate: false });
+        await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection, canUseOffline);
+      } else {
+        await this._refreshOfflineOPFSStorage(new ResourcesCollection([]), false);
       }
 
       updatedResourcesCollection.setDecryptedMetadataFromCollection(localResourcesCollection);
@@ -120,8 +128,6 @@ class FindAndUpdateResourcesLocalStorage {
       updatedResourcesCollection.filterOutMetadataEncrypted();
 
       await ResourceLocalStorage.set(updatedResourcesCollection);
-
-      await this._refreshOfflineOPFSStorage(offlineEncryptedResourcesCollection, canUseOffline);
 
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 
@@ -328,13 +334,25 @@ class FindAndUpdateResourcesLocalStorage {
       return;
     }
 
-    await this.offlineResourcesOPFSStorage.addOrReplaceResourcesCollection(offlineEncryptedResourcesCollection);
+    const safeEncryptedItems = offlineEncryptedResourcesCollection.items.filter(
+      (r) => r && !r.isMetadataDecrypted() && Boolean(r.permission)
+    );
+    if (safeEncryptedItems.length === 0) {
+      return;
+    }
+    const safeCollection = new ResourcesCollection(safeEncryptedItems, { validate: false });
+
+    await this.offlineResourcesOPFSStorage.addOrReplaceResourcesCollection(safeCollection);
     // Get resource Ids to update the secret of the resources updated
-    const resourceOfflineIds = offlineEncryptedResourcesCollection.items.map((resource) => resource.id);
+    const resourceOfflineIds = safeCollection.items.map((resource) => resource.id);
     const resourcesWithSecrets = await this.findResourcesServices.findAllByIdsForOffline(resourceOfflineIds);
-    const secretDtos = resourcesWithSecrets.items.map((resourceEntity) => resourceEntity.secrets.items[0].toDto());
-    const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
-    await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+    const secretDtos = resourcesWithSecrets.items
+      .map((resourceEntity) => resourceEntity.secrets?.items?.[0]?.toDto())
+      .filter(Boolean);
+    if (secretDtos.length > 0) {
+      const secretsCollection = new SecretsCollection(secretDtos, { validate: false });
+      await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+    }
   }
 }
 
