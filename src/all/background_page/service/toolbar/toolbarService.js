@@ -21,6 +21,7 @@ import OpenTrustedDomainTabService from "../ui/openTrustedDomainTabService";
 import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 import GetOrFindOfflineResourcesService from "../resource/getOrFindOfflineResourcesService";
 import isMissingAccountError from "../account/isMissingAccountError";
+import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 
 export const QUICKACCESS_POPUP_URL = "webAccessibleResources/quickaccess.html?passbolt=quickaccess";
 
@@ -174,7 +175,11 @@ class ToolbarService {
       }
       BrowserExtensionIconService.setSuggestedResourcesCount(0);
     } catch (error) {
-      if (isMissingAccountError(error)) {
+      if (
+        isMissingAccountError(error) ||
+        error instanceof UserPassphraseRequiredError ||
+        error?.name === "UserPassphraseRequiredError"
+      ) {
         return;
       }
       console.error(error);
@@ -232,6 +237,13 @@ class ToolbarService {
       BrowserExtensionIconService.setSuggestedResourcesCount(suggestedResourcesCount);
     } catch (error) {
       if (isMissingAccountError(error)) {
+        return;
+      }
+      if (
+        error instanceof UserPassphraseRequiredError ||
+        error?.name === "UserPassphraseRequiredError"
+      ) {
+        BrowserExtensionIconService.setSuggestedResourcesCount(0);
         return;
       }
       console.error(error);
