@@ -27,8 +27,11 @@ import UpdateResourceTagsService from "./updateResourceTagsService";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import { FAIL_ARRAY_SCENARIOS } from "passbolt-styleguide/test/assert/assertEntityProperty";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("UpdateResourceTagsService", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let service,
     resourceDto,
     updatedTagsCollectionDto,
@@ -44,7 +47,7 @@ describe("UpdateResourceTagsService", () => {
   beforeEach(() => {
     enableFetchMocks();
 
-    service = new UpdateResourceTagsService(defaultApiClientOptions());
+    service = new UpdateResourceTagsService(defaultApiClientOptions(), account);
 
     resourceDto = defaultResourceDto({}, { withTags: true });
     updatedTagsCollectionDto = defaultTagsDtos();
@@ -226,6 +229,22 @@ describe("UpdateResourceTagsService", () => {
 
       expect(ResourceLocalStorage.getResourceById).toHaveBeenCalledTimes(1);
       expect(ResourceLocalStorage.updateResource).toHaveBeenCalledWith(updatedResource);
+    });
+
+    it("should mirror the tags collection to the offline resources storage", async () => {
+      expect.assertions(1);
+
+      jest.spyOn(service.tagService, "updateResourceTags").mockResolvedValue(updateResponse);
+      jest.spyOn(ResourceLocalStorage, "getResourceById").mockResolvedValue(resourceDto);
+      jest.spyOn(ResourceLocalStorage, "updateResource").mockResolvedValue();
+      jest.spyOn(service.offlineResourcesOPFSStorage, "updateResourceTags").mockResolvedValue();
+
+      await service.updateResourceTags(resourceDto.id, updatedTagsCollection);
+
+      expect(service.offlineResourcesOPFSStorage.updateResourceTags).toHaveBeenCalledWith(
+        resourceDto.id,
+        updatedTagsCollection,
+      );
     });
 
     it("should throw an Error if the resourceId parameter is not a valid uuid", async () => {
@@ -504,6 +523,42 @@ describe("UpdateResourceTagsService", () => {
       // `.toHaveBeenCalledWith` doesn't manage to match the parameter as it is a ResourcesCollection
       // Also, the order might be different
       expect(ResourceLocalStorage.set.mock.calls[0][0].items).toEqual(expect.arrayContaining(resources.items));
+    });
+
+    it("should mirror the updated resources tags to the offline resources storage", async () => {
+      expect.assertions(4);
+
+      jest.spyOn(ResourceLocalStorage, "get").mockResolvedValue(resourcesDto);
+      jest.spyOn(service.tagService, "updateResourceTags").mockResolvedValue(updateResponse);
+      jest.spyOn(ResourceLocalStorage, "set").mockResolvedValue();
+      // The collection is mutated after the call to put the ignored resources back, snapshot it while it is called.
+      let mirroredResources;
+      jest
+        .spyOn(service.offlineResourcesOPFSStorage, "updateResourcesTags")
+        .mockImplementation(async (resourcesCollection) => {
+          mirroredResources = resourcesCollection.items.slice();
+        });
+
+      await service.addTagsToResources(resourceIds, updatedTagsCollection);
+
+      expect(service.offlineResourcesOPFSStorage.updateResourcesTags).toHaveBeenCalledTimes(1);
+      // Only the resources actually updated are mirrored, resourcesDto[0] already carries the tags.
+      expect(mirroredResources.map((resource) => resource.id).sort()).toEqual(
+        [resourcesDto[1].id, resourcesDto[2].id].sort(),
+      );
+      mirroredResources.forEach((resource) => expect(resource.tags).toEqual(updatedTagsCollection));
+    });
+
+    it("should not mirror anything to the offline resources storage if no resource needs an update", async () => {
+      expect.assertions(1);
+
+      jest.spyOn(ResourceLocalStorage, "get").mockResolvedValue(resourcesDto);
+      jest.spyOn(service.offlineResourcesOPFSStorage, "updateResourcesTags").mockResolvedValue();
+
+      // The first resource already carries the tags, it is ignored for the rest of the process.
+      await service.addTagsToResources([resourcesDto[0].id], new TagsCollection(resourcesDto[0].tags));
+
+      expect(service.offlineResourcesOPFSStorage.updateResourcesTags).not.toHaveBeenCalled();
     });
 
     it("should do nothing if given an empty array", async () => {

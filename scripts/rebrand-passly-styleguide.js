@@ -108,6 +108,50 @@ const restoreActionTranslations = {
   },
 };
 
+const offlineTranslations = {
+  "uk-UA": {
+    "<0>Unable to reach the server</0>, you are not connected to the network.": "<0>Не вдалося зв\u0027язатися з сервером</0>, ви не підключені до мережі.",
+    "Unable to reach the server, you are not connected to the network": "Не вдалося зв\u0027язатися з сервером, ви не підключені до мережі",
+    "Unable to reach the server, you are not connected to the network.": "Не вдалося зв\u0027язатися з сервером, ви не підключені до мережі.",
+    "Unable to reach the server, an unexpected error occurred": "Не вдалося зв\u0027язатися з сервером, виникла неочікувана помилка",
+    "Unable to reach the server, an unexpected error occurred.": "Не вдалося зв\u0027язатися з сервером, виникла неочікувана помилка.",
+    "Unable to reach the server.": "Не вдалося зв\u0027язатися з сервером.",
+    "Connecting your account": "Підключення вашого облікового запису",
+    "Switch to offline mode": "Перейти в офлайн-режим",
+    "Switch to online mode": "Перейти в онлайн-режим",
+    "Use offline mode": "Використовувати офлайн-режим",
+    "Sign in offline": "Увійти офлайн",
+    "Available offline": "Доступно офлайн",
+    "Available Offline": "Доступно офлайн",
+    "Offline mode": "Офлайн-режим",
+    "Offline Mode": "Офлайн-режим",
+    "Offline mode details": "Деталі офлайн-режиму",
+    "No passwords are offline available yet.": "Офлайн-паролів ще немає.",
+    "Can view offline items": "Може переглядати офлайн-паролі",
+    "Can mark items as available offline": "Може позначати паролі як доступні офлайн",
+    "Can remove offline availability": "Може скасовувати доступність офлайн",
+    "Make available offline": "Зробити доступним офлайн",
+    "Remove offline availability": "Скасувати доступність офлайн",
+    "The offline settings were updated.": "Налаштування офлайн-режиму оновлено.",
+    "The resource has been made available offline.": "Пароль зроблено доступним офлайн.",
+    "The resource is no longer available offline.": "Пароль більше недоступний офлайн.",
+    "Unable to update the offline availability of the resource.": "Не вдалося оновити доступність пароля офлайн.",
+    "You have reached the maximum number of offline items (1000).": "Ви досягли максимальної кількості офлайн-паролів (1000).",
+    "Enabling offline mode allows encrypted data to be cached on user devices. Make sure your retention and session policies align with your organisation security requirements.": "Увімкнення офлайн-режиму дозволяє кешувати зашифровані дані на пристроях користувачів. Переконайтеся, що ваші політики збереження та сесій відповідають вимогам безпеки вашої організації.",
+    "How long a user remains authenticated offline before having to enter their passphrase again.": "Як довго користувач залишається автентифікованим офлайн перед тим, як знову вводити парольну фразу.",
+    "Allow users to access resources when the API is not reachable.": "Дозволити користувачам доступ до паролів, коли API недоступний.",
+    "Enable read-only access to critical credentials when the Passbolt server is unreachable or network connectivity is unavailable.": "Увімкнути доступ лише для читання до важливих облікових даних, коли сервер Passly недоступний або відсутнє підключення до мережі.",
+    "Maximum data retention period": "Максимальний період зберігання даних",
+    "Maximum time encrypted data is stored on a user\u0027s device before it is automatically deleted.": "Максимальний час збереження зашифрованих даних на пристрої користувача перед їх автоматичним видаленням.",
+    "The maximum data retention period is invalid.": "Недійсний максимальний період зберігання даних.",
+    "The session duration is invalid.": "Недійсна тривалість сесії.",
+    "Session duration": "Тривалість сесії",
+    "Data retention": "Збереження даних",
+    "Last sync": "Остання синхронізація",
+    "Unlimited": "Без обмежень"
+  }
+};
+
 const passlyInlineLogo = `<svg xmlns="http://www.w3.org/2000/svg" aria-labelledby="logo-title logo-description" width="151" height="27" viewBox="0 0 151 27" fill="none">
   <title id="logo-title">Passly logo</title>
   <desc id="logo-description">This is the logo of Passly.</desc>
@@ -216,6 +260,11 @@ function updateQuickAccessVaultLocale(file, locale) {
   ] = restoreActionTranslation.permanentDeleteMultiple;
   common["The resource has been restored successfully._one"] = restoreActionTranslation.successOne;
   common["The resource has been restored successfully._other"] = restoreActionTranslation.successOther;
+  if (offlineTranslations[locale]) {
+    for (const [k, v] of Object.entries(offlineTranslations[locale])) {
+      common[k] = v;
+    }
+  }
 
   const nextContent = `${JSON.stringify(common, null, 2)}\n`;
   if (content === nextContent) {
@@ -404,6 +453,14 @@ function patchStyleguideRuntimeLogs() {
 
   changed += replaceIfExists(extQuickAccess, [
     [`      ${consoleLog}(error);\n`, `      ${consoleError}(error);\n`],
+  ]) ? 1 : 0;
+
+  const extAppContext = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ExtAppContext.js");
+  changed += replaceIfExists(extAppContext, [
+    [
+      `    const storageKey = \`groups-\${this.state.account.id}\`;`,
+      `    const storageKey = this.state.account?.id ? \`groups-\${this.state.account.id}\` : null;`,
+    ],
   ]) ? 1 : 0;
 
   return changed;
@@ -786,6 +843,30 @@ function patchWorkspaceEditFromQueryAction() {
     ["removePasslyEditResourceQuery", "removeEditResourceQuery"],
     ['queryParameters.get("passlyAction")', 'queryParameters.get("action")'],
     ['queryParameters.delete("passlyAction")', 'queryParameters.delete("action")'],
+    [
+      `  openEditResourceFromQuery() {
+    const queryParameters = new URLSearchParams(this.props.location.search);`,
+      `  openEditResourceFromQuery() {
+    if (!this.props.location?.search) {
+      return;
+    }
+
+    const queryParameters = new URLSearchParams(this.props.location.search);`,
+    ],
+    [
+      `  removeEditResourceQuery(queryParameters) {
+    queryParameters.delete("action");`,
+      `  removeEditResourceQuery(queryParameters) {
+    if (!this.props.history || !this.props.location) {
+      return;
+    }
+
+    queryParameters.delete("action");`,
+    ],
+    [
+      "const selectedResourceId = this.props.match.params.selectedResourceId;",
+      "const selectedResourceId = this.props.match?.params?.selectedResourceId;",
+    ],
   ]) ? 1 : 0;
   changed += replaceIfMissing(workspaceMenu, 'import { withRouter } from "react-router-dom";', [
     [
@@ -820,13 +901,17 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
    * Open the edit resource dialog when requested from the URL action parameter.
    */
   openEditResourceFromQuery() {
+    if (!this.props.location?.search) {
+      return;
+    }
+
     const queryParameters = new URLSearchParams(this.props.location.search);
     if (queryParameters.get("action") !== "edit" || !this.hasOneResourceSelected()) {
       return;
     }
 
     const resource = this.selectedResources[0];
-    const selectedResourceId = this.props.match.params.selectedResourceId;
+    const selectedResourceId = this.props.match?.params?.selectedResourceId;
     if (selectedResourceId && selectedResourceId !== resource.id) {
       return;
     }
@@ -853,6 +938,10 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
    * @param {URLSearchParams} queryParameters The current query parameters.
    */
   removeEditResourceQuery(queryParameters) {
+    if (!this.props.history || !this.props.location) {
+      return;
+    }
+
     queryParameters.delete("action");
     const search = queryParameters.toString();
     this.props.history.replace({
@@ -881,12 +970,8 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
   ]) ? 1 : 0;
   changed += replaceIfMissing(workspaceMenu, "withRouter(withTranslation", [
     [
-      `                  withResourceTypesLocalStorage(
-                    withActionFeedback(withTranslation("common")(DisplayResourcesWorkspaceMenu)),
-                  ),`,
-      `                  withResourceTypesLocalStorage(
-                    withActionFeedback(withRouter(withTranslation("common")(DisplayResourcesWorkspaceMenu))),
-                  ),`,
+      'withActionFeedback(withTranslation("common")(DisplayResourcesWorkspaceMenu))',
+      'withActionFeedback(withRouter(withTranslation("common")(DisplayResourcesWorkspaceMenu)))',
     ],
   ]) ? 1 : 0;
 
@@ -1298,13 +1383,9 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
     ],
     [
-      `  SHARED_WITH_ME: "FILTER-BY-SHARED-WITH-ME", // Resources shared with the current user (who is not the owner)
-  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
-};`,
-      `  SHARED_WITH_ME: "FILTER-BY-SHARED-WITH-ME", // Resources shared with the current user (who is not the owner)
-  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
-  TRASH: "FILTER-BY-TRASH", // Deleted resources
-};`,
+      `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified`,
+      `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
+  TRASH: "FILTER-BY-TRASH", // Deleted resources`,
     ],
   ]) ? 1 : 0;
 
@@ -3546,9 +3627,613 @@ function rebrandGeneratedBundles() {
   return changed;
 }
 
+function patchQuickAccessOfflineFallback() {
+  const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
+  const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
+  const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
+  const activeSessionFile = path.join(root, "node_modules/passbolt-styleguide/src/shared/context/ActiveSession/ActiveSessionLocalStorageContext.js");
+  const handleBootstrapRouteFile = path.join(base, "components/HandleBootstrapRoute/HandleBootstrapRoute.js");
+  const privateRouteFile = path.join(base, "components/PrivateRoute/PrivateRoute.js");
+  const prepareResourceContextFile = path.join(base, "contexts/PrepareResourceContext.js");
+  let changed = 0;
+
+  // Clean up any duplicate Trans imports in ExtQuickAccessContext
+  if (fs.existsSync(contextFile)) {
+    const rawContext = fs.readFileSync(contextFile, "utf8");
+    const dedupedContext = rawContext.replace(
+      /import { Trans } from "react-i18next";\s*import { Trans } from "react-i18next";/g,
+      'import { Trans } from "react-i18next";'
+    );
+    if (dedupedContext !== rawContext) {
+      fs.writeFileSync(contextFile, dedupedContext, "utf8");
+      changed++;
+    }
+  }
+
+  changed += replaceIfMissing(contextFile, "quickaccess-unreachable-fallback", [
+    [
+      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\n`,
+      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\nimport { Trans } from "react-i18next";\n`,
+    ],
+    [
+      `  async initialize() {
+    try {
+      await this.props.activeSessionLocalStorageContext.updateLocalStorage();
+      await this.getUserSettings();
+      await this.getLocale();
+      const siteSettings =
+        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable
+          ? await this.findAndUpdateSiteSettings()
+          : await this.getOrFindSiteSettings();
+      if (this.props.activeSession.isSessionOnline) {
+        this.loadOnlineData(siteSettings);
+      } else if (this.props.activeSession.isSessionOffline) {
+        this.loadOfflineData(siteSettings);
+      }
+    } catch (e) {
+      console.error(e);
+      this.setState({`,
+      `  async initialize() {
+    try {
+      const activeSession =
+        (await this.props.activeSessionLocalStorageContext.updateLocalStorage()) ||
+        this.props.activeSessionLocalStorageContext.get() ||
+        this.props.activeSession;
+      await this.getUserSettings();
+      await this.getLocale();
+      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+      const isServerReachable = Boolean(activeSession?.isServerReachable);
+      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+      const siteSettings =
+        isSessionOnline && isServerReachable
+          ? await this.findAndUpdateSiteSettings()
+          : await this.getOrFindSiteSettings();
+      if (isSessionOnline) {
+        await this.loadOnlineData(siteSettings, activeSession);
+      } else if (isSessionOffline) {
+        await this.loadOfflineData(siteSettings);
+      }
+      // quickaccess-unreachable-fallback: resolve the offline capability from the local caches.
+      if (!isServerReachable) {
+        if (!this.state.loggedInUser) {
+          await this.getLoggedInUser();
+        }
+        if (!this.state.rbacs) {
+          await this.getOrFindRbacs(siteSettings);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }
+      this.setState({`,
+    ],
+    [
+      `  async loadOnlineData(siteSettings) {
+    if (this.props.activeSession.isAuthenticated) {
+      if (this.props.activeSession.isMfaRequired) {
+        await this.redirectToMfaAuthentication();
+        return;
+      }
+      this.getLoggedInUser();
+      this.getOrFindRbacs(siteSettings);
+    }
+  }`,
+      `  async loadOnlineData(siteSettings, activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get()) {
+    if (activeSession?.isAuthenticated) {
+      if (activeSession?.isMfaRequired) {
+        await this.redirectToMfaAuthentication();
+        return;
+      }
+      await this.getLoggedInUser();
+      await this.getOrFindRbacs(siteSettings);
+    } else if (!activeSession?.isServerReachable) {
+      await this.getLoggedInUser();
+      await this.getOrFindRbacs(siteSettings);
+    }
+  }`,
+    ],
+    [
+      `  async loadOfflineData(siteSettings) {
+    this.getLoggedInUser();
+    this.getOrFindRbacs(siteSettings);
+  }`,
+      `  async loadOfflineData(siteSettings) {
+    await this.getLoggedInUser();
+    await this.getOrFindRbacs(siteSettings);
+  }`,
+    ],
+    [
+      `  isReady() {
+    return (
+      this.props.activeSession?.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
+    );
+  }`,
+      `  isReady() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    if (!activeSession) {
+      return false;
+    }
+    return (
+      activeSession.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+    );
+  }`,
+    ],
+    [
+      `await this.checkPluginIsConfigured();\n`,
+      `// quickaccess-addon-check-handled-in-root\n`,
+    ],
+    [
+      `await this.props.state.request("passbolt.tabs.open-website-getting-started-page");`,
+      `await this.state.port.request("passbolt.tabs.open-website-getting-started-page");`,
+    ],
+    [
+      `<p className="processing-text">Connecting your account</p>`,
+      `<p className="processing-text">
+                    <Trans>Connecting your account</Trans>
+                  </p>`,
+    ],
+    [
+      `<p className="processing-text">{this.state.errorMessage}</p>`,
+      `<p className="processing-text">
+                    <Trans>{this.state.errorMessage}</Trans>
+                  </p>`,
+    ],
+  ]) ? 1 : 0;
+
+  // Extra safety guards for ExtQuickAccessContext
+  changed += replaceIfExists(contextFile, [
+    [
+      `import { Trans } from "react-i18next";\nimport { Trans } from "react-i18next";\n`,
+      `import { Trans } from "react-i18next";\n`,
+    ],
+    [
+      `      const siteSettings =
+        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable`,
+      `      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+      const isServerReachable = Boolean(activeSession?.isServerReachable);
+      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+      const siteSettings =
+        isSessionOnline && isServerReachable`,
+    ],
+    [
+      `      if (this.props.activeSession.isSessionOnline) {
+        await this.loadOnlineData(siteSettings);
+      } else if (this.props.activeSession.isSessionOffline) {
+        await this.loadOfflineData(siteSettings);
+      }`,
+      `      if (isSessionOnline) {
+        await this.loadOnlineData(siteSettings, activeSession);
+      } else if (isSessionOffline) {
+        await this.loadOfflineData(siteSettings);
+      }`,
+    ],
+    [
+      `      if (!this.props.activeSession.isServerReachable) {`,
+      `      if (!isServerReachable) {`,
+    ],
+    [
+      `      if (!this.props.activeSession.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }`,
+      `      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }`,
+    ],
+    [
+      `  isReady() {
+    return (
+      this.props.activeSession?.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
+    );
+  }`,
+      `  isReady() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    if (!activeSession) {
+      return false;
+    }
+    return (
+      activeSession.isAuthenticated !== null &&
+      this.state.userSettings !== null &&
+      this.state.siteSettings !== undefined &&
+      this.state.locale !== null &&
+      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+    );
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard ActiveSessionLocalStorageContext
+  changed += replaceIfExists(activeSessionFile, [
+    [
+      `  set(activeSession) {
+    const activeSessionEntity = new ActiveSessionEntity(activeSession);
+    this.setState({ activeSession: activeSessionEntity });
+  }`,
+      `  set(activeSession) {
+    const activeSessionEntity = new ActiveSessionEntity(activeSession);
+    this._activeSession = activeSessionEntity;
+    this.setState({ activeSession: activeSessionEntity });
+    return activeSessionEntity;
+  }`,
+    ],
+    [
+      `  get() {
+    if (this.state.activeSession === null) {
+      this.loadLocalStorage();
+      return null;
+    }
+
+    return this.state.activeSession;
+  }`,
+      `  get() {
+    if (this.state.activeSession === null && !this._activeSession) {
+      this.loadLocalStorage();
+      return null;
+    }
+
+    return this.state.activeSession || this._activeSession;
+  }`,
+    ],
+    [
+      `  async updateLocalStorage() {
+    if (this.runningLocalStorageUpdatePromise === null) {
+      this.runningLocalStorageUpdatePromise =
+        this.activeSessionServiceWorkerService.findAndUpdateAuthenticationStatus();
+      const activeSession = await this.runningLocalStorageUpdatePromise;
+      if (activeSession) {
+        this.set(activeSession);
+      }
+      this.runningLocalStorageUpdatePromise = null;
+    } else {
+      await this.runningLocalStorageUpdatePromise;
+    }
+  }`,
+      `  async updateLocalStorage() {
+    if (this.runningLocalStorageUpdatePromise === null) {
+      this.runningLocalStorageUpdatePromise =
+        this.activeSessionServiceWorkerService.findAndUpdateAuthenticationStatus();
+      try {
+        const activeSession = await this.runningLocalStorageUpdatePromise;
+        if (activeSession) {
+          return this.set(activeSession);
+        }
+      } catch (error) {
+        console.error("Failed to update active session status:", error);
+      } finally {
+        this.runningLocalStorageUpdatePromise = null;
+      }
+    } else {
+      await this.runningLocalStorageUpdatePromise;
+    }
+    return this.state.activeSession || this._activeSession;
+  }`,
+    ],
+    [
+      `            <WrappedComponent
+              activeSessionLocalStorageContext={activeSessionLocalStorageContext}
+              activeSession={activeSessionLocalStorageContext.get()}
+              {...this.props}
+            />`,
+      `            <WrappedComponent
+              activeSessionLocalStorageContext={activeSessionLocalStorageContext}
+              activeSession={
+                activeSessionLocalStorageContext.activeSession || activeSessionLocalStorageContext.get()
+              }
+              {...this.props}
+            />`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard HandleBootstrapRoute
+  changed += replaceIfExists(handleBootstrapRouteFile, [
+    [
+      `import { withRouter } from "react-router-dom";`,
+      `import { withRouter, Redirect } from "react-router-dom";`,
+    ],
+    [
+      `  getBootstrapRoute() {
+    const activeSession = this.props.activeSession;`,
+      `  getBootstrapRoute() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    if (!activeSession) {
+      return "/webAccessibleResources/quickaccess/login";
+    }`,
+    ],
+    [
+      `  render() {
+    return this.props.history.push(this.getBootstrapRoute());
+  }`,
+      `  render() {
+    const route = this.getBootstrapRoute();
+    if (this.props.history?.push) {
+      this.props.history.push(route);
+    }
+    return <Redirect to={route} />;
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard PrivateRoute
+  changed += replaceIfExists(privateRouteFile, [
+    [
+      `  render() {
+    const { component: Component, exact, strict, path, ...componentProps } = this.props;
+
+    return (
+      <Route
+        exact={exact}
+        strict={strict}
+        path={path}
+        render={(props) => (
+          <React.Fragment>
+            {this.props.activeSession.isAuthenticated &&`,
+      `  render() {
+    const { component: Component, exact, strict, path, ...componentProps } = this.props;
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+
+    if (!activeSession) {
+      return null;
+    }
+
+    return (
+      <Route
+        exact={exact}
+        strict={strict}
+        path={path}
+        render={(props) => (
+          <React.Fragment>
+            {Boolean(activeSession.isAuthenticated) &&`,
+    ],
+    [
+      `            {!this.props.activeSession.isAuthenticated && this.props.activeSession.isSessionOnline && (`,
+      `            {!activeSession.isAuthenticated && Boolean(activeSession.isSessionOnline) && (`,
+    ],
+    [
+      `            {!this.props.activeSession.isAuthenticated && !this.props.activeSession.isServerReachable && (`,
+      `            {!activeSession.isAuthenticated && !activeSession.isServerReachable && (`,
+    ],
+  ]) ? 1 : 0;
+
+  // Guard PrepareResourceContext
+  changed += replaceIfExists(prepareResourceContextFile, [
+    [
+      `    if (this.props.activeSession && !this.props.activeSession.isSessionOnline) {`,
+      `    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();\n    if (activeSession && !activeSession.isSessionOnline) {`,
+    ],
+    [
+      `    if (this.props.activeSession.isSessionOnline) {`,
+      `    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();\n    if (activeSession && !activeSession.isSessionOnline) {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(serverUnavailableFile, "offline-signin-for-configured-account", [
+    [
+      `    const { siteSettings, loggedInUser, rbacs } = this.props.context;
+
+    return (
+      // plugin enabled
+      siteSettings?.canIUse("offlineMode") &&
+      // user has a role (required for rbac)
+      Boolean(loggedInUser?.role) &&
+      // RBAC permission is allowed
+      CanUse.canRoleUseAction(loggedInUser, rbacs, actions.OFFLINE_ITEMS_VIEW) &&
+      // Offline settings is set
+      this.props.offlineSettings != null
+    );`,
+      `    const { siteSettings, loggedInUser, rbacs, account } = this.props.context;
+
+    // Offline mode must be enabled and configured.
+    if (!siteSettings?.canIUse("offlineMode") || this.props.offlineSettings == null) {
+      return false;
+    }
+    // An explicitly empty user means no usable cached identity.
+    if (loggedInUser === null) {
+      return false;
+    }
+    if (loggedInUser?.role) {
+      return CanUse.canRoleUseAction(loggedInUser, rbacs, actions.OFFLINE_ITEMS_VIEW);
+    }
+    // offline-signin-for-configured-account: the user is not loaded yet, allow the offline sign-in.
+    return Boolean(account);`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
+function patchOfflineSettingsEntity() {
+  const entityFile = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/shared/models/entity/offline/offlineSettingsEntity.js"
+  );
+  const loginPageFile = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/react-quickaccess/components/Offline/OfflineLoginPage.js"
+  );
+  const adminPageFile = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/react-extension/components/Administration/DisplayOfflineAdministration/DisplayOfflineAdministration.js"
+  );
+  let changed = 0;
+
+  changed += replaceIfExists(entityFile, [
+    [
+      `export const SESSION_DURATION_ALLOWED = Object.freeze([300, 900, 3600, 86400]);`,
+      `export const SESSION_DURATION_ALLOWED = Object.freeze([0, 300, 900, 3600, 86400]);`,
+    ],
+    [
+      `export const DATA_RETENTION_PERIOD_ALLOWED = Object.freeze([1, 7, 14, 30]);`,
+      `export const DATA_RETENTION_PERIOD_ALLOWED = Object.freeze([0, 1, 7, 14, 30]);`,
+    ],
+    [
+      `export const COMMUNITY_EDITION_OFFLINE_SETTINGS = Object.freeze({
+  max_session_duration: 300,
+  data_retention_period: 7,
+});`,
+      `export const COMMUNITY_EDITION_OFFLINE_SETTINGS = Object.freeze({
+  max_session_duration: 0,
+  data_retention_period: 0,
+  max_items: 0,
+});`,
+    ],
+    [
+      `        max_session_duration: {
+          type: "integer",
+          enum: SESSION_DURATION_ALLOWED,
+        },
+        data_retention_period: {
+          type: "integer",
+          enum: DATA_RETENTION_PERIOD_ALLOWED,
+        },
+        max_items: {
+          type: "integer",
+          minimum: 1000,
+          maximum: 1000,
+        },`,
+      `        max_session_duration: {
+          type: "integer",
+          minimum: 0,
+        },
+        data_retention_period: {
+          type: "integer",
+          minimum: 0,
+        },
+        max_items: {
+          type: "integer",
+          minimum: 0,
+        },`,
+    ],
+    [
+      `  marshall() {
+    if (this._props.max_items == null) {
+      this._props.max_items = 1000;
+    }
+  }`,
+      `  marshall() {
+    if (this._props.max_items == null) {
+      this._props.max_items = 0;
+    }
+  }`,
+    ],
+    [
+      `  get sessionDuration() {
+    return this._props.max_session_duration || null;
+  }`,
+      `  get sessionDuration() {
+    return typeof this._props.max_session_duration === "number" ? this._props.max_session_duration : null;
+  }`,
+    ],
+    [
+      `  get maximumRetentionPeriod() {
+    return this._props.data_retention_period || null;
+  }`,
+      `  get maximumRetentionPeriod() {
+    return typeof this._props.data_retention_period === "number" ? this._props.data_retention_period : null;
+  }`,
+    ],
+    [
+      `  get modifiedBy() {
+    return this._props.modified_by || null;
+  }
+}`,
+      `  get modifiedBy() {
+    return this._props.modified_by || null;
+  }
+
+  get maxItems() {
+    return typeof this._props.max_items === "number" ? this._props.max_items : 0;
+  }
+}`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(loginPageFile, [
+    [
+      `const max_session_duration = this.props.offlineSettings?.sessionDuration || 300;`,
+      `const max_session_duration =
+      typeof this.props.offlineSettings?.sessionDuration === "number" && this.props.offlineSettings.sessionDuration <= 0
+        ? -1
+        : (this.props.offlineSettings?.sessionDuration || 300);`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(adminPageFile, [
+    [
+      `  get sessionDurationOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.max_session_duration]
+      : SESSION_DURATION_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: formatSecondsDuration(value, this.props.context.locale),
+    }));
+  }`,
+      `  get sessionDurationOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.max_session_duration]
+      : SESSION_DURATION_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: value === 0 ? "Unlimited" : formatSecondsDuration(value, this.props.context.locale),
+    }));
+  }`,
+    ],
+    [
+      `  get dataRetentionPeriodOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.data_retention_period]
+      : DATA_RETENTION_PERIOD_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: this.props.t("{{count}} day", { count: value }),
+    }));
+  }`,
+      `  get dataRetentionPeriodOptions() {
+    const allowedValues = this.isCommunityEdition
+      ? [this.state.settings.data_retention_period]
+      : DATA_RETENTION_PERIOD_ALLOWED;
+    return allowedValues.map((value) => ({
+      value,
+      label: value === 0 ? "Unlimited" : this.props.t("{{count}} day", { count: value }),
+    }));
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
 rebrandStyleguideSource();
 patchQuickAccessPasswordGeneratorSource();
 patchPasskeyResourceTypeSupport();
 patchStyleguideRuntimeLogs();
+patchQuickAccessOfflineFallback();
 patchQuickAccessVaultLocales();
+patchOfflineSettingsEntity();
 rebrandGeneratedBundles();

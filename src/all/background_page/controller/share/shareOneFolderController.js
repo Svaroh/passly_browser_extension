@@ -16,7 +16,8 @@ import PermissionChangesCollection from "../../model/entity/permission/change/pe
 import i18n from "../../sdk/i18n";
 import ProgressService from "../../service/progress/progressService";
 import ShareFoldersService from "../../service/share/shareFoldersService";
-import { assertArray, assertNonEmptyArray, assertUuid } from "../../utils/assertions";
+import { assertArray, assertNonEmptyArray } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetOrFindFoldersService from "../../service/folder/getOrFindFoldersService";
 import VerifyOrTrustMetadataKeyService from "../../service/metadata/verifyOrTrustMetadataKeyService";
 

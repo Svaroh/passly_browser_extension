@@ -13,7 +13,6 @@
  */
 
 import ResourceModel from "../../model/resource/resourceModel";
-import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 import WorkerService from "../../service/worker/workerService";
 import GetDecryptedUserPrivateKeyService from "../../service/account/getDecryptedUserPrivateKeyService";
@@ -21,6 +20,10 @@ import DecryptAndParseResourceSecretService from "../../service/secret/decryptAn
 import InformMenuPagemod from "../../pagemod/informMenuPagemod";
 import QuickAccessPagemod from "../../pagemod/quickAccessPagemod";
 import FindSecretService from "../../service/secret/findSecretService";
+import GetSecretSchemaResourceTypeService from "../../service/resourceType/getSecretSchemaResourceTypeService";
+import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
+import FindSecretOPFSService from "../../service/secret/findSecretOPFSService";
+import ResourceLocalStorage from "../../service/local_storage/resourceLocalStorage";
 
 const PASSKEY_SECRET_OBJECT_TYPE = "PASSLY_PASSKEY";
 
@@ -37,8 +40,10 @@ class AutofillController {
     this.requestId = requestId;
     this.resourceModel = new ResourceModel(apiClientOptions, account);
     this.findSecretService = new FindSecretService(account, apiClientOptions);
-    this.resourceTypeModel = new ResourceTypeModel(apiClientOptions);
+    this.getSecretSchemaResourceTypeService = new GetSecretSchemaResourceTypeService(account, apiClientOptions);
     this.getPassphraseService = new GetPassphraseService(account);
+    this.getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+    this.findSecretOPFSService = new FindSecretOPFSService(account, apiClientOptions);
   }
 
   /**
@@ -68,24 +73,40 @@ class AutofillController {
   async exec(resourceId, tabId) {
     let webIntegrationWorker;
     try {
-      // Get the resource, decrypt the resources password and requests to fill the credentials
-      const resource = await this.resourceModel.getById(resourceId);
-      const secretSchema = await this.resourceTypeModel.getSecretSchemaById(resource.resourceTypeId);
-      if (this.isPasskeySecretSchema(secretSchema)) {
-        throw new Error("Passkeys cannot be used with password autofill.");
-      }
-
       const passphrase = await this.getPassphrase();
-      const secret = await this.findSecretService.findByResourceId(resourceId);
-      const privateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
-      const plaintextSecret = await DecryptAndParseResourceSecretService.decryptAndParse(
-        secret,
-        secretSchema,
-        privateKey,
-      );
-      const username = resource.metadata?.username || "";
-      const password = plaintextSecret?.password;
-      const totp = plaintextSecret?.totp;
+      let resourceEntity, plaintextSecretEntity;
+      const activeSession = await this.getOrFindActiveSessionService.getOrFind();
+      // Get information from API if online
+      if (activeSession.isSessionOnline) {
+        // Get the resource, decrypt the resources password and requests to fill the credentials
+        resourceEntity = await this.resourceModel.getById(resourceId);
+        const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(
+          resourceEntity.resourceTypeId,
+        );
+        if (this.isPasskeySecretSchema(secretSchema)) {
+          throw new Error("Passkeys cannot be used with password autofill.");
+        }
+        const secret = await this.findSecretService.findByResourceId(resourceId);
+        const privateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
+        plaintextSecretEntity = await DecryptAndParseResourceSecretService.decryptAndParse(
+          secret,
+          secretSchema,
+          privateKey,
+        );
+      } else {
+        // Get information from resource local storage
+        resourceEntity = await ResourceLocalStorage.getResourceById(resourceId);
+        const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(
+          resourceEntity.resource_type_id || resourceEntity.resourceTypeId,
+        );
+        if (this.isPasskeySecretSchema(secretSchema)) {
+          throw new Error("Passkeys cannot be used with password autofill.");
+        }
+        plaintextSecretEntity = await this.findSecretOPFSService.findByResourceId(resourceId, passphrase);
+      }
+      const username = resourceEntity.metadata?.username || "";
+      const password = plaintextSecretEntity?.password;
+      const totp = plaintextSecretEntity?.totp;
 
       // WebIntegration Worker
       webIntegrationWorker = await WorkerService.get("WebIntegration", tabId);

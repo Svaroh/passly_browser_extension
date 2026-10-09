@@ -16,7 +16,7 @@ import { ApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/a
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import FindAndUpdateFoldersLocalStorageService from "./findAndUpdateFoldersLocalStorageService";
-import FolderService from "../api/folder/folderService";
+import FolderApiService from "../api/folder/folderApiService";
 import FindFoldersService from "./findFoldersService";
 import FolderLocalStorage from "../local_storage/folderLocalStorage";
 import { defaultFolderDto } from "passbolt-styleguide/src/shared/models/entity/folder/folderEntity.test.data";
@@ -46,7 +46,7 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
 
     it("updates local storage when no folders are returned by the API.", async () => {
       expect.assertions(2);
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => []);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => []);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
 
       const service = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
@@ -60,7 +60,7 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
     it("updates local storage with a single folder.", async () => {
       expect.assertions(3);
       const foldersDto = [defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
 
       const service = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
@@ -75,7 +75,7 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
     it("updates local storage with a multiple folders.", async () => {
       expect.assertions(4);
       const foldersDto = [defaultFolderDto(), defaultFolderDto(), defaultFolderDto(), defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
 
       const service = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
@@ -92,7 +92,7 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
       expect.assertions(4);
       const foldersDto = [defaultFolderDto()];
       const multipleFolderDtos = [defaultFolderDto(), defaultFolderDto(), defaultFolderDto(), defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
       await FolderLocalStorage.set(new FoldersCollection(multipleFolderDtos));
 
@@ -110,13 +110,13 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
       expect.assertions(5);
       const foldersDto = [defaultFolderDto()];
       const multipleFolderDtos = [defaultFolderDto(), defaultFolderDto(), defaultFolderDto(), defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
       await FolderLocalStorage.set(new FoldersCollection(multipleFolderDtos));
 
       const service = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
       const folderCollectionFirstCall = await service.findAndUpdateAll();
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => multipleFolderDtos);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => multipleFolderDtos);
       const folderCollectionSecondCall = await service.findAndUpdateAll({ updatePeriodThreshold: 1000 });
 
       const foldersLSDto = await FolderLocalStorage.get();
@@ -130,14 +130,14 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
     it("updates the local storage if the update period threshold given in parameter is overdue.", async () => {
       expect.assertions(6);
       const multipleFolderDtos = [defaultFolderDto(), defaultFolderDto(), defaultFolderDto(), defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => [defaultFolderDto()]);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => [defaultFolderDto()]);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
       await FolderLocalStorage.set(new FoldersCollection(multipleFolderDtos));
 
       const service = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);
       const folderCollectionFirstCall = await service.findAndUpdateAll();
       const foldersDto = multipleFolderDtos;
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
       jest.advanceTimersByTime(1001);
       const folderCollectionSecondCall = await service.findAndUpdateAll({ updatePeriodThreshold: 1000 });
 
@@ -155,7 +155,7 @@ describe("FindAndUpdateFoldersLocalStorage", () => {
       const foldersDto = [defaultFolderDto()];
       let resolve;
       const promise = new Promise((_resolve) => (resolve = _resolve));
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => promise);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => promise);
       jest.spyOn(FindFoldersService.prototype, "findAllForLocalStorage");
 
       const service = new FindAndUpdateFoldersLocalStorageService(account, apiClientOptions);

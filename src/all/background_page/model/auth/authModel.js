@@ -12,16 +12,22 @@
  */
 import AuthLogoutService from "passbolt-styleguide/src/shared/services/api/auth/AuthLogoutService";
 import PostLogoutService from "../../service/auth/postLogoutService";
+import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 class AuthModel {
   /**
    * Constructor
    *
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account
    * @public
    */
-  constructor(apiClientOptions) {
+  constructor(apiClientOptions, account) {
     this.authLogoutService = new AuthLogoutService(apiClientOptions);
+    this.findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
   }
 
   /**
@@ -30,6 +36,8 @@ class AuthModel {
    */
   async logout() {
     await this.authLogoutService.logout();
+    // Mark the active session as signed out, before the post-logout cleanup flushes the storages.
+    await this.findAndUpdateActiveSessionLocalStorageService.resetAuthentication();
     await PostLogoutService.exec();
   }
 }

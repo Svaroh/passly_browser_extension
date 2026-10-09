@@ -11,8 +11,8 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         2.13.0
  */
-import PermissionEntity from "../permissionEntity";
-import PermissionsCollection from "../permissionsCollection";
+import PermissionEntity from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity";
+import PermissionsCollection from "passbolt-styleguide/src/shared/models/entity/permission/permissionsCollection";
 import PermissionChangeEntity from "./permissionChangeEntity";
 import EntityCollection from "passbolt-styleguide/src/shared/models/entity/abstract/entityCollection";
 import EntitySchema from "passbolt-styleguide/src/shared/models/entity/abstract/entitySchema";
@@ -120,21 +120,6 @@ class PermissionChangesCollection extends EntityCollection {
     for (const changes of permissionChangesCollection) {
       this.push(changes);
     }
-  }
-
-  /**
-   * Copy permission changes for another ACO (folder or resource)
-   * Useful to apply a collection of changes to another item
-   *
-   * @param {string} aco type folder or resource
-   * @param {string} acoForeignKey uuid
-   */
-  copyForAnotherAco(aco, acoForeignKey) {
-    const results = new PermissionChangesCollection([]);
-    for (const change of this.items) {
-      results.push(change.copyForAnotherAco(aco, acoForeignKey));
-    }
-    return results;
   }
 
   /*

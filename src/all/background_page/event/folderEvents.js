@@ -12,10 +12,10 @@
  * @since         1.0.0
  */
 
-import FolderModel from "../model/folder/folderModel";
 import FolderCreateController from "../controller/folder/folderCreateController";
+import UpdateFolderController from "../controller/folder/updateFolderController";
+import DeleteFolderController from "../controller/folder/deleteFolderController";
 import FolderEntity from "../model/entity/folder/folderEntity";
-import FindAndUpdateResourcesLocalStorage from "../service/resource/findAndUpdateResourcesLocalStorageService";
 import UpdateAllFolderLocalStorageController from "../controller/folderLocalStorage/updateAllFoldersLocalStorageController";
 import FindFolderDetailsController from "../controller/folder/findFolderDetailsController";
 import MoveFolderController from "../controller/move/moveFolderController";
@@ -53,13 +53,8 @@ const listen = function (worker, apiClientOptions, account) {
    * @param folder {array} The folder
    */
   worker.port.on("passbolt.folders.update", async (requestId, folderDto) => {
-    try {
-      const folderModel = new FolderModel(apiClientOptions, account);
-      const folderEntity = await folderModel.update(new FolderEntity(folderDto));
-      worker.port.emit(requestId, "SUCCESS", folderEntity);
-    } catch (error) {
-      worker.port.emit(requestId, "ERROR", error);
-    }
+    const controller = new UpdateFolderController(worker, requestId, apiClientOptions);
+    await controller._exec(folderDto);
   });
 
   /*
@@ -70,17 +65,8 @@ const listen = function (worker, apiClientOptions, account) {
    * @param folder {array} The folder
    */
   worker.port.on("passbolt.folders.delete", async (requestId, folderId, cascade) => {
-    try {
-      const folderModel = new FolderModel(apiClientOptions, account);
-      const findAndUpdateResourcesLocalStorage = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
-
-      await folderModel.delete(folderId, cascade);
-      await findAndUpdateResourcesLocalStorage.findAndUpdateAll();
-
-      worker.port.emit(requestId, "SUCCESS", folderId);
-    } catch (error) {
-      worker.port.emit(requestId, "ERROR", error);
-    }
+    const controller = new DeleteFolderController(worker, requestId, apiClientOptions, account);
+    await controller._exec(folderId, cascade);
   });
 
   /*

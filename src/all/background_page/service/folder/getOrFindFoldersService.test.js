@@ -15,7 +15,7 @@
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import { ApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions";
-import FolderService from "../api/folder/folderService";
+import FolderApiService from "../api/folder/folderApiService";
 import FindAndUpdateFoldersLocalStorageService from "./findAndUpdateFoldersLocalStorageService";
 import GetOrFindFoldersService from "./getOrFindFoldersService";
 import FoldersCollection from "../../model/entity/folder/foldersCollection";
@@ -39,7 +39,7 @@ describe("GetOrFindFoldersService", () => {
   describe("::getOrFindAll", () => {
     it("retrieves empty folders from the API when the local storage is not initialized", async () => {
       expect.assertions(5);
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => []);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => []);
       jest.spyOn(FindAndUpdateFoldersLocalStorageService.prototype, "findAndUpdateAll");
 
       const service = new GetOrFindFoldersService(account, apiClientOptions);
@@ -55,7 +55,7 @@ describe("GetOrFindFoldersService", () => {
     it("retrieves folders from the API when the local storage is not initialized.", async () => {
       expect.assertions(4);
       const foldersDto = [defaultFolderDto(), defaultFolderDto(), defaultFolderDto(), defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll").mockImplementation(() => foldersDto);
+      jest.spyOn(FolderApiService.prototype, "findAll").mockImplementation(() => foldersDto);
 
       const service = new GetOrFindFoldersService(account, apiClientOptions);
       const folders = await service.getOrFindAll();
@@ -69,13 +69,13 @@ describe("GetOrFindFoldersService", () => {
     it("retrieves folders from the local storage when the local storage is initialized.", async () => {
       expect.assertions(5);
       const foldersDto = [defaultFolderDto(), defaultFolderDto(), defaultFolderDto(), defaultFolderDto()];
-      jest.spyOn(FolderService.prototype, "findAll");
+      jest.spyOn(FolderApiService.prototype, "findAll");
       await FolderLocalStorage.set(new FoldersCollection(foldersDto));
 
       const service = new GetOrFindFoldersService(account, apiClientOptions);
       const folders = await service.getOrFindAll();
 
-      expect(FolderService.prototype.findAll).not.toHaveBeenCalled();
+      expect(FolderApiService.prototype.findAll).not.toHaveBeenCalled();
       expect(folders).toHaveLength(4);
       expect(folders.toDto(FolderLocalStorage.DEFAULT_CONTAIN)).toEqual(foldersDto);
       expect(FolderLocalStorage.hasCachedData()).toBeTruthy();
@@ -84,21 +84,21 @@ describe("GetOrFindFoldersService", () => {
 
     it("does not validate the folders collection if the information is retrieved from the runtime cache.", async () => {
       expect.assertions(2);
-      jest.spyOn(FolderService.prototype, "findAll");
+      jest.spyOn(FolderApiService.prototype, "findAll");
       jest.spyOn(FoldersCollection.prototype, "validateSchema");
       await FolderLocalStorage.set(new FoldersCollection([]));
 
       const service = new GetOrFindFoldersService(account, apiClientOptions);
       await service.getOrFindAll();
 
-      expect(FolderService.prototype.findAll).not.toHaveBeenCalled();
+      expect(FolderApiService.prototype.findAll).not.toHaveBeenCalled();
       // Validation should be called only once when building the collection mock.
       expect(FoldersCollection.prototype.validateSchema).toHaveBeenCalledTimes(1);
     });
 
     it("validates folders collection if the local storage has no runtime cache and the information is retrieved from the local storage.", async () => {
       expect.assertions(2);
-      jest.spyOn(FolderService.prototype, "findAll");
+      jest.spyOn(FolderApiService.prototype, "findAll");
       jest.spyOn(FoldersCollection.prototype, "validateSchema");
       await FolderLocalStorage.set(new FoldersCollection([]));
       FolderLocalStorage._cachedData = null;
@@ -106,7 +106,7 @@ describe("GetOrFindFoldersService", () => {
       const service = new GetOrFindFoldersService(account, apiClientOptions);
       await service.getOrFindAll();
 
-      expect(FolderService.prototype.findAll).not.toHaveBeenCalled();
+      expect(FolderApiService.prototype.findAll).not.toHaveBeenCalled();
       // Validation should be called twice, once when building the collection mock, and once by the getOrFindAll.
       expect(FoldersCollection.prototype.validateSchema).toHaveBeenCalledTimes(2);
     });

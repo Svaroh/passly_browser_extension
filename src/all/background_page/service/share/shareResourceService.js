@@ -17,19 +17,18 @@ import Keyring from "../../model/keyring";
 import { OpenpgpAssertion } from "../../utils/openpgp/openpgpAssertions";
 import DecryptMessageService from "../crypto/decryptMessageService";
 import EncryptMessageService from "../crypto/encryptMessageService";
-import ShareService from "../api/share/shareService";
+import ShareApiService from "../api/share/shareApiService";
 import FindAndUpdateResourcesLocalStorage from "../resource/findAndUpdateResourcesLocalStorageService";
 import {
   assertArray,
-  assertArrayUUID,
   assertNonEmptyArray,
   assertNonEmptyString,
   assertString,
   assertType,
 } from "../../utils/assertions";
+import { assertArrayUUID } from "passbolt-styleguide/src/shared/utils/assertions";
 import DecryptPrivateKeyService from "../crypto/decryptPrivateKeyService";
 import PermissionChangesCollection from "../../model/entity/permission/change/permissionChangesCollection";
-import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
 import ResourceService from "../api/resource/resourceService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import EncryptMetadataService from "../metadata/encryptMetadataService";
@@ -39,6 +38,7 @@ import { RESOURCE_TYPE_VERSION_5 } from "passbolt-styleguide/src/shared/models/e
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
 import NeededSecretsCollection from "../../model/entity/secret/needed/neededSecretsCollection";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
+import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 
 export const PROGRESS_STEPS_SHARE_RESOURCES_SHARE_ALL = 8;
 
@@ -52,10 +52,10 @@ class ShareResourceService {
   constructor(apiClientOptions, account, progressService) {
     this.account = account;
     this.progressService = progressService;
-    this.shareService = new ShareService(apiClientOptions);
+    this.shareApiService = new ShareApiService(apiClientOptions);
     this.findResourcesService = new FindResourcesService(account, apiClientOptions);
     this.findAndUpdateResourcesLocalStorage = new FindAndUpdateResourcesLocalStorage(account, apiClientOptions);
-    this.resourceTypeModel = new ResourceTypeModel(apiClientOptions);
+    this.getOrFindResourceTypesService = new GetOrFindResourceTypesService(account, apiClientOptions);
     this.resourceService = new ResourceService(apiClientOptions);
     this.encryptMetadataService = new EncryptMetadataService(apiClientOptions, account);
     this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
@@ -91,6 +91,7 @@ class ShareResourceService {
      * This could be optimized by refreshing only the resources that have been updated:
      * - Either by having their metadata encrypted with the shared key;
      * - Or for which a permission has been removed for which I could be impacted (lost access or privilege)
+     * - Do not forget to update resources in the offline storage as well
      */
     this.progressService.finishStep(i18n.t("Updating resources local storage"), true);
     await this.findAndUpdateResourcesLocalStorage.findAndUpdateAll({}, passphrase);
@@ -107,7 +108,7 @@ class ShareResourceService {
   async updatePersonalMetadataToSharedMetadata(resourcesIds, permissionChanges, passphrase) {
     this.progressService.finishStep(i18n.t("Updating resources metadata"), true);
     const resourcesToUpdate = await this.getOrFindResourcesService.getOrFindByIds(resourcesIds);
-    const resourceTypes = await this.resourceTypeModel.getOrFindAll();
+    const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
     const resourceIdMetadataToShare = permissionChanges.items
       .filter((permissionChange) => !permissionChange.isDeleted)
       .map((permissionChange) => permissionChange.acoForeignKey);
@@ -154,7 +155,7 @@ class ShareResourceService {
    * @private
    */
   async simulateShare(permissionChanges) {
-    this.progressService.finishStep(i18n.t("Calculating secrets"), true);
+    await this.progressService.finishStep(i18n.t("Calculating secrets"), true);
     const concurrentlyExecutionService = new ExecuteConcurrentlyService();
     const neededSecretsDto = [];
     const resourceIds = [...new Set(permissionChanges.extract("aco_foreign_key"))];
@@ -170,7 +171,7 @@ class ShareResourceService {
       const resourcePermissionChanges = permissionChanges.items.filter(
         (permissionChange) => permissionChange.acoForeignKey === resourceId,
       );
-      const simulateResult = await this.shareService.simulateShareResource(resourceId, resourcePermissionChanges);
+      const simulateResult = await this.shareApiService.simulateShareResource(resourceId, resourcePermissionChanges);
       simulateResult.changes.added?.forEach((user) =>
         neededSecretsDto.push({ resource_id: resourceId, user_id: user.User.id }),
       );
@@ -286,7 +287,7 @@ class ShareResourceService {
         (permissionChange) => permissionChange.acoForeignKey === resourceId,
       );
       const resourceSecrets = secrets.items.filter((secret) => secret.resourceId === resourceId);
-      return this.shareService.shareResource(resourceId, {
+      return this.shareApiService.shareResource(resourceId, {
         permissions: resourcePermissionChanges,
         secrets: resourceSecrets,
       });

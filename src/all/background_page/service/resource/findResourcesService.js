@@ -14,12 +14,14 @@
 import ResourceService from "../api/resource/resourceService";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
-import ResourceTypeModel from "../../model/resourceType/resourceTypeModel";
-import { assertArrayUUID, assertUuid } from "../../utils/assertions";
 import ExecuteConcurrentlyService from "../execute/executeConcurrentlyService";
 import splitBySize from "../../utils/array/splitBySize";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
+import { assertArrayUUID, assertNumber, assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
+import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
+
+const DEFAULT_PAGE_SIZE = 10_000;
 
 /**
  * The service aims to find resources from the API.
@@ -33,8 +35,8 @@ export default class FindResourcesService {
   constructor(account, apiClientOptions) {
     this.account = account;
     this.resourceService = new ResourceService(apiClientOptions);
-    this.resourceTypeModel = new ResourceTypeModel(apiClientOptions);
     this.decryptMetadataService = new DecryptMetadataService(apiClientOptions, account);
+    this.getOrFindResourceTypesService = new GetOrFindResourceTypesService(account, apiClientOptions);
   }
 
   /**
@@ -50,8 +52,27 @@ export default class FindResourcesService {
     this.assertContains(contains);
     this.assertFilters(filters);
 
-    const resourcesDto = await this.resourceService.findAll(contains, filters);
+    const response = await this.resourceService.findAll(contains, filters);
+    const resourcesDto = response.body;
     return new ResourcesCollection(resourcesDto, { clone: false, ignoreInvalidEntity: ignoreInvalidEntity });
+  }
+
+  /**
+   * Find all resources of a page
+   *
+   * @param {Object} [contains] optional example: {permissions: true}
+   * @param {Object} [filters] optional
+   * @param {Object} [pageOptions] optional
+   * @param {boolean?} [ignoreInvalidEntity] Should invalid entities be ignored.
+   * @returns {Promise<PassboltResponseEntity>}
+   * @private
+   */
+  async findAllPaginated(contains, filters, pageOptions) {
+    this.assertContains(contains);
+    this.assertFilters(filters);
+    this.assertPageOptions(pageOptions);
+
+    return await this.resourceService.findAll(contains, filters, pageOptions);
   }
 
   /**
@@ -88,7 +109,26 @@ export default class FindResourcesService {
    * @returns {Promise<ResourcesCollection>}
    */
   async findAllForLocalStorage() {
-    return await this.findAll(ResourceLocalStorage.DEFAULT_CONTAIN, null, true);
+    const pageOptions = {
+      limit: DEFAULT_PAGE_SIZE,
+      page: 1,
+      sorts: {
+        "Resources.modified": "desc",
+      },
+    };
+
+    const firstResponse = await this.findAllPaginated(ResourceLocalStorage.DEFAULT_CONTAIN, null, pageOptions);
+    /** @type {Array<Object>} */
+    let resourcesCollectionDto = firstResponse.body;
+
+    const pageCount = firstResponse.header.pagination.pageCount;
+    for (let i = 2; i <= pageCount; i++) {
+      pageOptions.page = i;
+      const response = await this.findAllPaginated(ResourceLocalStorage.DEFAULT_CONTAIN, null, pageOptions);
+      resourcesCollectionDto.push(...response.body);
+    }
+
+    return new ResourcesCollection(resourcesCollectionDto, { ignoreInvalidEntity: true });
   }
 
   /**
@@ -106,19 +146,14 @@ export default class FindResourcesService {
    * might be available in the passphrase session storage.
    * @returns {Promise<ResourcesCollection>}
    */
-  async findAllByIsSharedWithGroupForLocalStorage(groupId, passphrase = null) {
+  async findAllByIsSharedWithGroupForLocalStorage(groupId) {
     const resources = await this.findAll(
       ResourceLocalStorage.DEFAULT_CONTAIN,
       { "is-shared-with-group": groupId },
       true,
     );
-    const resourceTypes = await this.resourceTypeModel.getOrFindAll();
+    const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
     resources.filterByResourceTypes(resourceTypes);
-
-    await this.decryptMetadataService.decryptAllFromForeignModels(resources, passphrase, {
-      ignoreDecryptionError: true,
-    });
-    resources.filterOutMetadataEncrypted();
 
     return resources;
   }
@@ -141,6 +176,39 @@ export default class FindResourcesService {
   }
 
   /**
+   * Retrieve all resources by ids for offline.
+   * @param {Array<string>} resourcesIds The resource ids to retrieve.
+   * @returns {Promise<ResourcesCollection>}
+   */
+  async findAllByIdsForOffline(resourcesIds) {
+    assertArrayUUID(resourcesIds);
+
+    const contains = {
+      secret: true,
+    };
+
+    return await this.findAllByIds(resourcesIds, contains, true);
+  }
+
+  /**
+   * Retrieve resources by ids with their permissions (embedding each permission's user profile or
+   * group), tailored for the share process. The metadata is intentionally not requested nor
+   * decrypted, so no passphrase prompt is triggered.
+   * @param {Array<string>} resourcesIds The resource ids to retrieve.
+   * @returns {Promise<ResourcesCollection>}
+   */
+  async findAllPermissionsByIdsForShare(resourcesIds) {
+    assertArrayUUID(resourcesIds);
+
+    const contains = {
+      "permissions.user.profile": true,
+      "permissions.group": true,
+    };
+
+    return this.findAllByIds(resourcesIds, contains);
+  }
+
+  /**
    * Retrieve all resources by ids with permissions.
    * @param {Array<string>} resourcesIds The resource ids to retrieve.
    * @returns {Promise<ResourcesCollection>}
@@ -154,27 +222,6 @@ export default class FindResourcesService {
     };
 
     return this.findAllByIds(resourcesIds, contains);
-  }
-
-  /**
-   * Retrieve all resources by ids for display permissions.
-   * @param {Array<string>} resourcesIds The resource ids to retrieve.
-   * @param {string|null} [passphrase = null] The passphrase to use to decrypt the metadata. Marked as optional as it
-   * might be available in the passphrase session storage.
-   * @returns {Promise<ResourcesCollection>}
-   */
-  async findAllByIdsForDisplayPermissions(resourcesIds, passphrase = null) {
-    assertArrayUUID(resourcesIds);
-
-    const contains = {
-      permission: true,
-      "permissions.user.profile": true,
-      "permissions.group": true,
-    };
-    const resources = await this.findAllByIds(resourcesIds, contains);
-    await this.decryptMetadataService.decryptAllFromForeignModels(resources, passphrase);
-
-    return resources;
   }
 
   /**
@@ -195,7 +242,7 @@ export default class FindResourcesService {
   /**
    * Find a resource given an id
    *
-   * @param {array} resourceId resource id
+   * @param {string} resourceId resource id
    * @param {Object} [contains] optional example: {permissions: true}
    * @returns {Promise<ResourceEntity>}
    */
@@ -211,7 +258,7 @@ export default class FindResourcesService {
   /**
    * Find the resource detail given an id
    *
-   * @param {array} resourceId resource id
+   * @param {string} resourceId resource id
    * @returns {Promise<ResourceEntity>}
    */
   async findOneByIdForDetails(resourceId) {
@@ -224,6 +271,23 @@ export default class FindResourcesService {
 
     const resource = this.findOneById(resourceId, contains);
     return resource;
+  }
+
+  /**
+   * Find the resource for offline given an id
+   *
+   * @param {string} resourceId resource id
+   * @returns {Promise<ResourceEntity>}
+   */
+  async findOneByIdForOffline(resourceId) {
+    assertUuid(resourceId);
+
+    const contains = {
+      secret: true,
+      ...ResourceLocalStorage.DEFAULT_CONTAIN,
+    };
+
+    return this.findOneById(resourceId, contains);
   }
 
   /**
@@ -270,6 +334,41 @@ export default class FindResourcesService {
     const supportedFilter = ResourceService.getSupportedFiltersOptions();
     if (filters && !Object.keys(filters).every((filter) => supportedFilter.includes(filter))) {
       throw new Error("Unsupported filter parameter used, please check supported filters");
+    }
+  }
+
+  /**
+   * Assert the pageOptions.
+   * @param {object} pageOptions
+   * @private
+   * @throws {Error} if the 'limit' field is not a valid integer or is less than 1
+   * @throws {Error} if the 'page' field is not a valid integer or is less than 1 and if it is set without 'limit'
+   * @throws {Error} if the 'sorts' field refers to unsupported sortable fields
+   */
+  assertPageOptions(pageOptions) {
+    const { limit, page, sorts } = pageOptions;
+
+    if (limit) {
+      assertNumber(limit);
+      if (limit < 1) {
+        throw new Error("The 'limit' parameter must be an integer greater or equal to 1");
+      }
+    }
+
+    if (page) {
+      assertNumber(page);
+      if (page < 1) {
+        throw new Error("The 'page' parameter must be an integer greater or equal to 1");
+      }
+      if (!limit) {
+        throw new Error("The 'page' parameter must be set along with the 'limit' parameter");
+      }
+    }
+
+    const sortFields = Object.keys(sorts || {});
+    const supportedPageOptions = ResourceService.getSupportedSortsOptions();
+    if (sortFields && !sortFields.every((sortField) => supportedPageOptions.includes(sortField))) {
+      throw new Error("Unsupported sort field used, please check supported sort fields");
     }
   }
 }

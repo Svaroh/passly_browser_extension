@@ -12,7 +12,7 @@
  * @since         3.9.0
  */
 import SsoDryRunService from "../../service/api/sso/ssoDryRunService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import SsoLoginUrlEntity from "../entity/sso/ssoLoginUrlEntity";
 
 /**

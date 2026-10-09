@@ -25,8 +25,11 @@ import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import { defaultTagDto } from "../../model/entity/tag/tagEntity.test.data";
 import { defaultTagsCollectionDto } from "../../model/entity/tag/tagsCollection.test.data";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("UpdateTagService", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let service,
     tagsCollectionDto,
     tagToUpdateDto,
@@ -43,7 +46,7 @@ describe("UpdateTagService", () => {
   beforeEach(() => {
     enableFetchMocks();
 
-    service = new UpdateTagService(defaultApiClientOptions());
+    service = new UpdateTagService(defaultApiClientOptions(), account);
 
     tagsCollectionDto = defaultTagsCollectionDto();
     tagToUpdateDto = defaultTagDto({ ...tagsCollectionDto[0], slug: "updated" });
@@ -188,6 +191,19 @@ describe("UpdateTagService", () => {
 
       expect(ResourceLocalStorage.get).toHaveBeenCalled();
       expect(ResourceLocalStorage.set).toHaveBeenCalledWith(new ResourcesCollection(updatedResourcesCollectionDto));
+    });
+
+    it("should mirror the tag update to the offline resources storage", async () => {
+      expect.assertions(1);
+
+      jest.spyOn(service.tagService, "update").mockResolvedValue(updateResponse);
+      jest.spyOn(ResourceLocalStorage, "get").mockResolvedValue(resourcesCollectionDto);
+      jest.spyOn(ResourceLocalStorage, "set");
+      jest.spyOn(service.offlineResourcesOPFSStorage, "replaceTag").mockResolvedValue();
+
+      const updatedTag = await service.update(tagToUpdate);
+
+      expect(service.offlineResourcesOPFSStorage.replaceTag).toHaveBeenCalledWith(tagToUpdate.id, updatedTag);
     });
 
     it("should throw a TypeError if the tag parameter is not a TagEntity", async () => {

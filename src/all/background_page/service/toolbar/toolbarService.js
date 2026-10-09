@@ -14,12 +14,14 @@
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
 import GetActiveAccountService from "../account/getActiveAccountService";
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
 import GetOrFindResourcesService from "../resource/getOrFindResourcesService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
 import OpenTrustedDomainTabService from "../ui/openTrustedDomainTabService";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
+import GetOrFindOfflineResourcesService from "../resource/getOrFindOfflineResourcesService";
 import isMissingAccountError from "../account/isMissingAccountError";
+import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 
 export const QUICKACCESS_POPUP_URL = "webAccessibleResources/quickaccess.html?passbolt=quickaccess";
 
@@ -162,11 +164,26 @@ class ToolbarService {
    */
   async resetSuggestedResourcesBadge() {
     this.tabUrl = null;
-    // Should do nothing if the user is not authenticated
-    if (!(await this.isUserAuthenticated())) {
-      return;
+    try {
+      // Should do nothing if the user is not authenticated
+      const account = await GetActiveAccountService.get();
+
+      const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      const userActiveSessionEntity = await this.getUserActiveSession(account, apiClientOptions);
+      if (!userActiveSessionEntity.isAuthenticated) {
+        return;
+      }
+      BrowserExtensionIconService.setSuggestedResourcesCount(0);
+    } catch (error) {
+      if (
+        isMissingAccountError(error) ||
+        error instanceof UserPassphraseRequiredError ||
+        error?.name === "UserPassphraseRequiredError"
+      ) {
+        return;
+      }
+      console.error(error);
     }
-    BrowserExtensionIconService.setSuggestedResourcesCount(0);
   }
 
   /**
@@ -177,12 +194,15 @@ class ToolbarService {
     try {
       const account = await GetActiveAccountService.get();
       const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+      const userActiveSessionEntity = await this.getUserActiveSession(account, apiClientOptions);
       // Should do nothing if the user is not authenticated
-      if (!(await this.isUserAuthenticated())) {
+      if (!userActiveSessionEntity.isAuthenticated) {
         return;
       }
-
-      this.getOrFindResourcesService = new GetOrFindResourcesService(account, apiClientOptions);
+      // Instantiate the service accordingly to the type of session (online or offline)
+      this.getOrFindResourcesService = userActiveSessionEntity.isSessionOnline
+        ? new GetOrFindResourcesService(account, apiClientOptions)
+        : new GetOrFindOfflineResourcesService(account, apiClientOptions);
 
       const tabs = await browser.tabs.query({ active: true, lastFocusedWindow: true });
       const currentTab = tabs?.[0];
@@ -206,7 +226,6 @@ class ToolbarService {
           this.getOrFindResourcesService.getOrFindSuggested(this.tabUrl, "passkey"),
         ]);
 
-        // De-duplicate the resources
         const resourcesIds = new Set();
         [...otpSuggestedResources, ...passwordSuggestedResources, ...passkeySuggestedResources].forEach(({ id }) => {
           resourcesIds.add(id);
@@ -220,29 +239,24 @@ class ToolbarService {
       if (isMissingAccountError(error)) {
         return;
       }
+      if (error instanceof UserPassphraseRequiredError || error?.name === "UserPassphraseRequiredError") {
+        BrowserExtensionIconService.setSuggestedResourcesCount(0);
+        return;
+      }
       console.error(error);
     }
   }
 
   /**
    * Is the user authenticated
-   * @returns {Promise<{boolean}|boolean>}
+   * @param {AccountEntity} account
+   * @param {ApiClientOptions} apiClientOptions
+   * @returns {Promise<UserActiveSessionEntity>}
    */
-  async isUserAuthenticated() {
-    try {
-      const checkAuthStatusService = new CheckAuthStatusService();
-      // use the cached data as the worker could wake up every 30 secondes.
-      const authStatus = await checkAuthStatusService.checkAuthStatus(false);
-      return authStatus.isAuthenticated;
-    } catch (error) {
-      if (isMissingAccountError(error)) {
-        return false;
-      }
-      console.error(error);
-      // Service is unavailable, do nothing...
-      // The user is not authenticated
-      return false;
-    }
+  async getUserActiveSession(account, apiClientOptions) {
+    const getOrFindActiveSessionService = new GetOrFindActiveSessionService(account, apiClientOptions);
+    // use the cached data as the worker could wake up every 30 secondes.
+    return await getOrFindActiveSessionService.getOrFind();
   }
 
   /**

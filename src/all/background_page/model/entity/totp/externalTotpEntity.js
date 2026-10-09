@@ -109,6 +109,21 @@ class ExternalTotpEntity extends TotpEntity {
   }
 
   /**
+   * Create TOTP from a base-32 secret key only, using the default TOTP parameters.
+   * @param secretKey {string} The base-32 secret key.
+   * @return {ExternalTotpEntity}
+   */
+  static createTotpFromSecretKey(secretKey) {
+    const dto = {
+      secret_key: secretKey,
+      algorithm: DEFAULT_ALGORITHM, // Default algorithm
+      digits: 6, // Default digits
+      period: 30, // Default period
+    };
+    return new ExternalTotpEntity(dto);
+  }
+
+  /**
    * Create TOTP from lastpass CSV.
    * Lastpass seems to export a base-32 secret only as shown on their import sample:
    * https://support.lastpass.com/s/document-item?language=en_US&bundleId=lastpass&topicId=LastPass/lastpass_technical_whitepaper.html&_LANG=enus

@@ -11,8 +11,10 @@
  * @link          https://www.passbolt.com Passbolt(tm)
  * @since         4.0.0
  */
-import CheckAuthStatusService from "./checkAuthStatusService";
 import PostLogoutService from "./postLogoutService";
+import GetActiveAccountService from "../account/getActiveAccountService";
+import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 const CHECK_IS_AUTHENTICATED_INTERVAL_PERIOD = 60000;
 const AUTH_SESSION_CHECK_ALARM = "AuthSessionCheck";
@@ -50,11 +52,17 @@ class StartLoopAuthSessionCheckService {
     if (alarm.name !== StartLoopAuthSessionCheckService.ALARM_NAME) {
       return;
     }
-    const checkAuthService = new CheckAuthStatusService();
-    const authStatus = await checkAuthService.checkAuthStatus(true);
-    if (!authStatus.isAuthenticated) {
+    const account = await GetActiveAccountService.get();
+    const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+    const findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
+    const activeSessionEntity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
+    if (!activeSessionEntity.isAuthenticated) {
       PostLogoutService.exec();
     }
+    await findAndUpdateActiveSessionLocalStorageService.updateLastSeenOnline(new Date());
   }
 
   /**

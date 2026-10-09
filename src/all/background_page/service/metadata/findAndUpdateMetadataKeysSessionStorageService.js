@@ -15,6 +15,8 @@ import FindMetadataKeysService from "./findMetadataKeysService";
 import MetadataKeysSessionStorage from "../session_storage/metadataKeysSessionStorage";
 import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import DecryptMetadataPrivateKeysService from "./decryptMetadataPrivateKeysService";
+import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
+import MetadataKeyOPFSStorage from "../opfsStorage/metadataKeyOPFSStorage";
 
 const FIND_AND_UPDATE_METADATA_KEYS_SS_LOCK_PREFIX = "FIND_AND_UPDATE_METADATA_KEYS_SS_LOCK-";
 
@@ -32,6 +34,8 @@ export default class FindAndUpdateMetadataKeysSessionStorageService {
     this.findMetadataKeysService = new FindMetadataKeysService(apiClientOptions);
     this.metadataKeysSessionStorage = new MetadataKeysSessionStorage(account);
     this.decryptMetadataPrivateKeysService = new DecryptMetadataPrivateKeysService(account);
+    this.canUseOfflineStorageService = new CanUseOfflineStorageService(account, apiClientOptions);
+    this.metadataKeyOPFSStorage = new MetadataKeyOPFSStorage(account);
   }
 
   /**
@@ -56,6 +60,14 @@ export default class FindAndUpdateMetadataKeysSessionStorageService {
 
       // Lock is granted, retrieve the metadata keys and update the session storage.
       const metadataKeys = await this.findMetadataKeysService.findAllForSessionStorage();
+      // Detect if user can use offline and store or flush the metadata keys OPFS storage
+      const canUseOffline = await this.canUseOfflineStorageService.canUseOfflineStorage();
+      if (canUseOffline) {
+        await this.metadataKeyOPFSStorage.set(metadataKeys);
+      } else {
+        await this.metadataKeyOPFSStorage.flush();
+      }
+
       await this.decryptMetadataPrivateKeysService.decryptAllFromMetadataKeysCollection(metadataKeys, passphrase);
       await this.metadataKeysSessionStorage.set(metadataKeys);
       return metadataKeys;

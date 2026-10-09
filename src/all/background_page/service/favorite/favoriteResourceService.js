@@ -16,8 +16,10 @@ import FavoriteEntity from "../../model/entity/favorite/favoriteEntity";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import ResourceModel from "../../model/resource/resourceModel";
 import FavoriteApiService from "../../service/api/favorite/favoriteApiService";
-import { assertType, assertUuid } from "../../utils/assertions";
+import { assertType } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
+import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 
 export default class FavoriteResourceService {
   /**
@@ -30,6 +32,7 @@ export default class FavoriteResourceService {
   constructor(apiClientOptions, account) {
     this.favoriteApiService = new FavoriteApiService(apiClientOptions);
     this.resourceModel = new ResourceModel(apiClientOptions, account);
+    this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
   }
 
   /**
@@ -81,5 +84,10 @@ export default class FavoriteResourceService {
     const resourceEntity = new ResourceEntity(resourceDto);
     resourceEntity.favorite = favoriteEntity;
     await ResourceLocalStorage.updateResource(resourceEntity);
+
+    // Mirror the favorite change to offline storage if the resource is cached there.
+    if (await this.offlineResourcesOPFSStorage.getOfflineResourceById(resourceId)) {
+      await this.offlineResourcesOPFSStorage.updateResourceFavorite(resourceId, favoriteEntity);
+    }
   }
 }

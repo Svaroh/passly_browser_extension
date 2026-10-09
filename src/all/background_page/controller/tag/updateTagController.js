@@ -20,11 +20,12 @@ export default class UpdateTagController {
    * @param {Worker} worker
    * @param {string} requestId
    * @param {ApiClientOptions} apiClientOptions
+   * @param {AccountEntity} account the user account
    */
-  constructor(worker, requestId, apiClientOptions) {
+  constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
-    this.updateTagService = new UpdateTagService(apiClientOptions);
+    this.updateTagService = new UpdateTagService(apiClientOptions, account);
   }
 
   /**

@@ -14,12 +14,10 @@
 import Pagemod from "./pagemod";
 import ParseAppUrlService from "../service/app/parseAppUrlService";
 import { PortEvents } from "../event/portEvents";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
+import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
+import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import isMissingAccountError from "../service/account/isMissingAccountError";
-
-const AUTH_STATUS_RETRY_DELAY = 100;
-const AUTH_STATUS_RETRY_COUNT = 20;
 
 class AppBootstrap extends Pagemod {
   /**
@@ -101,24 +99,14 @@ class AppBootstrap extends Pagemod {
    * @returns {Promise<boolean>}
    */
   async assertUserAuthenticated() {
-    for (let retry = 0; retry < AUTH_STATUS_RETRY_COUNT; retry++) {
-      const checkAuthStatusService = new CheckAuthStatusService();
-      const authStatus = await checkAuthStatusService.checkAuthStatus(true);
-      if (authStatus.isAuthenticated) {
-        return true;
-      }
-      await this.sleep(AUTH_STATUS_RETRY_DELAY);
-    }
-    return false;
-  }
-
-  /**
-   * Wait for a given delay.
-   * @param {number} delay The delay in milliseconds.
-   * @returns {Promise<void>}
-   */
-  sleep(delay) {
-    return new Promise((resolve) => setTimeout(resolve, delay));
+    const account = await GetActiveAccountService.get();
+    const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+    const findAndUpdateActiveSessionLocalStorageService = new FindAndUpdateActiveSessionLocalStorageService(
+      account,
+      apiClientOptions,
+    );
+    const activeSessionEntity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
+    return activeSessionEntity.isSessionOnline && activeSessionEntity.isAuthenticated;
   }
 }
 

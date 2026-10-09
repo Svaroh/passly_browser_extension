@@ -12,7 +12,7 @@
  * @since         5.1.1
  */
 
-import { assertUuid } from "../../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import AbstractService from "../abstract/abstractService";
 
 const USER_KEY_POLICIES_SETTINGS_API_SERVICE_RESOURCE_NAME = "setup/user-key-policies/settings";

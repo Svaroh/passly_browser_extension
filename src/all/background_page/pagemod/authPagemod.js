@@ -16,7 +16,7 @@ import { UserEvents } from "../event/userEvents";
 import { KeyringEvents } from "../event/keyringEvents";
 import { AuthEvents } from "../event/authEvents";
 import { ConfigEvents } from "../event/configEvents";
-import { OrganizationSettingsEvents } from "../event/organizationSettingsEvents";
+import { SiteSettingsEvents } from "../event/siteSettingsEvents";
 import { LocaleEvents } from "../event/localeEvents";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { RememberMeEvents } from "../event/rememberMeEvents";
@@ -42,7 +42,7 @@ class Auth extends Pagemod {
       UserEvents,
       KeyringEvents,
       AuthEvents,
-      OrganizationSettingsEvents,
+      SiteSettingsEvents,
       LocaleEvents,
       RememberMeEvents,
       AccountEvents,

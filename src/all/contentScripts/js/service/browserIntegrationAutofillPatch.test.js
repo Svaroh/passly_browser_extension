@@ -24,6 +24,8 @@ const originalFindAll = InFormCallToActionField.findAll;
 class TestElement {
   constructor(tagName = "div") {
     this.tagName = tagName.toUpperCase();
+    this.nodeName = this.tagName;
+    this.nodeType = 1;
     this.children = [];
     this.parentElement = null;
   }
@@ -177,8 +179,19 @@ beforeEach(() => {
   global.window.location = document.location;
   global.HTMLElement = TestElement;
   global.HTMLInputElement = TestInputElement;
+  global.Node = {
+    ELEMENT_NODE: 1,
+  };
+  global.MutationObserver = class {
+    observe() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  };
   global.NodeFilter = {
     FILTER_ACCEPT: 1,
+    FILTER_REJECT: 2,
     FILTER_SKIP: 3,
     SHOW_ELEMENT: 1,
   };

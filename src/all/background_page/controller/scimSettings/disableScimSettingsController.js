@@ -13,7 +13,7 @@
  */
 
 import DisableScimSettingsService from "../../service/scimSettings/disableScimSettingsService";
-import { assertUuid } from "../../utils/assertions";
+import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 
 class DisableScimSettingsController {
   /**

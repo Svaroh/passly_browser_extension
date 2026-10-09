@@ -18,6 +18,9 @@ import { Config } from "../../model/config";
 import LocalStorageService from "../localStorage/localStorageService";
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import User from "../../model/user";
+import GetActiveAccountService from "../account/getActiveAccountService";
+import BuildApiClientOptionsService from "../account/buildApiClientOptionsService";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
 
 class OnStartUpService {
   /**
@@ -41,6 +44,11 @@ class OnStartUpService {
     }
     // Update the toolbar icon
     BrowserExtensionIconService.deactivate();
+    // Get the account
+    const account = await GetActiveAccountService.get();
+    const apiClientOptions = BuildApiClientOptionsService.buildFromAccount(account);
+    // Rest authentication
+    await new FindAndUpdateActiveSessionLocalStorageService(account, apiClientOptions).resetAuthentication();
   }
 }
 

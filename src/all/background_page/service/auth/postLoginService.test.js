@@ -23,11 +23,22 @@ import PostLoginService from "./postLoginService";
 import StartLoopAuthSessionCheckService from "./startLoopAuthSessionCheckService";
 import InformCallToActionPagemod from "../../pagemod/informCallToActionPagemod";
 import toolbarService from "../toolbar/toolbarService";
-import OrganizationSettingsModel from "../../model/organizationSettings/organizationSettingsModel";
+import SiteSettingsRuntimeCache from "../siteSettings/siteSettingsRuntimeCache";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
+import FindAndUpdateActiveSessionLocalStorageService from "../activeSession/findAndUpdateActiveSessionLocalStorageService";
+
+let account, apiClientOptions;
 
 beforeEach(async () => {
   jest.clearAllMocks();
   await MockExtension.withConfiguredAccount();
+  account = new AccountEntity(defaultAccountDto());
+  apiClientOptions = defaultApiClientOptions();
+  jest
+    .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "authenticateOnline")
+    .mockImplementation(async () => {});
 });
 
 describe("PostLoginService", () => {
@@ -49,10 +60,10 @@ describe("PostLoginService", () => {
       jest.spyOn(informCtaPortWrapper, "emit");
       jest.spyOn(toolbarService, "handleUserLoggedIn").mockImplementation(async () => {});
       jest.spyOn(StartLoopAuthSessionCheckService, "exec").mockImplementation(async () => {});
-      jest.spyOn(OrganizationSettingsModel, "flushCache");
+      jest.spyOn(SiteSettingsRuntimeCache, "flushAll");
 
       // execution
-      await PostLoginService.exec();
+      await PostLoginService.exec(account, apiClientOptions);
 
       // Waiting all promises are resolved
       await Promise.resolve();
@@ -62,8 +73,8 @@ describe("PostLoginService", () => {
       expect(BrowserTabService.sendMessage).toHaveBeenCalledWith(workerCta, "passbolt.port.connect", workerCta.id);
       expect(informCtaPortWrapper.emit).toHaveBeenCalledWith("passbolt.auth.after-login");
       expect(informCtaPortWrapper.emit).toHaveBeenCalledTimes(1);
-      // The organization setting cache has been flushed
-      expect(OrganizationSettingsModel.flushCache).toHaveBeenCalledTimes(1);
+      // The site settings runtime cache has been flushed
+      expect(SiteSettingsRuntimeCache.flushAll).toHaveBeenCalledTimes(1);
     });
 
     it("Should not send messages if no workers needs to receive post logout event", async () => {
@@ -81,7 +92,7 @@ describe("PostLoginService", () => {
       jest.spyOn(toolbarService, "handleUserLoggedIn").mockImplementation(async () => {});
       jest.spyOn(StartLoopAuthSessionCheckService, "exec").mockImplementation(async () => {});
       // execution
-      await PostLoginService.exec();
+      await PostLoginService.exec(account, apiClientOptions);
       // Waiting all promises are resolved
       await Promise.resolve();
       // expectations
@@ -90,15 +101,17 @@ describe("PostLoginService", () => {
     });
 
     it("Should call all the services that reacts on a post login event", async () => {
-      expect.assertions(2);
+      expect.assertions(3);
 
       jest.spyOn(StartLoopAuthSessionCheckService, "exec").mockImplementation(async () => {});
       jest.spyOn(toolbarService, "handleUserLoggedIn").mockImplementation(async () => {});
 
-      await PostLoginService.exec();
+      await PostLoginService.exec(account, apiClientOptions);
 
       expect(StartLoopAuthSessionCheckService.exec).toHaveBeenCalledTimes(1);
       expect(toolbarService.handleUserLoggedIn).toHaveBeenCalledTimes(1);
+      // The online login transition is recorded on the active session.
+      expect(FindAndUpdateActiveSessionLocalStorageService.prototype.authenticateOnline).toHaveBeenCalledTimes(1);
     });
   });
 });

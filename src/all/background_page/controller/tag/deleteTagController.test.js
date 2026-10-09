@@ -15,8 +15,11 @@ import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiC
 
 import DeleteTagController from "./deleteTagController";
 import { defaultTagDto } from "../../model/entity/tag/tagEntity.test.data";
+import AccountEntity from "../../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 
 describe("DeleteTagController", () => {
+  const account = new AccountEntity(defaultAccountDto());
   let tagDto;
 
   beforeEach(() => {
@@ -28,7 +31,7 @@ describe("DeleteTagController", () => {
     it("should find the tags", async () => {
       expect.assertions(1);
 
-      const controller = new DeleteTagController(null, null, defaultApiClientOptions());
+      const controller = new DeleteTagController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.deleteTagService, "delete").mockResolvedValue();
 
       await controller.exec(tagDto.id);
@@ -38,7 +41,7 @@ describe("DeleteTagController", () => {
     it("should throw an Error if tagId is not a valid uuid", async () => {
       expect.assertions(1);
 
-      const controller = new DeleteTagController(null, null, defaultApiClientOptions());
+      const controller = new DeleteTagController(null, null, defaultApiClientOptions(), account);
       try {
         await controller.exec("");
       } catch (error) {
@@ -50,7 +53,7 @@ describe("DeleteTagController", () => {
       expect.assertions(1);
 
       const expectedError = new Error("Something went wrong!");
-      const controller = new DeleteTagController(null, null, defaultApiClientOptions());
+      const controller = new DeleteTagController(null, null, defaultApiClientOptions(), account);
       jest.spyOn(controller.deleteTagService, "delete").mockRejectedValue(expectedError);
 
       try {

@@ -20,7 +20,8 @@ import "./mocks/mockCryptoKey";
 import "./matchers/extendExpect";
 import MockNavigatorLocks from "./mocks/mockNavigatorLocks";
 import MockNavigatorClipboard from "./mocks/mockNavigatorClipboard";
-import OrganizationSettingsModel from "../src/all/background_page/model/organizationSettings/organizationSettingsModel";
+import SiteSettingsRuntimeCache from "../src/all/background_page/service/siteSettings/siteSettingsRuntimeCache";
+import SiteSettingsLocalStorage from "../src/all/background_page/service/local_storage/siteSettingsLocalStorage";
 import { Config } from "../src/all/background_page/model/config";
 import Keyring from "../src/all/background_page/model/keyring";
 import ResourceLocalStorage from "../src/all/background_page/service/local_storage/resourceLocalStorage";
@@ -28,6 +29,7 @@ import FolderLocalStorage from "../src/all/background_page/service/local_storage
 import mockedI18n from "./overrides/i18n";
 import I18n from "../src/all/background_page/sdk/i18n";
 import GroupLocalStorage from "../src/all/background_page/service/local_storage/groupLocalStorage";
+import MockDirectoryHandle from "./mocks/mockDirectoryHandle";
 
 //mocking i18n avoids some errors like `Error: connect ECONNREFUSED 127.0.0.1:80` in the console while running tests
 jest.mock("../src/all/background_page/sdk/i18n");
@@ -53,13 +55,23 @@ if (!global.navigator.locks) {
 if (!global.navigator.clipboard) {
   global.navigator.clipboard = new MockNavigatorClipboard();
 }
+if (!global.storage?.getDirectory) {
+  const directoryHandle = new MockDirectoryHandle("");
+  Object.defineProperty(global.navigator, "storage", {
+    configurable: true,
+    writable: true,
+    value: {
+      getDirectory: () => directoryHandle,
+    },
+  });
+}
 
 /*
  * quick polyfill for jest to have stucturedClone function defined
  * if it's not defined, it is set to a function that returns the given object itself
  */
 if (!global.structuredClone) {
-  global.structuredClone = object => object;
+  global.structuredClone = (object) => object;
 }
 
 beforeEach(async () => {
@@ -71,7 +83,8 @@ beforeEach(async () => {
   // Flush the session storage
   await browser.storage.session.clear();
   // Flush caches
-  OrganizationSettingsModel.flushCache();
+  SiteSettingsRuntimeCache.flushAll();
+  SiteSettingsLocalStorage._runtimeCachedData = {};
   ResourceLocalStorage.flush();
   FolderLocalStorage.flush();
   GroupLocalStorage._runtimeCachedData = {};

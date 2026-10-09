@@ -16,7 +16,7 @@ import App from "./appPagemod";
 import { UserEvents } from "../event/userEvents";
 import { KeyringEvents } from "../event/keyringEvents";
 import { AuthEvents } from "../event/authEvents";
-import { OrganizationSettingsEvents } from "../event/organizationSettingsEvents";
+import { SiteSettingsEvents } from "../event/siteSettingsEvents";
 import { LocaleEvents } from "../event/localeEvents";
 import { AppEvents } from "../event/appEvents";
 import { FolderEvents } from "../event/folderEvents";
@@ -35,16 +35,20 @@ import { ThemeEvents } from "../event/themeEvents";
 import { MobileEvents } from "../event/mobileEvents";
 import { PownedPasswordEvents } from "../event/pownedPasswordEvents";
 import { MfaEvents } from "../event/mfaEvents";
-import { v4 as uuid } from "uuid";
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import { enableFetchMocks } from "jest-fetch-mock";
 import { RememberMeEvents } from "../event/rememberMeEvents";
-import CheckAuthStatusService from "../service/auth/checkAuthStatusService";
-import { userLoggedInAuthStatus, userLoggedOutAuthStatus } from "../controller/auth/authCheckStatus.test.data";
 import GetActiveAccountService from "../service/account/getActiveAccountService";
 import { PermissionEvents } from "../event/permissionEvents";
 import { AccountEvents } from "../event/accountEvents";
 import { AppSignOutEvents } from "../event/appSignOutEvents";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
+import { defaultAdminUserDto } from "passbolt-styleguide/src/shared/models/entity/user/userEntity.test.data";
+import AccountEntity from "../model/entity/account/accountEntity";
+import { defaultAccountDto } from "../model/entity/account/accountEntity.test.data";
+import GetOrFindActiveSessionService from "../service/activeSession/getOrFindActiveSessionService";
 
 jest.spyOn(ConfigEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(AppEvents, "listen").mockImplementation(jest.fn());
@@ -55,7 +59,7 @@ jest.spyOn(ResourceTypeEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(RoleEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(KeyringEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(SecretEvents, "listen").mockImplementation(jest.fn());
-jest.spyOn(OrganizationSettingsEvents, "listen").mockImplementation(jest.fn());
+jest.spyOn(SiteSettingsEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(ShareEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(UserEvents, "listen").mockImplementation(jest.fn());
 jest.spyOn(GroupEvents, "listen").mockImplementation(jest.fn());
@@ -83,7 +87,7 @@ describe("App", () => {
 
   describe("App::attachEvents", () => {
     it("Should attach app events", async () => {
-      expect.assertions(30);
+      expect.assertions(32);
       // data mocked
       const port = {
         _port: {
@@ -97,16 +101,23 @@ describe("App", () => {
       // mock functions
       jest.spyOn(browser.cookies, "get").mockImplementation(() => ({ value: "csrf-token" }));
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(async () => userLoggedInAuthStatus());
-      const mockedAccount = { user_id: uuid(), domain: "https://test-domain.passbolt.com" };
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(async () => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      const mockedAccount = new AccountEntity(defaultAccountDto());
       const mockApiClient = BuildApiClientOptionsService.buildFromAccount(mockedAccount);
+      // resource name added when UserApiService is created.
+      mockApiClient.setResourceName("users");
+      const adminUserDto = defaultAdminUserDto();
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => mockedAccount);
+      jest.spyOn(UserApiService.prototype, "get").mockImplementation(() => adminUserDto);
+      jest.spyOn(mockedAccount, "set");
       // process
       await App.attachEvents(port);
       // expectations
       const expectedPortAndTab = { port: port, tab: port._port.sender.tab };
-      expect(GetActiveAccountService.get).toHaveBeenCalledWith({ role: true });
+      expect(GetActiveAccountService.get).toHaveBeenCalledTimes(1);
+      expect(UserApiService.prototype.get).toHaveBeenCalledWith(mockedAccount.userId, { role: true });
+      expect(mockedAccount.set).toHaveBeenCalledWith("role_name", adminUserDto.role.name);
       expect(ConfigEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(AppEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(AuthEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
@@ -116,7 +127,7 @@ describe("App", () => {
       expect(RoleEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(KeyringEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(SecretEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
-      expect(OrganizationSettingsEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
+      expect(SiteSettingsEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(ShareEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(UserEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
       expect(GroupEvents.listen).toHaveBeenCalledWith(expectedPortAndTab, mockApiClient, mockedAccount);
@@ -147,7 +158,7 @@ describe("App", () => {
         RoleEvents,
         KeyringEvents,
         SecretEvents,
-        OrganizationSettingsEvents,
+        SiteSettingsEvents,
         ShareEvents,
         UserEvents,
         GroupEvents,
@@ -184,8 +195,10 @@ describe("App", () => {
       // mock functions
       jest.spyOn(browser.cookies, "get").mockImplementation(() => ({ value: "csrf-token" }));
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(async () => userLoggedOutAuthStatus());
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
+        );
       // process
       await App.attachEvents(port);
       // expectations

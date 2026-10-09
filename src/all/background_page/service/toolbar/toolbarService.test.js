@@ -16,14 +16,17 @@ import toolbarService from "./toolbarService";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import GetLegacyAccountService from "../account/getLegacyAccountService";
+import GetActiveAccountService from "../account/getActiveAccountService";
 import { BrowserExtensionIconService } from "../ui/browserExtensionIcon.service";
 import { defaultResourceDtosCollection } from "passbolt-styleguide/src/shared/models/entity/resource/resourcesCollection.test.data";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import { resourceTypesCollectionDto } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection.test.data";
 import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
-import CheckAuthStatusService from "../auth/checkAuthStatusService";
 import User from "../../../../all/background_page/model/user";
 import OpenWebsiteGettingStartedPageService from "../ui/openWebsiteGettingStartedPageService";
+import UserActiveSessionEntity from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity";
+import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/models/entity/session/userActiveSessionEntity.test.data";
+import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 
 jest.useFakeTimers();
 
@@ -46,6 +49,9 @@ describe("ToolbarService", () => {
     jest
       .spyOn(BrowserExtensionIconService, "setSuggestedResourcesCount")
       .mockImplementation(browserExtensionIconServiceSetCountMock);
+    // For an online session, GetOrFindResourceTypesService checks the cache staleness against the storage
+    // metadata; keep the mocked cache fresh so it is served without reading the storage.
+    jest.spyOn(ResourceTypeLocalStorage.prototype, "isStaleSinceLastLoggedIn").mockImplementation(() => false);
   });
 
   describe("handleUserLoggedIn", () => {
@@ -57,9 +63,9 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementation(() => [{ url: "https://www.wherever.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
         .mockImplementation(() => ({ isAuthenticated: true }));
 
       await toolbarService.handleUserLoggedIn();
@@ -76,10 +82,10 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementation(() => [{ url: "https://www.passbolt.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
 
@@ -97,10 +103,10 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementation(() => [{ url: "https://www.wherever.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       await toolbarService.handleUserLoggedOut();
@@ -118,10 +124,10 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementationOnce(() => [{ url: "https://www.wherever.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
 
@@ -141,10 +147,10 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementationOnce(() => [{ url: "https://www.wherever.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenLastCalledWith(0);
@@ -163,10 +169,10 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementationOnce(() => [{ url: "https://www.wherever.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenLastCalledWith(0);
@@ -183,10 +189,10 @@ describe("ToolbarService", () => {
       jest.spyOn(browser.tabs, "query").mockImplementationOnce(() => [{ url: "https://www.passbolt.com" }]);
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest.spyOn(ResourceLocalStorage, "get").mockImplementation(() => defaultResourceDtosCollection());
-      jest.spyOn(ResourceTypeLocalStorage, "get").mockImplementation(() => resourceTypesCollectionDto());
+      jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockImplementation(() => resourceTypesCollectionDto());
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: true }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
 
       await toolbarService.handleUserLoggedIn();
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenLastCalledWith(4);
@@ -200,8 +206,10 @@ describe("ToolbarService", () => {
 
       jest.spyOn(GetLegacyAccountService, "get").mockImplementation(() => account);
       jest
-        .spyOn(CheckAuthStatusService.prototype, "checkAuthStatus")
-        .mockImplementation(() => ({ isAuthenticated: false }));
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockImplementation(
+          () => new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: false })),
+        );
 
       await toolbarService.handleSuggestedResourcesOnFocusedWindow(42);
       expect(browserExtensionIconServiceSetCountMock).toHaveBeenCalledTimes(0);
@@ -223,7 +231,7 @@ describe("ToolbarService", () => {
     it("Given the focused window is cleared before an account is configured, it should not log an error.", async () => {
       expect.assertions(2);
       jest.spyOn(console, "error").mockImplementation(() => {});
-      jest.spyOn(CheckAuthStatusService.prototype, "checkAuthStatus").mockImplementation(() => {
+      jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {
         throw Error("The user is not set");
       });
 

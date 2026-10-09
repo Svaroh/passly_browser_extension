@@ -12,3 +12,10 @@ Passly 6.0.0 introduces PassKey support and ships the current Passly-branded bro
 - Improve browser first-login import behavior when an existing server session is present.
 - Translate browser first-login import errors in the mobile transfer entrypoint.
 - Apply dependency and CI maintenance updates, including security-related dependency bumps.
+
+# v5.16.1
+Passbolt 5.16.1 fixes an issue on Safari where copy and paste could stop working due to conflicts with other extensions.
+
+## Changelogs
+### Fixed
+- PB-53792 - Copy/pasting issues on Safari
