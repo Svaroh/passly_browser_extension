@@ -3966,6 +3966,42 @@ function patchQuickAccessOfflineFallback() {
     }`,
     ],
     [
+      `    /*
+     * An authenticated offline session should persist: the user stays in the app whether or not the server
+     * is reachable.
+     */
+    if (activeSession.isAuthenticated && activeSession.isSessionOffline) {
+      return "/webAccessibleResources/quickaccess/home";
+    }
+    /*
+     * Server not reachable. This covers an authenticated online session that lost the network as well
+     * as an unauthenticated user with no reachable server: both land on the server unavailable screen,
+     * which decides what actions to offer (sign out locally, offline sign-in)
+     */
+    if (!activeSession.isServerReachable) {
+      return "/webAccessibleResources/quickaccess/server-not-reachable";
+    }
+
+    // Server reachable but user not authenticated: online login page.
+    if (!activeSession.isAuthenticated) {
+      return "/webAccessibleResources/quickaccess/login";
+    }
+
+    return this.getOnlineAuthenticatedRoute();`,
+      `    if (activeSession.isAuthenticated) {
+      return this.getOnlineAuthenticatedRoute();
+    }
+    if (!activeSession.isServerReachable) {
+      const account = this.props.account || this.props.context?.account;
+      const canUseOfflineMode = this.props.context?.canUseOfflineMode;
+      if (account || canUseOfflineMode) {
+        return "/webAccessibleResources/quickaccess/login-offline";
+      }
+      return "/webAccessibleResources/quickaccess/server-not-reachable";
+    }
+    return "/webAccessibleResources/quickaccess/login";`,
+    ],
+    [
       `  render() {
     return this.props.history.push(this.getBootstrapRoute());
   }`,
