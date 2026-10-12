@@ -60,7 +60,6 @@ class LocalStorageService {
      */
     // eslint-disable-next-line promise/catch-or-return
     Promise.allSettled([
-      ResourceLocalStorage.flush(),
       FolderLocalStorage.flush(),
       UserLocalStorage.flush(),
       RolesLocalStorage.flush(),
@@ -116,6 +115,7 @@ class LocalStorageService {
      */
     if (!canUseOfflineStorage) {
       flushes.push(
+        ResourceLocalStorage.flush(),
         new ActiveSessionLocalStorage(account).flush(),
         new RbacsLocalStorage(account).flush(),
         new ResourceTypeLocalStorage(account).flush(),

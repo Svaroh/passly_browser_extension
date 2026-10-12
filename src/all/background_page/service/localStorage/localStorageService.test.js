@@ -67,10 +67,10 @@ describe("LocalStorageService", () => {
       // process
       await LocalStorageService.flush();
       // expectations
-      expect(browser.storage.local.remove).toHaveBeenCalledTimes(5);
+      expect(browser.storage.local.remove).toHaveBeenCalledTimes(4);
       expect(browser.storage.session.remove).toHaveBeenCalledTimes(2);
       expect(browser.alarms.clear).toHaveBeenCalledTimes(2);
-      expect(browser.storage.local.remove).toHaveBeenCalledWith("resources");
+      expect(browser.storage.local.remove).not.toHaveBeenCalledWith("resources");
       expect(browser.storage.local.remove).toHaveBeenCalledWith("folders");
       expect(browser.storage.local.remove).toHaveBeenCalledWith("users");
       expect(browser.storage.local.remove).toHaveBeenCalledWith("roles");
@@ -95,7 +95,7 @@ describe("LocalStorageService", () => {
 
   describe("LocalStorageService::flushAccountBasedStorages", () => {
     it("Should retain the offline-related storages when the user can use offline storage while flushing others", async () => {
-      expect.assertions(17);
+      expect.assertions(18);
       // mock data
       await MockExtension.withConfiguredAccount();
       const account = new AccountEntity(defaultAccountDto());
@@ -128,6 +128,7 @@ describe("LocalStorageService", () => {
       );
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${GROUP_LOCAL_STORAGE_KEY}-${account.id}`);
       // The offline-related storages are intentionally retained to keep offline mode functional after logout.
+      expect(browser.storage.local.remove).not.toHaveBeenCalledWith("resources");
       expect(browser.storage.local.remove).not.toHaveBeenCalledWith(
         `${USER_ME_STORAGE_KEY_PREFIX}-metadata-${account.id}`,
       );
@@ -150,7 +151,7 @@ describe("LocalStorageService", () => {
     });
 
     it("Should flush the offline-related storages when the user cannot use offline storage", async () => {
-      expect.assertions(9);
+      expect.assertions(10);
       // mock data
       await MockExtension.withConfiguredAccount();
       const account = new AccountEntity(defaultAccountDto());
@@ -165,6 +166,7 @@ describe("LocalStorageService", () => {
       await LocalStorageService.flushAccountBasedStorages();
       // expectations: the offline-related storages are fully flushed.
       expect(CanUseOfflineStorageService.canUseOfflineStorageFromLocalStorage).toHaveBeenCalledWith(account);
+      expect(browser.storage.local.remove).toHaveBeenCalledWith("resources");
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${ACTIVE_SESSION_LOCAL_STORAGE_KEY}-${account.id}`);
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${SITE_SETTINGS}-${account.id}`);
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${RBACS_LOCAL_STORAGE_KEY}-metadata-${account.id}`);
@@ -178,7 +180,7 @@ describe("LocalStorageService", () => {
     });
 
     it("Should flush the offline-related storages when the offline capability cannot be resolved", async () => {
-      expect.assertions(6);
+      expect.assertions(7);
       // mock data
       await MockExtension.withConfiguredAccount();
       const account = new AccountEntity(defaultAccountDto());
@@ -197,6 +199,7 @@ describe("LocalStorageService", () => {
         "LocalStorageService: could not resolve the offline capability, flushing all storages.",
         error,
       );
+      expect(browser.storage.local.remove).toHaveBeenCalledWith("resources");
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${ACTIVE_SESSION_LOCAL_STORAGE_KEY}-${account.id}`);
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${SITE_SETTINGS}-${account.id}`);
       expect(browser.storage.local.remove).toHaveBeenCalledWith(`${RBACS_LOCAL_STORAGE_KEY}-${account.id}`);
