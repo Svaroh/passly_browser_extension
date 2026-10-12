@@ -3650,11 +3650,7 @@ function patchQuickAccessOfflineFallback() {
     }
   }
 
-  changed += replaceIfMissing(contextFile, "quickaccess-unreachable-fallback", [
-    [
-      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\n`,
-      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\nimport { Trans } from "react-i18next";\n`,
-    ],
+  changed += replaceIfExists(contextFile, [
     [
       `  async initialize() {
     try {
@@ -3673,6 +3669,77 @@ function patchQuickAccessOfflineFallback() {
     } catch (e) {
       console.error(e);
       this.setState({`,
+      `  async initialize() {
+    try {
+      const userSettingsPromise = this.getUserSettings();
+      const localePromise = this.getLocale();
+
+      let activeSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+
+      if (!activeSession && this.props.storage && this.props.account) {
+        try {
+          const storageKey = \`active_session-\${this.props.account.id}\`;
+          const storageData = await this.props.storage.local.get([storageKey]);
+          if (storageData && storageData[storageKey]) {
+            activeSession = new UserActiveSessionEntity(storageData[storageKey]);
+          }
+        } catch {
+          // ignore storage read error
+        }
+      }
+
+      const siteSettingsPromise = this.getOrFindSiteSettings();
+      const [siteSettings] = await Promise.all([siteSettingsPromise, userSettingsPromise, localePromise]);
+
+      if (activeSession) {
+        const isSessionOnline = Boolean(activeSession.isSessionOnline);
+        const isSessionOffline = Boolean(activeSession.isSessionOffline);
+        if (isSessionOnline) {
+          await this.loadOnlineData(siteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(siteSettings);
+        }
+      }
+
+      const updatePromise = this.props.activeSessionLocalStorageContext?.updateLocalStorage?.();
+
+      if (!activeSession) {
+        activeSession = await updatePromise;
+        const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+        const isServerReachable = Boolean(activeSession?.isServerReachable);
+        const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+        const freshSiteSettings =
+          isSessionOnline && isServerReachable ? await this.findAndUpdateSiteSettings() : siteSettings;
+
+        if (isSessionOnline) {
+          await this.loadOnlineData(freshSiteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(freshSiteSettings);
+        }
+        if (!isServerReachable) {
+          if (!this.state.loggedInUser) {
+            await this.getLoggedInUser();
+          }
+          if (!this.state.rbacs) {
+            await this.getOrFindRbacs(freshSiteSettings);
+          }
+        }
+      } else if (updatePromise) {
+        this.syncSessionInBackground(updatePromise);
+      }
+    } catch (e) {
+      console.error(e);
+      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }
+      this.setState({`,
+    ],
+    [
       `  async initialize() {
     try {
       const activeSession =
@@ -3713,41 +3780,102 @@ function patchQuickAccessOfflineFallback() {
         return;
       }
       this.setState({`,
-    ],
-    [
-      `  async loadOnlineData(siteSettings) {
-    if (this.props.activeSession.isAuthenticated) {
-      if (this.props.activeSession.isMfaRequired) {
-        await this.redirectToMfaAuthentication();
+      `  async initialize() {
+    try {
+      const userSettingsPromise = this.getUserSettings();
+      const localePromise = this.getLocale();
+
+      let activeSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+
+      if (!activeSession && this.props.storage && this.props.account) {
+        try {
+          const storageKey = \`active_session-\${this.props.account.id}\`;
+          const storageData = await this.props.storage.local.get([storageKey]);
+          if (storageData && storageData[storageKey]) {
+            activeSession = new UserActiveSessionEntity(storageData[storageKey]);
+          }
+        } catch {
+          // ignore storage read error
+        }
+      }
+
+      const siteSettingsPromise = this.getOrFindSiteSettings();
+      const [siteSettings] = await Promise.all([siteSettingsPromise, userSettingsPromise, localePromise]);
+
+      if (activeSession) {
+        const isSessionOnline = Boolean(activeSession.isSessionOnline);
+        const isSessionOffline = Boolean(activeSession.isSessionOffline);
+        if (isSessionOnline) {
+          await this.loadOnlineData(siteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(siteSettings);
+        }
+      }
+
+      const updatePromise = this.props.activeSessionLocalStorageContext?.updateLocalStorage?.();
+
+      if (!activeSession) {
+        activeSession = await updatePromise;
+        const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+        const isServerReachable = Boolean(activeSession?.isServerReachable);
+        const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+        const freshSiteSettings =
+          isSessionOnline && isServerReachable ? await this.findAndUpdateSiteSettings() : siteSettings;
+
+        if (isSessionOnline) {
+          await this.loadOnlineData(freshSiteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(freshSiteSettings);
+        }
+        if (!isServerReachable) {
+          if (!this.state.loggedInUser) {
+            await this.getLoggedInUser();
+          }
+          if (!this.state.rbacs) {
+            await this.getOrFindRbacs(freshSiteSettings);
+          }
+        }
+      } else if (updatePromise) {
+        this.syncSessionInBackground(updatePromise);
+      }
+    } catch (e) {
+      console.error(e);
+      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
         return;
       }
-      this.getLoggedInUser();
-      this.getOrFindRbacs(siteSettings);
-    }
-  }`,
-      `  async loadOnlineData(siteSettings, activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get()) {
-    if (activeSession?.isAuthenticated) {
-      if (activeSession?.isMfaRequired) {
-        await this.redirectToMfaAuthentication();
-        return;
-      }
-      await this.getLoggedInUser();
-      await this.getOrFindRbacs(siteSettings);
-    } else if (!activeSession?.isServerReachable) {
-      await this.getLoggedInUser();
-      await this.getOrFindRbacs(siteSettings);
-    }
-  }`,
+      this.setState({`,
     ],
     [
-      `  async loadOfflineData(siteSettings) {
-    this.getLoggedInUser();
-    this.getOrFindRbacs(siteSettings);
-  }`,
-      `  async loadOfflineData(siteSettings) {
-    await this.getLoggedInUser();
-    await this.getOrFindRbacs(siteSettings);
-  }`,
+      `  /**
+   * Bind callbacks
+   */
+  bindCallbacks() {`,
+      `  /**
+   * Sync the session in background without blocking the UI
+   * @param {Promise<UserActiveSessionEntity>} updatePromise
+   * @return {Promise<void>}
+   */
+  async syncSessionInBackground(updatePromise) {
+    try {
+      const updatedSession = await updatePromise;
+      if (updatedSession?.isSessionOnline && updatedSession?.isServerReachable) {
+        const freshSiteSettings = await this.findAndUpdateSiteSettings();
+        await this.loadOnlineData(freshSiteSettings, updatedSession);
+      }
+    } catch {
+      // ignore background sync errors
+    }
+  }
+
+  /**
+   * Bind callbacks
+   */
+  bindCallbacks() {`,
     ],
     [
       `  isReady() {
@@ -3769,7 +3897,7 @@ function patchQuickAccessOfflineFallback() {
       this.state.userSettings !== null &&
       this.state.siteSettings !== undefined &&
       this.state.locale !== null &&
-      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+      (!activeSession.isAuthenticated || Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
     );
   }`,
     ],
@@ -3784,8 +3912,16 @@ function patchQuickAccessOfflineFallback() {
     [
       `<p className="processing-text">Connecting your account</p>`,
       `<p className="processing-text">
-                    <Trans>Connecting your account</Trans>
+                    <Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans>
                   </p>`,
+    ],
+    [
+      `<Trans>Connecting your account</Trans>`,
+      `<Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans>`,
+    ],
+    [
+      `locale: "en-UK", // To avoid any weird blink, launch the quickaccess with a default english locale`,
+      `locale: "uk-UA",`,
     ],
     [
       `<p className="processing-text">{this.state.errorMessage}</p>`,
@@ -3862,7 +3998,7 @@ function patchQuickAccessOfflineFallback() {
       this.state.userSettings !== null &&
       this.state.siteSettings !== undefined &&
       this.state.locale !== null &&
-      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+      (!activeSession.isAuthenticated || Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
     );
   }`,
     ],
