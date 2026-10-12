@@ -867,6 +867,18 @@ function patchWorkspaceEditFromQueryAction() {
       "const selectedResourceId = this.props.match.params.selectedResourceId;",
       "const selectedResourceId = this.props.match?.params?.selectedResourceId;",
     ],
+    [
+      `    if (this.canEditResource()) {
+      this.props.dialogContext.open(EditResource, { resource });
+    } else {
+      this.displayActionAborted();
+    }`,
+      `    this.handleEditClickEvent();`,
+    ],
+    [
+      `this.props.dialogContext.open(EditResource, { resource });`,
+      `this.handleEditClickEvent();`,
+    ],
   ]) ? 1 : 0;
   changed += replaceIfMissing(workspaceMenu, 'import { withRouter } from "react-router-dom";', [
     [
@@ -926,11 +938,7 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
     }
 
     this.removeEditResourceQuery(queryParameters);
-    if (this.canEditResource()) {
-      this.props.dialogContext.open(EditResource, { resource });
-    } else {
-      this.displayActionAborted();
-    }
+    this.handleEditClickEvent();
   }
 
   /**
