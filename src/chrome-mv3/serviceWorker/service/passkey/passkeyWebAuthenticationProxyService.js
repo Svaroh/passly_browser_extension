@@ -524,6 +524,10 @@ class PasskeyWebAuthenticationProxyService {
       return { skipped: true, reason: skipReason };
     }
 
+    if (!PasskeyWebauthnService.supportsCreateOptions(requestDetails)) {
+      return { skipped: true, reason: "unsupported-create-options" };
+    }
+
     const result = await PasskeyWebauthnService.createCredential(requestDetails);
     await PasskeyVaultResourceService.createResourceForPasskey(requestDetails, result.secretDto);
 
@@ -562,6 +566,10 @@ class PasskeyWebAuthenticationProxyService {
     const skipReason = await this.getContentFallbackSkipReason(requestDetails.origin);
     if (skipReason) {
       return { skipped: true, reason: skipReason };
+    }
+
+    if (requestDetails?.operation === "create" && !PasskeyWebauthnService.supportsCreateOptions(requestDetails)) {
+      return { skipped: true, reason: "unsupported-create-options" };
     }
 
     return { available: true };

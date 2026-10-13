@@ -15,6 +15,7 @@ import Port from "../port";
 import PagemodManager from "../../pagemod/pagemodManager";
 import WorkersSessionStorage from "../../service/sessionStorage/workersSessionStorage";
 import WorkerEntity from "../../model/entity/worker/workerEntity";
+import { PASSKEY_PROVIDER_PORT_NAME } from "../../../passkey/passkeyProviderConstants";
 
 class PortManager {
   constructor() {
@@ -29,6 +30,9 @@ class PortManager {
    * @returns {Promise<void>}
    */
   async onPortConnect(port) {
+    if (this.isPasskeyPort(port)) {
+      return;
+    }
     if (await this.isQuickAccessPort(port.sender)) {
       // Quickaccess is not stored in the session storage and there is no worker entity referenced
       await this.registerAndAttachEvent(port, "QuickAccess");
@@ -84,6 +88,15 @@ class PortManager {
   async isMobileTransferEntrypointPort(port) {
     const entrypointUrl = await browser.runtime.getURL("/webAccessibleResources/mobile-transfer-entrypoint.html");
     return port.name === "mobile-transfer-entrypoint" && port.sender.url.startsWith(entrypointUrl);
+  }
+
+  /**
+   * Is passkey provider runtime port
+   * @param port
+   * @returns {boolean}
+   */
+  isPasskeyPort(port) {
+    return port?.name === PASSKEY_PROVIDER_PORT_NAME;
   }
 
   /**

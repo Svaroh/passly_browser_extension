@@ -609,5 +609,58 @@ describe("PasskeyWebAuthenticationProxyService", () => {
         result: { skipped: true, reason: "no-active-account" },
       });
     });
+
+    it("skips the content creation fallback when creation options are not supported", async () => {
+      const unsupportedCreateRequest = buildContentCreateRequest({
+        pubKeyCredParams: [{ type: "public-key", alg: -257 }],
+      });
+
+      const contentCreateResponse = new Promise((resolve) => {
+        expect(
+          PasskeyWebAuthenticationProxyService.handleRuntimeMessage(
+            {
+              name: PasskeyWebAuthenticationProxyService.MESSAGE_CONTENT_CREATE,
+              requestDetails: unsupportedCreateRequest,
+            },
+            { url: "https://login.example.com/register" },
+            resolve,
+          ),
+        ).toBe(true);
+      });
+
+      await expect(contentCreateResponse).resolves.toEqual({
+        ok: true,
+        result: { skipped: true, reason: "unsupported-create-options" },
+      });
+      expect(PasskeyWebauthnService.createCredential).not.toHaveBeenCalled();
+      expect(PasskeyVaultResourceService.createResourceForPasskey).not.toHaveBeenCalled();
+    });
+
+    it("skips the UVPAA confirmation check for unsupported creation options", async () => {
+      const unsupportedCreateRequest = {
+        operation: "create",
+        ...buildContentCreateRequest({
+          pubKeyCredParams: [{ type: "public-key", alg: -257 }],
+        }),
+      };
+
+      const contentUvpaaResponse = new Promise((resolve) => {
+        expect(
+          PasskeyWebAuthenticationProxyService.handleRuntimeMessage(
+            {
+              name: PasskeyWebAuthenticationProxyService.MESSAGE_CONTENT_UVPAA,
+              requestDetails: unsupportedCreateRequest,
+            },
+            { url: "https://login.example.com/register" },
+            resolve,
+          ),
+        ).toBe(true);
+      });
+
+      await expect(contentUvpaaResponse).resolves.toEqual({
+        ok: true,
+        result: { skipped: true, reason: "unsupported-create-options" },
+      });
+    });
   });
 });

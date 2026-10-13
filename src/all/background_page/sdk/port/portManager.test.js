@@ -18,6 +18,7 @@ import PagemodManager from "../../pagemod/pagemodManager";
 import { readWorker } from "../../model/entity/worker/workerEntity.test.data";
 import WorkerEntity from "../../model/entity/worker/workerEntity";
 import GetLegacyAccountService from "../../service/account/getLegacyAccountService";
+import { PASSKEY_PROVIDER_PORT_NAME } from "../../../passkey/passkeyProviderConstants";
 
 const spyGetWorkerById = jest.spyOn(WorkersSessionStorage, "getWorkerById");
 const spyGetWorkersByTabId = jest.spyOn(WorkersSessionStorage, "getWorkersByTabId");
@@ -136,6 +137,17 @@ describe("PortManager", () => {
         expect(PortManager._ports[port.name]).not.toBeDefined();
         expect(PagemodManager.attachEventToPort).not.toHaveBeenCalled();
       }
+    });
+
+    it("Should ignore dedicated passkey provider ports", async () => {
+      const port = mockPort({ name: PASSKEY_PROVIDER_PORT_NAME });
+      jest.spyOn(PagemodManager, "attachEventToPort");
+
+      await PortManager.onPortConnect(port);
+
+      expect(spyGetWorkerById).not.toHaveBeenCalled();
+      expect(PortManager._ports[port.name]).toBeUndefined();
+      expect(PagemodManager.attachEventToPort).not.toHaveBeenCalled();
     });
   });
 

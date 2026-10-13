@@ -86,6 +86,9 @@
         }
         return buildCredential(result);
       } catch (error) {
+        if (error?.name === "NotSupportedError") {
+          return runNativeCredentialsCreate(options);
+        }
         throw toDomException(error);
       }
     };

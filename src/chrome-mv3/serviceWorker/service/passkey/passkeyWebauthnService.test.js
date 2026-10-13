@@ -137,6 +137,32 @@ describe("PasskeyWebauthnService", () => {
         message: "Passly passkey MVP supports only ES256 public-key credentials.",
       });
     });
+
+    it("verifies whether creation options are supported by the provider", () => {
+      expect(PasskeyWebauthnService.supportsCreateOptions(buildCreateRequestDetails())).toBe(true);
+      expect(
+        PasskeyWebauthnService.supportsCreateOptions(
+          buildCreateRequestDetails({
+            pubKeyCredParams: [{ type: "public-key", alg: "-7" }],
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        PasskeyWebauthnService.supportsCreateOptions(
+          buildCreateRequestDetails({
+            pubKeyCredParams: [],
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        PasskeyWebauthnService.supportsCreateOptions(
+          buildCreateRequestDetails({
+            pubKeyCredParams: [{ type: "public-key", alg: -257 }],
+          }),
+        ),
+      ).toBe(false);
+      expect(PasskeyWebauthnService.supportsCreateOptions(null)).toBe(false);
+    });
   });
 
   describe("getAssertion", () => {

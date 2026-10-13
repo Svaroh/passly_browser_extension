@@ -162,6 +162,60 @@ class PasskeyWebauthnService {
   }
 
   /**
+   * @param {object} parameter
+   * @returns {boolean}
+   */
+  static isEs256CredParam(parameter) {
+    if (!parameter || typeof parameter !== "object") {
+      return false;
+    }
+
+    const type = parameter.type;
+    if (typeof type === "string" && type.toLowerCase() !== "public-key") {
+      return false;
+    }
+
+    const alg = Number(parameter.alg);
+    return alg === PASSKEY_ALGORITHM_ES256;
+  }
+
+  /**
+   * Check whether WebAuthn creation options can be fulfilled by the Passly passkey provider.
+   * @param {object|string} requestDetails
+   * @returns {boolean}
+   */
+  static supportsCreateOptions(requestDetails) {
+    let options;
+    try {
+      options = this.parseRequestDetails(requestDetails);
+    } catch {
+      return false;
+    }
+
+    if (!options || typeof options !== "object") {
+      return false;
+    }
+
+    if (typeof options.challenge !== "string") {
+      return false;
+    }
+
+    if (typeof options?.rp?.name !== "string") {
+      return false;
+    }
+
+    if (typeof options?.user?.id !== "string" || typeof options?.user?.name !== "string") {
+      return false;
+    }
+
+    if (!Array.isArray(options.pubKeyCredParams) || options.pubKeyCredParams.length === 0) {
+      return true;
+    }
+
+    return options.pubKeyCredParams.some((parameter) => this.isEs256CredParam(parameter));
+  }
+
+  /**
    * @param {object} options
    */
   static assertSupportedCreateOptions(options) {
@@ -177,11 +231,11 @@ class PasskeyWebauthnService {
       throw new TypeError("The WebAuthn creation request should contain a user id and user name.");
     }
 
-    const supportsEs256 = options.pubKeyCredParams?.some(
-      (parameter) => parameter.type === "public-key" && parameter.alg === PASSKEY_ALGORITHM_ES256,
-    );
-    if (!supportsEs256) {
-      throw this.buildNotSupportedError("Passly passkey MVP supports only ES256 public-key credentials.");
+    if (Array.isArray(options.pubKeyCredParams) && options.pubKeyCredParams.length > 0) {
+      const supportsEs256 = options.pubKeyCredParams.some((parameter) => this.isEs256CredParam(parameter));
+      if (!supportsEs256) {
+        throw this.buildNotSupportedError("Passly passkey MVP supports only ES256 public-key credentials.");
+      }
     }
   }
 
