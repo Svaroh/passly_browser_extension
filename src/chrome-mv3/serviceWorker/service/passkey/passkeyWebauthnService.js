@@ -545,23 +545,34 @@ class PasskeyWebauthnService {
       return true;
     }
 
+    const targetBytes = this.toCredentialBytes(credentialId);
     const normalizedTargetId = this.normalizeCredentialId(credentialId);
-    if (!normalizedTargetId) {
-      return false;
-    }
 
     return allowCredentials.some((credential) => {
-      if (!credential || typeof credential !== "object") {
+      if (!credential) {
         return false;
       }
 
-      const type = credential.type;
-      if (typeof type === "string" && type.toLowerCase() !== "public-key") {
+      let candidateRaw = credential;
+      if (
+        typeof credential === "object" &&
+        !ArrayBuffer.isView(credential) &&
+        !(credential instanceof ArrayBuffer) &&
+        !Array.isArray(credential)
+      ) {
+        const type = credential.type;
+        if (typeof type === "string" && type.toLowerCase() !== "public-key") {
+          return false;
+        }
+        candidateRaw = credential.id ?? credential.rawId ?? credential.credentialId ?? credential.credential_id;
+      }
+
+      if (!candidateRaw) {
         return false;
       }
 
-      const candidateId = this.normalizeCredentialId(credential.id);
-      if (candidateId === normalizedTargetId) {
+      const candidateId = this.normalizeCredentialId(candidateRaw);
+      if (candidateId && normalizedTargetId && candidateId === normalizedTargetId) {
         return true;
       }
 
@@ -569,8 +580,95 @@ class PasskeyWebauthnService {
         return true;
       }
 
+      const candidateBytes = this.toCredentialBytes(candidateRaw);
+      if (candidateBytes && targetBytes && candidateBytes.length === targetBytes.length) {
+        let byteMatch = true;
+        for (let i = 0; i < targetBytes.length; i++) {
+          if (candidateBytes[i] !== targetBytes[i]) {
+            byteMatch = false;
+            break;
+          }
+        }
+        if (byteMatch) {
+          return true;
+        }
+      }
+
       return false;
     });
+  }
+
+  /**
+   * Convert any credential ID representation (Base64, Base64URL, Hex, Array,
+   * Buffer, or ArrayBufferView) into a raw Uint8Array for binary comparison.
+   * @param {any} value
+   * @returns {Uint8Array|null}
+   */
+  static toCredentialBytes(value) {
+    if (!value) {
+      return null;
+    }
+    if (value instanceof Uint8Array) {
+      return value;
+    }
+    if (value instanceof ArrayBuffer) {
+      return new Uint8Array(value);
+    }
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+    if (Array.isArray(value)) {
+      return new Uint8Array(value);
+    }
+    if (typeof value === "object") {
+      if (Array.isArray(value.data)) {
+        return new Uint8Array(value.data);
+      }
+      const numericKeys = Object.keys(value).filter((k) => /^\d+$/.test(k));
+      if (numericKeys.length > 0) {
+        return new Uint8Array(numericKeys.map((k) => value[k]));
+      }
+    }
+    if (typeof value === "string") {
+      let stringValue = value.trim();
+      if (stringValue.includes("%")) {
+        try {
+          stringValue = decodeURIComponent(stringValue).trim();
+        } catch {
+          // ignore malformed URI
+        }
+      }
+      stringValue = stringValue.replace(/\s+/g, "");
+
+      const hexRegex = /^[0-9a-f]{32,}$/i;
+      if (hexRegex.test(stringValue) && stringValue.length % 2 === 0) {
+        return this.hexToUint8Array(stringValue);
+      }
+
+      try {
+        return PasskeyEncodingService.base64UrlToUint8Array(stringValue);
+      } catch {
+        // ignore decoding errors
+      }
+
+      if (stringValue.length > 0) {
+        const bytes = new Uint8Array(stringValue.length);
+        let allBytesValid = true;
+        for (let i = 0; i < stringValue.length; i++) {
+          const code = stringValue.charCodeAt(i);
+          if (code > 255) {
+            allBytesValid = false;
+            break;
+          }
+          bytes[i] = code;
+        }
+        if (allBytesValid && bytes.length >= 16) {
+          return bytes;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -618,7 +716,7 @@ class PasskeyWebauthnService {
   /**
    * Normalize a credential ID for robust comparison across Base64, Base64URL,
    * with or without padding.
-   * @param {string|Uint8Array|ArrayBuffer|Array<number>} value
+   * @param {string|Uint8Array|ArrayBuffer|Array<number>|object} value
    * @returns {string}
    */
   static normalizeCredentialId(value) {
@@ -626,16 +724,12 @@ class PasskeyWebauthnService {
       return "";
     }
 
-    if (
-      value instanceof Uint8Array ||
-      value instanceof ArrayBuffer ||
-      ArrayBuffer.isView(value) ||
-      Array.isArray(value)
-    ) {
+    const rawBytes = this.toCredentialBytes(value);
+    if (rawBytes && rawBytes.length > 0) {
       try {
-        return PasskeyEncodingService.toBase64Url(value).replaceAll("=", "").trim();
+        return PasskeyEncodingService.toBase64Url(rawBytes).replaceAll("=", "").trim();
       } catch {
-        return "";
+        // fallback to string manipulation
       }
     }
 
@@ -648,34 +742,52 @@ class PasskeyWebauthnService {
       }
     }
 
-    return stringValue.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+    return stringValue.replace(/\s+/g, "").replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
   }
 
   /**
    * Check whether a stored passkey RP ID matches a requested RP ID and/or origin.
-   * Handles subdomains, casing, and origin relaxation according to WebAuthn rules.
+   * Handles subdomains, casing, origin relaxation, and stored origin fallbacks.
    * @param {string} storedRpId
    * @param {string} requestedRpId
    * @param {string} [origin]
+   * @param {string} [storedOrigin]
    * @returns {boolean}
    */
-  static isRpIdMatching(storedRpId, requestedRpId, origin = null) {
+  static isRpIdMatching(storedRpId, requestedRpId, origin = null, storedOrigin = null) {
     const normStored = this.normalizeDomain(storedRpId);
     const normRequested = this.normalizeDomain(requestedRpId);
 
-    if (!normStored) {
-      return false;
-    }
-
     if (normRequested) {
-      return this.isDomainRelated(normStored, normRequested);
+      if (normStored && this.isDomainRelated(normStored, normRequested)) {
+        return true;
+      }
+      if (storedOrigin) {
+        try {
+          const storedOriginHostname = this.normalizeDomain(new URL(storedOrigin).hostname);
+          if (storedOriginHostname && this.isDomainRelated(storedOriginHostname, normRequested)) {
+            return true;
+          }
+        } catch {
+          // ignore invalid storedOrigin URLs
+        }
+      }
+      return false;
     }
 
     if (origin) {
       try {
         const originHostname = this.normalizeDomain(new URL(origin).hostname);
         if (originHostname) {
-          return this.isDomainRelated(normStored, originHostname);
+          if (normStored && this.isDomainRelated(normStored, originHostname)) {
+            return true;
+          }
+          if (storedOrigin) {
+            const storedOriginHostname = this.normalizeDomain(new URL(storedOrigin).hostname);
+            if (storedOriginHostname && this.isDomainRelated(storedOriginHostname, originHostname)) {
+              return true;
+            }
+          }
         }
       } catch {
         // ignore invalid origin URLs
@@ -692,16 +804,18 @@ class PasskeyWebauthnService {
    * @returns {boolean}
    */
   static isDomainRelated(domainA, domainB) {
-    if (!domainA || !domainB) {
+    const normA = this.normalizeDomain(domainA);
+    const normB = this.normalizeDomain(domainB);
+    if (!normA || !normB) {
       return false;
     }
-    if (domainA === domainB) {
+    if (normA === normB) {
       return true;
     }
-    if (domainA.endsWith(`.${domainB}`)) {
+    if (normA.endsWith(`.${normB}`)) {
       return true;
     }
-    if (domainB.endsWith(`.${domainA}`)) {
+    if (normB.endsWith(`.${normA}`)) {
       return true;
     }
     return false;

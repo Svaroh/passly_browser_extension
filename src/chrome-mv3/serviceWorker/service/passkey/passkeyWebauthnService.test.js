@@ -385,5 +385,48 @@ describe("PasskeyWebauthnService", () => {
         PasskeyWebauthnService.isCredentialAllowed([{ id: new Uint8Array(bytes), type: "public-key" }], targetB64Url),
       ).toBe(true);
     });
+
+    it("matches when candidate descriptor uses rawId or credentialId instead of id", () => {
+      const bytes = new Uint8Array([10, 20, 30, 40, 50, 60, 70, 80]);
+      const targetB64Url = PasskeyEncodingService.toBase64Url(bytes);
+
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ rawId: bytes, type: "public-key" }], targetB64Url)).toBe(
+        true,
+      );
+      expect(
+        PasskeyWebauthnService.isCredentialAllowed([{ credentialId: targetB64Url, type: "public-key" }], targetB64Url),
+      ).toBe(true);
+    });
+
+    it("matches when allowCredentials contains raw strings or buffers instead of objects", () => {
+      const bytes = new Uint8Array([5, 6, 7, 8, 9]);
+      const targetB64Url = PasskeyEncodingService.toBase64Url(bytes);
+
+      expect(PasskeyWebauthnService.isCredentialAllowed([targetB64Url], targetB64Url)).toBe(true);
+      expect(PasskeyWebauthnService.isCredentialAllowed([bytes], targetB64Url)).toBe(true);
+    });
+
+    it("matches when candidate is an object with numeric keys (JSON-serialized buffer)", () => {
+      const bytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+      const targetB64Url = PasskeyEncodingService.toBase64Url(bytes);
+      const jsonBufferObj = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8 };
+
+      expect(
+        PasskeyWebauthnService.isCredentialAllowed([{ id: jsonBufferObj, type: "public-key" }], targetB64Url),
+      ).toBe(true);
+    });
+  });
+
+  describe("isRpIdMatching with storedOrigin", () => {
+    it("matches via stored origin when stored rp_id does not directly match requested rp_id", () => {
+      expect(
+        PasskeyWebauthnService.isRpIdMatching(
+          "unrelated.com",
+          "oraclecloud.com",
+          "https://idcs-123.identity.oraclecloud.com",
+          "https://idcs-123.identity.oraclecloud.com",
+        ),
+      ).toBe(true);
+    });
   });
 });

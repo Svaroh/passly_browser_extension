@@ -73,6 +73,7 @@ class PasskeyVaultResourceService {
     const decryptedPrivateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
     const findSecretService = new FindSecretService(context.account, context.apiClientOptions);
 
+    const candidateDiagnostics = [];
     let matchedSecret = await this.matchSecretInResources(
       resources,
       resourceType,
@@ -81,6 +82,7 @@ class PasskeyVaultResourceService {
       options,
       rpId,
       origin,
+      candidateDiagnostics,
     );
 
     if (matchedSecret) {
@@ -95,6 +97,7 @@ class PasskeyVaultResourceService {
         : await ResourceLocalStorage.get();
       resources = (refreshedResources || []).filter((resourceDto) => resourceDto.resource_type_id === resourceType.id);
 
+      candidateDiagnostics.length = 0;
       matchedSecret = await this.matchSecretInResources(
         resources,
         resourceType,
@@ -103,6 +106,7 @@ class PasskeyVaultResourceService {
         options,
         rpId,
         origin,
+        candidateDiagnostics,
       );
 
       if (matchedSecret) {
@@ -115,7 +119,9 @@ class PasskeyVaultResourceService {
     console.warn("[Passly Passkey] Assertion lookup failed.", {
       rpId,
       origin,
+      allowCredentials: options.allowCredentials,
       candidatesCount: resources.length,
+      candidates: candidateDiagnostics,
     });
 
     throw PasskeyWebauthnService.buildNotAllowedError("No Passly passkey matches this WebAuthn request.");
@@ -237,6 +243,7 @@ class PasskeyVaultResourceService {
     options,
     rpId,
     origin,
+    candidateDiagnostics = null,
   ) {
     for (const [index, resourceDto] of resources.entries()) {
       const secretDto = await this.tryDecryptPasskeySecret(
@@ -247,12 +254,33 @@ class PasskeyVaultResourceService {
       );
 
       if (!secretDto) {
+        if (candidateDiagnostics) {
+          candidateDiagnostics.push({
+            index,
+            id: resourceDto?.id,
+            name: resourceDto?.metadata?.name || resourceDto?.name || null,
+            decrypted: false,
+          });
+        }
         console.warn(`[Passly Passkey] Resource [${index}] ${resourceDto?.id}: unable to decrypt secret.`);
         continue;
       }
 
-      const rpMatches = PasskeyWebauthnService.isRpIdMatching(secretDto.rp_id, rpId, origin);
+      const rpMatches = PasskeyWebauthnService.isRpIdMatching(secretDto.rp_id, rpId, origin, secretDto.origin);
       const credAllowed = PasskeyWebauthnService.isCredentialAllowed(options.allowCredentials, secretDto.credential_id);
+
+      if (candidateDiagnostics) {
+        candidateDiagnostics.push({
+          index,
+          id: resourceDto?.id,
+          name: resourceDto?.metadata?.name || resourceDto?.name || null,
+          storedRpId: secretDto.rp_id,
+          storedOrigin: secretDto.origin || null,
+          storedCredentialId: secretDto.credential_id,
+          rpMatches,
+          credAllowed,
+        });
+      }
 
       if (rpMatches && credAllowed) {
         return secretDto;
