@@ -483,6 +483,7 @@ describe("PasskeyVaultResourceService", () => {
         expect.anything(),
         expect.anything(),
         expect.anything(),
+        expect.anything(),
       );
     });
   });

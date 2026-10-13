@@ -438,6 +438,13 @@ class PasskeyWebAuthenticationProxyService {
       return false;
     }
 
+    port.onDisconnect?.addListener?.(() => {
+      // Consume lastError when disconnected due to page navigation or bfcache
+      if (chrome?.runtime?.lastError) {
+        // acknowledged
+      }
+    });
+
     port.onMessage.addListener((message) =>
       PasskeyWebAuthenticationProxyService.handleRuntimePortMessage(port, message),
     );
@@ -481,7 +488,10 @@ class PasskeyWebAuthenticationProxyService {
     try {
       port.postMessage({ requestId, response });
     } catch {
-      // The page may have navigated away before the response could be posted.
+      // The page may have navigated away or entered bfcache before the response could be posted.
+      if (chrome?.runtime?.lastError) {
+        // acknowledge closed port error
+      }
     }
   }
 

@@ -13,6 +13,7 @@
  */
 
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
+import SecretEntity from "passbolt-styleguide/src/shared/models/entity/secret/secretEntity";
 import BuildApiClientOptionsService from "../../../../all/background_page/service/account/buildApiClientOptionsService";
 import DecryptAndParseResourceSecretService from "../../../../all/background_page/service/secret/decryptAndParseResourceSecretService";
 import FindAndUpdateResourcesLocalStorage from "../../../../all/background_page/service/resource/findAndUpdateResourcesLocalStorageService";
@@ -23,6 +24,7 @@ import GetPassphraseService from "../../../../all/background_page/service/passph
 import ResourceCreateService from "../../../../all/background_page/service/resource/create/resourceCreateService";
 import ResourceLocalStorage from "../../../../all/background_page/service/local_storage/resourceLocalStorage";
 import GetOrFindResourceTypesService from "../../../../all/background_page/service/resourceType/getOrFindResourceTypesService";
+import OfflineSecretsOPFSStorage from "../../../../all/background_page/service/opfsStorage/offlineSecretsOPFSStorage";
 import PassphraseStorageService from "../../../../all/background_page/service/session_storage/passphraseStorageService";
 import { PASSKEY_RESOURCE_TYPE_SLUG } from "../../../../all/passkey/passkeyProviderConstants";
 import PasskeyWebauthnService from "./passkeyWebauthnService";
@@ -54,7 +56,26 @@ class PasskeyVaultResourceService {
       NOOP_PROGRESS_SERVICE,
     );
 
-    return resourceCreateService.create(resourceDto, secretDto, passphrase);
+    const created = await resourceCreateService.create(resourceDto, secretDto, passphrase);
+
+    try {
+      const createdResourceDto = created?.toDto ? created.toDto() : created;
+      createdResourceDto.secret = secretDto;
+      await ResourceLocalStorage.updateResource(createdResourceDto);
+    } catch (cacheError) {
+      console.warn("Unable to cache created passkey secret locally.", cacheError);
+    }
+
+    try {
+      if (created.secrets?.items?.[0]) {
+        const offlineSecretsStorage = new OfflineSecretsOPFSStorage(context.account);
+        await offlineSecretsStorage.addSecret(created.secrets.items[0]);
+      }
+    } catch (opfsError) {
+      console.warn("Unable to persist passkey secret to OPFS storage.", opfsError);
+    }
+
+    return created;
   }
 
   /**
@@ -86,38 +107,47 @@ class PasskeyVaultResourceService {
       rpId,
       origin,
       candidateDiagnostics,
+      context.account,
     );
 
     if (matchedSecret) {
       return matchedSecret;
     }
 
-    try {
-      const updater = new FindAndUpdateResourcesLocalStorage(context.account, context.apiClientOptions);
-      const refreshedResourcesCollection = await updater.findAndUpdateAll({}, passphrase);
-      const refreshedResources = refreshedResourcesCollection?.toDto
-        ? refreshedResourcesCollection.toDto()
-        : await ResourceLocalStorage.get();
-      resources = (refreshedResources || []).filter((resourceDto) => resourceDto.resource_type_id === resourceType.id);
-      candidateResources = resources.filter((resourceDto) => this.isResourceCandidateForRp(resourceDto, rpId, origin));
+    // Only refresh from API if there are NO local candidates for this RP (e.g. key added on another device)
+    if (candidateResources.length === 0) {
+      try {
+        const updater = new FindAndUpdateResourcesLocalStorage(context.account, context.apiClientOptions);
+        const refreshedResourcesCollection = await updater.findAndUpdateAll({}, passphrase);
+        const refreshedResources = refreshedResourcesCollection?.toDto
+          ? refreshedResourcesCollection.toDto()
+          : await ResourceLocalStorage.get();
+        resources = (refreshedResources || []).filter(
+          (resourceDto) => resourceDto.resource_type_id === resourceType.id,
+        );
+        candidateResources = resources.filter((resourceDto) =>
+          this.isResourceCandidateForRp(resourceDto, rpId, origin),
+        );
 
-      candidateDiagnostics.length = 0;
-      matchedSecret = await this.matchSecretInResources(
-        candidateResources,
-        resourceType,
-        decryptedPrivateKey,
-        findSecretService,
-        options,
-        rpId,
-        origin,
-        candidateDiagnostics,
-      );
+        candidateDiagnostics.length = 0;
+        matchedSecret = await this.matchSecretInResources(
+          candidateResources,
+          resourceType,
+          decryptedPrivateKey,
+          findSecretService,
+          options,
+          rpId,
+          origin,
+          candidateDiagnostics,
+          context.account,
+        );
 
-      if (matchedSecret) {
-        return matchedSecret;
+        if (matchedSecret) {
+          return matchedSecret;
+        }
+      } catch (refreshError) {
+        console.warn("Unable to refresh passkey resources from Passly API.", refreshError);
       }
-    } catch (refreshError) {
-      console.warn("Unable to refresh passkey resources from Passly API.", refreshError);
     }
 
     console.warn("[Passly Passkey] Assertion lookup failed.", {
@@ -248,6 +278,7 @@ class PasskeyVaultResourceService {
     rpId,
     origin,
     candidateDiagnostics = null,
+    account = null,
   ) {
     for (const [index, resourceDto] of resources.entries()) {
       const secretDto = await this.tryDecryptPasskeySecret(
@@ -255,6 +286,7 @@ class PasskeyVaultResourceService {
         resourceType.definition?.secret,
         decryptedPrivateKey,
         findSecretService,
+        account,
       );
 
       if (!secretDto) {
@@ -299,9 +331,16 @@ class PasskeyVaultResourceService {
    * @param {object} secretSchema
    * @param {openpgp.PrivateKey} decryptedPrivateKey
    * @param {FindSecretService} findSecretService
+   * @param {AccountEntity|null} account
    * @returns {Promise<object|null>}
    */
-  static async tryDecryptPasskeySecret(resourceDto, secretSchema, decryptedPrivateKey, findSecretService) {
+  static async tryDecryptPasskeySecret(
+    resourceDto,
+    secretSchema,
+    decryptedPrivateKey,
+    findSecretService,
+    account = null,
+  ) {
     try {
       if (resourceDto?.secret && typeof resourceDto.secret === "object") {
         if (resourceDto.secret.credential_id && resourceDto.secret.private_key_pkcs8) {
@@ -309,7 +348,27 @@ class PasskeyVaultResourceService {
         }
       }
 
-      const secret = await findSecretService.findByResourceId(resourceDto.id);
+      let secret = null;
+      if (account) {
+        try {
+          const offlineSecretsStorage = new OfflineSecretsOPFSStorage(account);
+          const offlineSecretDto = await offlineSecretsStorage.getOfflineSecretByResourceId(resourceDto.id);
+          if (offlineSecretDto && offlineSecretDto.data) {
+            secret = new SecretEntity(offlineSecretDto);
+          }
+        } catch {
+          // OPFS storage unavailable, fallback to network
+        }
+      }
+
+      if (!secret && findSecretService) {
+        try {
+          secret = await findSecretService.findByResourceId(resourceDto.id);
+        } catch {
+          // Network unavailable or offline
+        }
+      }
+
       if (!secret || !secret.data) {
         return null;
       }
@@ -338,6 +397,10 @@ class PasskeyVaultResourceService {
     const uris = resourceDto?.metadata?.uris || resourceDto?.uris;
     if (Array.isArray(uris) && uris.length > 0) {
       return uris.some((uri) => this.doesUriMatchRp(uri, rpId, origin));
+    }
+
+    if (resourceDto?.secret?.rp_id) {
+      return PasskeyWebauthnService.isRpIdMatching(resourceDto.secret.rp_id, rpId, origin, resourceDto.secret.origin);
     }
 
     const name = resourceDto?.metadata?.name || resourceDto?.name || "";
