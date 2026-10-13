@@ -15,6 +15,8 @@
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import ResourceFormEntity from "passbolt-styleguide/src/shared/models/entity/resource/resourceFormEntity";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
+import FindAndUpdateResourcesLocalStorage from "../../../../all/background_page/service/resource/findAndUpdateResourcesLocalStorageService";
+import GetDecryptedUserPrivateKeyService from "../../../../all/background_page/service/account/getDecryptedUserPrivateKeyService";
 import GetPassphraseService from "../../../../all/background_page/service/passphrase/getPassphraseService";
 import PassphraseStorageService from "../../../../all/background_page/service/session_storage/passphraseStorageService";
 import {
@@ -24,6 +26,8 @@ import {
 import PasskeyVaultResourceService, { PASSKEY_RESOURCE_TYPE_SLUG } from "./passkeyVaultResourceService";
 
 jest.mock("../../../../all/background_page/service/passphrase/getPassphraseService");
+jest.mock("../../../../all/background_page/service/resource/findAndUpdateResourcesLocalStorageService");
+jest.mock("../../../../all/background_page/service/secret/findSecretService");
 
 function buildPasskeySecretDto(overrides = {}) {
   return {
@@ -243,6 +247,134 @@ describe("PasskeyVaultResourceService", () => {
       });
 
       expect(resourceTypeModel.updateLocalStorage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("findSecretForAssertion", () => {
+    const resourceType = {
+      id: "2f6b119d-97f7-4e1f-b322-46f72cf9406a",
+      slug: PASSKEY_RESOURCE_TYPE_SLUG,
+      definition: { secret: {} },
+    };
+
+    beforeEach(() => {
+      jest.spyOn(PasskeyVaultResourceService, "getContext").mockResolvedValue({
+        account: { id: "account-id" },
+        apiClientOptions: { setResourceName: jest.fn() },
+        getOrFindResourceTypesService: {},
+      });
+      jest.spyOn(PasskeyVaultResourceService, "requestUserPassphrase").mockResolvedValue("passphrase");
+      jest.spyOn(PasskeyVaultResourceService, "getPasskeyResourceType").mockResolvedValue(resourceType);
+      jest.spyOn(GetDecryptedUserPrivateKeyService, "getKey").mockResolvedValue("decrypted-private-key");
+    });
+
+    it("returns matching passkey secret from existing cached resources", async () => {
+      const secretDto = buildPasskeySecretDto({
+        credential_id: "test-credential-id",
+        rp_id: "example.com",
+      });
+      const resourceDto = {
+        id: "res-1",
+        resource_type_id: resourceType.id,
+        secret: secretDto,
+      };
+
+      jest.spyOn(PasskeyVaultResourceService, "getPasskeyResources").mockResolvedValue([resourceDto]);
+
+      const requestDetails = {
+        origin: "https://login.example.com",
+        rpId: "example.com",
+        allowCredentials: [{ type: "public-key", id: "test-credential-id" }],
+      };
+
+      const result = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+      expect(result).toStrictEqual(secretDto);
+    });
+
+    it("matches credentials when allowCredentials uses padded Base64 and RP subdomain", async () => {
+      const secretDto = buildPasskeySecretDto({
+        credential_id: "test-credential-id",
+        rp_id: "example.com",
+      });
+      const resourceDto = {
+        id: "res-1",
+        resource_type_id: resourceType.id,
+        secret: secretDto,
+      };
+
+      jest.spyOn(PasskeyVaultResourceService, "getPasskeyResources").mockResolvedValue([resourceDto]);
+
+      const requestDetails = {
+        origin: "https://auth.example.com",
+        rpId: "auth.example.com",
+        allowCredentials: [{ type: "PUBLIC-KEY", id: "test-credential-id==" }],
+      };
+
+      const result = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+      expect(result).toStrictEqual(secretDto);
+    });
+
+    it("refreshes resources from Passly API when local cache does not have matching passkey", async () => {
+      const oldResourceDto = {
+        id: "res-old",
+        resource_type_id: resourceType.id,
+        secret: buildPasskeySecretDto({
+          credential_id: "other-id",
+          rp_id: "other.com",
+        }),
+      };
+      const newSecretDto = buildPasskeySecretDto({
+        credential_id: "new-credential-id",
+        rp_id: "example.com",
+      });
+      const newResourceDto = {
+        id: "res-new",
+        resource_type_id: resourceType.id,
+        secret: newSecretDto,
+      };
+
+      jest.spyOn(PasskeyVaultResourceService, "getPasskeyResources").mockResolvedValue([oldResourceDto]);
+
+      const findAndUpdateAll = jest.fn().mockResolvedValue({
+        toDto: () => [oldResourceDto, newResourceDto],
+      });
+      FindAndUpdateResourcesLocalStorage.mockImplementation(() => ({
+        findAndUpdateAll,
+      }));
+
+      const requestDetails = {
+        origin: "https://login.example.com",
+        rpId: "example.com",
+        allowCredentials: [{ type: "public-key", id: "new-credential-id" }],
+      };
+
+      const result = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+
+      expect(result).toStrictEqual(newSecretDto);
+      expect(findAndUpdateAll).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws NotAllowedError when no matching passkey is found even after refresh", async () => {
+      jest.spyOn(PasskeyVaultResourceService, "getPasskeyResources").mockResolvedValue([]);
+
+      const findAndUpdateAll = jest.fn().mockResolvedValue({
+        toDto: () => [],
+      });
+      FindAndUpdateResourcesLocalStorage.mockImplementation(() => ({
+        findAndUpdateAll,
+      }));
+
+      const requestDetails = {
+        origin: "https://login.example.com",
+        rpId: "example.com",
+      };
+
+      await expect(PasskeyVaultResourceService.findSecretForAssertion(requestDetails)).rejects.toMatchObject({
+        name: "NotAllowedError",
+        message: "No Passly passkey matches this WebAuthn request.",
+      });
+
+      expect(findAndUpdateAll).toHaveBeenCalledTimes(1);
     });
   });
 });

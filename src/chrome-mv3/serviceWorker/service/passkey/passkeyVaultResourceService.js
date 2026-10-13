@@ -66,27 +66,50 @@ class PasskeyVaultResourceService {
     const context = await this.getContext();
     const passphrase = await this.requestUserPassphrase(context.account);
     const resourceType = await this.getPasskeyResourceType(context.getOrFindResourceTypesService);
-    const resources = await this.getPasskeyResources(context, resourceType, passphrase);
+    let resources = await this.getPasskeyResources(context, resourceType, passphrase);
     const options = PasskeyWebauthnService.parseRequestDetails(requestDetails);
     const origin = PasskeyWebauthnService.getOrigin(options);
     const rpId = PasskeyWebauthnService.getRequestRpId(options, origin);
     const decryptedPrivateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
     const findSecretService = new FindSecretService(context.account, context.apiClientOptions);
 
-    for (const resourceDto of resources) {
-      const secretDto = await this.tryDecryptPasskeySecret(
-        resourceDto,
-        resourceType.definition.secret,
+    let matchedSecret = await this.matchSecretInResources(
+      resources,
+      resourceType,
+      decryptedPrivateKey,
+      findSecretService,
+      options,
+      rpId,
+      origin,
+    );
+
+    if (matchedSecret) {
+      return matchedSecret;
+    }
+
+    try {
+      const updater = new FindAndUpdateResourcesLocalStorage(context.account, context.apiClientOptions);
+      const refreshedResourcesCollection = await updater.findAndUpdateAll({}, passphrase);
+      const refreshedResources = refreshedResourcesCollection?.toDto
+        ? refreshedResourcesCollection.toDto()
+        : await ResourceLocalStorage.get();
+      resources = (refreshedResources || []).filter((resourceDto) => resourceDto.resource_type_id === resourceType.id);
+
+      matchedSecret = await this.matchSecretInResources(
+        resources,
+        resourceType,
         decryptedPrivateKey,
         findSecretService,
+        options,
+        rpId,
+        origin,
       );
 
-      if (
-        secretDto?.rp_id === rpId &&
-        PasskeyWebauthnService.isCredentialAllowed(options.allowCredentials, secretDto.credential_id)
-      ) {
-        return secretDto;
+      if (matchedSecret) {
+        return matchedSecret;
       }
+    } catch (refreshError) {
+      console.warn("Unable to refresh passkey resources from Passly API.", refreshError);
     }
 
     throw PasskeyWebauthnService.buildNotAllowedError("No Passly passkey matches this WebAuthn request.");
@@ -190,6 +213,46 @@ class PasskeyVaultResourceService {
   }
 
   /**
+   * Iterate through resources and find the first matching decrypted passkey secret.
+   * @param {Array<object>} resources
+   * @param {ResourceTypeEntity} resourceType
+   * @param {openpgp.PrivateKey} decryptedPrivateKey
+   * @param {FindSecretService} findSecretService
+   * @param {object} options
+   * @param {string} rpId
+   * @param {string} origin
+   * @returns {Promise<object|null>}
+   */
+  static async matchSecretInResources(
+    resources,
+    resourceType,
+    decryptedPrivateKey,
+    findSecretService,
+    options,
+    rpId,
+    origin,
+  ) {
+    for (const resourceDto of resources) {
+      const secretDto = await this.tryDecryptPasskeySecret(
+        resourceDto,
+        resourceType.definition?.secret,
+        decryptedPrivateKey,
+        findSecretService,
+      );
+
+      if (
+        secretDto &&
+        PasskeyWebauthnService.isRpIdMatching(secretDto.rp_id, rpId, origin) &&
+        PasskeyWebauthnService.isCredentialAllowed(options.allowCredentials, secretDto.credential_id)
+      ) {
+        return secretDto;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * @param {object} resourceDto
    * @param {object} secretSchema
    * @param {openpgp.PrivateKey} decryptedPrivateKey
@@ -198,6 +261,12 @@ class PasskeyVaultResourceService {
    */
   static async tryDecryptPasskeySecret(resourceDto, secretSchema, decryptedPrivateKey, findSecretService) {
     try {
+      if (resourceDto?.secret && typeof resourceDto.secret === "object") {
+        if (resourceDto.secret.credential_id && resourceDto.secret.private_key_pkcs8) {
+          return resourceDto.secret;
+        }
+      }
+
       const secret = await findSecretService.findByResourceId(resourceDto.id);
       const plaintext = await DecryptAndParseResourceSecretService.decryptAndParse(
         secret,

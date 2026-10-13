@@ -108,7 +108,7 @@ class PasskeyWebauthnService {
 
     const origin = this.getOrigin(options);
     const rpId = this.getRequestRpId(options, origin);
-    if (rpId !== secretDto.rp_id) {
+    if (!this.isRpIdMatching(secretDto.rp_id, rpId, origin)) {
       throw this.buildNotAllowedError("The passkey does not belong to this relying party.");
     }
 
@@ -118,7 +118,8 @@ class PasskeyWebauthnService {
 
     const clientDataJSON = this.buildClientDataJson(WEBAUTHN_TYPE_GET, options.challenge, origin);
     const clientDataHash = await this.sha256(PasskeyEncodingService.utf8ToUint8Array(clientDataJSON));
-    const authenticatorData = await this.buildAssertionAuthenticatorData(rpId, secretDto.sign_count || 0);
+    const assertionRpId = this.getEffectiveAssertionRpId(options, secretDto, origin);
+    const authenticatorData = await this.buildAssertionAuthenticatorData(assertionRpId, secretDto.sign_count || 0);
     const signatureBase = PasskeyEncodingService.concat(authenticatorData, clientDataHash);
     const privateKey = await this.importEs256PrivateKey(secretDto.private_key_pkcs8);
     const rawSignature = await crypto.subtle.sign(
@@ -284,10 +285,16 @@ class PasskeyWebauthnService {
    */
   static getRpId(options, origin) {
     if (typeof options?.rp?.id === "string" && options.rp.id) {
-      return options.rp.id;
+      return this.normalizeDomain(options.rp.id);
+    }
+    if (typeof options.rpId === "string" && options.rpId) {
+      return this.normalizeDomain(options.rpId);
+    }
+    if (typeof options.rp_id === "string" && options.rp_id) {
+      return this.normalizeDomain(options.rp_id);
     }
 
-    return new URL(origin).hostname;
+    return this.normalizeDomain(new URL(origin).hostname);
   }
 
   /**
@@ -297,10 +304,42 @@ class PasskeyWebauthnService {
    */
   static getRequestRpId(options, origin) {
     if (typeof options.rpId === "string" && options.rpId) {
-      return options.rpId;
+      return this.normalizeDomain(options.rpId);
+    }
+    if (typeof options?.rp?.id === "string" && options.rp.id) {
+      return this.normalizeDomain(options.rp.id);
+    }
+    if (typeof options.rp_id === "string" && options.rp_id) {
+      return this.normalizeDomain(options.rp_id);
     }
 
-    return new URL(origin).hostname;
+    return this.normalizeDomain(new URL(origin).hostname);
+  }
+
+  /**
+   * Determine the effective RP ID to hash into the assertion authenticator data.
+   * WebAuthn relying parties verify rpIdHash against the rpId requested in options
+   * (or the caller's origin hostname when rpId was omitted).
+   * @param {object} options
+   * @param {object} secretDto
+   * @param {string} origin
+   * @returns {string}
+   */
+  static getEffectiveAssertionRpId(options, secretDto, origin) {
+    if (typeof options.rpId === "string" && options.rpId) {
+      return this.normalizeDomain(options.rpId);
+    }
+    if (typeof options?.rp?.id === "string" && options.rp.id) {
+      return this.normalizeDomain(options.rp.id);
+    }
+    if (typeof options.rp_id === "string" && options.rp_id) {
+      return this.normalizeDomain(options.rp_id);
+    }
+    if (secretDto?.rp_id) {
+      return this.normalizeDomain(secretDto.rp_id);
+    }
+
+    return this.getRequestRpId(options, origin);
   }
 
   /**
@@ -497,7 +536,137 @@ class PasskeyWebauthnService {
       return true;
     }
 
-    return allowCredentials.some((credential) => credential.type === "public-key" && credential.id === credentialId);
+    const normalizedTargetId = this.normalizeCredentialId(credentialId);
+    if (!normalizedTargetId) {
+      return false;
+    }
+
+    return allowCredentials.some((credential) => {
+      if (!credential || typeof credential !== "object") {
+        return false;
+      }
+
+      const type = credential.type;
+      if (typeof type === "string" && type.toLowerCase() !== "public-key") {
+        return false;
+      }
+
+      const candidateId = this.normalizeCredentialId(credential.id);
+      return candidateId === normalizedTargetId;
+    });
+  }
+
+  /**
+   * Normalize a credential ID for robust comparison across Base64, Base64URL,
+   * with or without padding.
+   * @param {string|Uint8Array|ArrayBuffer|Array<number>} value
+   * @returns {string}
+   */
+  static normalizeCredentialId(value) {
+    if (!value) {
+      return "";
+    }
+
+    if (typeof value === "string") {
+      return value.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+    }
+
+    if (
+      value instanceof Uint8Array ||
+      value instanceof ArrayBuffer ||
+      ArrayBuffer.isView(value) ||
+      Array.isArray(value)
+    ) {
+      return PasskeyEncodingService.toBase64Url(value).replaceAll("=", "").trim();
+    }
+
+    return String(value).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+  }
+
+  /**
+   * Check whether a stored passkey RP ID matches a requested RP ID and/or origin.
+   * Handles subdomains, casing, and origin relaxation according to WebAuthn rules.
+   * @param {string} storedRpId
+   * @param {string} requestedRpId
+   * @param {string} [origin]
+   * @returns {boolean}
+   */
+  static isRpIdMatching(storedRpId, requestedRpId, origin = null) {
+    const normStored = this.normalizeDomain(storedRpId);
+    const normRequested = this.normalizeDomain(requestedRpId);
+
+    if (!normStored) {
+      return false;
+    }
+
+    if (normRequested) {
+      return this.isDomainRelated(normStored, normRequested);
+    }
+
+    if (origin) {
+      try {
+        const originHostname = this.normalizeDomain(new URL(origin).hostname);
+        if (originHostname) {
+          return this.isDomainRelated(normStored, originHostname);
+        }
+      } catch {
+        // ignore invalid origin URLs
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check whether two domain names are equal or subdomain of one another.
+   * @param {string} domainA
+   * @param {string} domainB
+   * @returns {boolean}
+   */
+  static isDomainRelated(domainA, domainB) {
+    if (!domainA || !domainB) {
+      return false;
+    }
+    if (domainA === domainB) {
+      return true;
+    }
+    if (domainA.endsWith(`.${domainB}`)) {
+      return true;
+    }
+    if (domainB.endsWith(`.${domainA}`)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Normalize domain names to lowercase without scheme, port, or surrounding dots.
+   * @param {string|null|undefined} domain
+   * @returns {string}
+   */
+  static normalizeDomain(domain) {
+    if (!domain || typeof domain !== "string") {
+      return "";
+    }
+
+    let cleaned = domain.trim().toLowerCase();
+    if (cleaned.startsWith("https://") || cleaned.startsWith("http://")) {
+      try {
+        cleaned = new URL(cleaned).hostname.toLowerCase();
+      } catch {
+        // keep cleaned as is
+      }
+    }
+
+    cleaned = cleaned.split(":")[0];
+    while (cleaned.startsWith(".")) {
+      cleaned = cleaned.slice(1);
+    }
+    while (cleaned.endsWith(".")) {
+      cleaned = cleaned.slice(0, -1);
+    }
+
+    return cleaned;
   }
 
   /**

@@ -227,5 +227,103 @@ describe("PasskeyWebauthnService", () => {
         message: "The passkey does not belong to this relying party.",
       });
     });
+
+    it("allows assertions when allowCredentials uses standard padded Base64 and different RP subdomains", async () => {
+      const { secretDto } = await PasskeyWebauthnService.createCredential(
+        buildCreateRequestDetails({
+          rp: { id: "example.com", name: "Example" },
+        }),
+      );
+
+      const standardBase64Id = secretDto.credential_id.replaceAll("-", "+").replaceAll("_", "/") + "=";
+      const getDetails = buildGetRequestDetails(secretDto, {
+        rpId: "auth.example.com",
+        origin: "https://auth.example.com",
+        allowCredentials: [
+          {
+            type: "PUBLIC-KEY",
+            id: standardBase64Id,
+          },
+        ],
+      });
+
+      const { credential } = await PasskeyWebauthnService.getAssertion(getDetails, secretDto);
+      expect(credential.id).toStrictEqual(secretDto.credential_id);
+    });
+  });
+
+  describe("isCredentialAllowed", () => {
+    const rawBytes = new Uint8Array([1, 2, 3, 4, 5, 250, 255]);
+    const base64UrlId = PasskeyEncodingService.toBase64Url(rawBytes);
+
+    it("returns true when allowCredentials is empty or not an array", () => {
+      expect(PasskeyWebauthnService.isCredentialAllowed([], base64UrlId)).toBe(true);
+      expect(PasskeyWebauthnService.isCredentialAllowed(undefined, base64UrlId)).toBe(true);
+      expect(PasskeyWebauthnService.isCredentialAllowed(null, base64UrlId)).toBe(true);
+    });
+
+    it("matches exact Base64URL credential ids", () => {
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ type: "public-key", id: base64UrlId }], base64UrlId)).toBe(
+        true,
+      );
+    });
+
+    it("matches standard Base64 credential ids with padding", () => {
+      const standardBase64 = base64UrlId.replaceAll("-", "+").replaceAll("_", "/") + "==";
+      expect(
+        PasskeyWebauthnService.isCredentialAllowed([{ type: "public-key", id: standardBase64 }], base64UrlId),
+      ).toBe(true);
+    });
+
+    it("matches Uint8Array credential ids", () => {
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ type: "public-key", id: rawBytes }], base64UrlId)).toBe(
+        true,
+      );
+    });
+
+    it("ignores missing or uppercase descriptor type", () => {
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ id: base64UrlId }], base64UrlId)).toBe(true);
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ type: "PUBLIC-KEY", id: base64UrlId }], base64UrlId)).toBe(
+        true,
+      );
+    });
+
+    it("rejects non-public-key descriptors", () => {
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ type: "usb", id: base64UrlId }], base64UrlId)).toBe(false);
+    });
+
+    it("rejects mismatched credential ids", () => {
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ type: "public-key", id: "other-id" }], base64UrlId)).toBe(
+        false,
+      );
+    });
+  });
+
+  describe("isRpIdMatching", () => {
+    it("matches identical domains regardless of casing", () => {
+      expect(PasskeyWebauthnService.isRpIdMatching("example.com", "EXAMPLE.COM")).toBe(true);
+      expect(PasskeyWebauthnService.isRpIdMatching("www.passkeys.io", "www.passkeys.io")).toBe(true);
+    });
+
+    it("matches subdomain relationships in both directions", () => {
+      expect(PasskeyWebauthnService.isRpIdMatching("example.com", "auth.example.com")).toBe(true);
+      expect(PasskeyWebauthnService.isRpIdMatching("auth.example.com", "example.com")).toBe(true);
+    });
+
+    it("matches via origin hostname when requestedRpId is omitted", () => {
+      expect(PasskeyWebauthnService.isRpIdMatching("example.com", "", "https://my-profile.example.com/account")).toBe(
+        true,
+      );
+      expect(PasskeyWebauthnService.isRpIdMatching("my-profile.example.com", null, "https://example.com")).toBe(true);
+    });
+
+    it("strips schemes and ports during comparison", () => {
+      expect(PasskeyWebauthnService.isRpIdMatching("https://example.com:8443", "example.com")).toBe(true);
+    });
+
+    it("rejects different domains", () => {
+      expect(PasskeyWebauthnService.isRpIdMatching("example.com", "evil.example")).toBe(false);
+      expect(PasskeyWebauthnService.isRpIdMatching("notexample.com", "example.com")).toBe(false);
+    });
   });
 });

@@ -296,9 +296,16 @@
   function serializeCredentialDescriptors(descriptors = []) {
     return Array.from(descriptors || []).map((descriptor) => ({
       ...clonePlain(descriptor),
-      id: toBase64Url(descriptor.id),
+      id: toSafeBase64Url(descriptor.id),
       transports: descriptor.transports ? Array.from(descriptor.transports) : undefined,
     }));
+  }
+
+  function toSafeBase64Url(value) {
+    if (typeof value === "string") {
+      return value.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+    }
+    return toBase64Url(value);
   }
 
   function buildCredential(dto) {
