@@ -74,8 +74,11 @@ class PasskeyVaultResourceService {
     const findSecretService = new FindSecretService(context.account, context.apiClientOptions);
 
     const candidateDiagnostics = [];
+    let candidateResources = resources.filter((resourceDto) =>
+      this.isResourceCandidateForRp(resourceDto, rpId, origin),
+    );
     let matchedSecret = await this.matchSecretInResources(
-      resources,
+      candidateResources,
       resourceType,
       decryptedPrivateKey,
       findSecretService,
@@ -96,10 +99,11 @@ class PasskeyVaultResourceService {
         ? refreshedResourcesCollection.toDto()
         : await ResourceLocalStorage.get();
       resources = (refreshedResources || []).filter((resourceDto) => resourceDto.resource_type_id === resourceType.id);
+      candidateResources = resources.filter((resourceDto) => this.isResourceCandidateForRp(resourceDto, rpId, origin));
 
       candidateDiagnostics.length = 0;
       matchedSecret = await this.matchSecretInResources(
-        resources,
+        candidateResources,
         resourceType,
         decryptedPrivateKey,
         findSecretService,
@@ -120,7 +124,7 @@ class PasskeyVaultResourceService {
       rpId,
       origin,
       allowCredentials: options.allowCredentials,
-      candidatesCount: resources.length,
+      candidatesCount: candidateResources.length,
       candidates: candidateDiagnostics,
     });
 
@@ -320,6 +324,91 @@ class PasskeyVaultResourceService {
       console.warn(`[Passly Passkey] Unable to decrypt passkey resource ${resourceDto?.id}.`, error);
       return null;
     }
+  }
+
+  /**
+   * Determine if a resource is a plausible candidate for the requested Relying Party
+   * based on unencrypted metadata (URIs or name) without decrypting its secret.
+   * @param {object} resourceDto
+   * @param {string} rpId
+   * @param {string} origin
+   * @returns {boolean}
+   */
+  static isResourceCandidateForRp(resourceDto, rpId, origin) {
+    const uris = resourceDto?.metadata?.uris || resourceDto?.uris;
+    if (Array.isArray(uris) && uris.length > 0) {
+      return uris.some((uri) => this.doesUriMatchRp(uri, rpId, origin));
+    }
+
+    const name = resourceDto?.metadata?.name || resourceDto?.name || "";
+    if (name && rpId && this.doesNameMatchRp(name, rpId)) {
+      return true;
+    }
+
+    if (!uris && !name) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * @param {string} uri
+   * @param {string} rpId
+   * @param {string} origin
+   * @returns {boolean}
+   */
+  static doesUriMatchRp(uri, rpId, origin) {
+    if (!uri || typeof uri !== "string") {
+      return false;
+    }
+    const cleanRpId = PasskeyWebauthnService.normalizeDomain(rpId);
+    const cleanOrigin = PasskeyWebauthnService.normalizeDomain(origin);
+    const cleanUri = PasskeyWebauthnService.normalizeDomain(uri);
+
+    if (cleanRpId && PasskeyWebauthnService.isDomainRelated(cleanUri, cleanRpId)) {
+      return true;
+    }
+    if (cleanOrigin && PasskeyWebauthnService.isDomainRelated(cleanUri, cleanOrigin)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * @param {string} name
+   * @param {string} rpId
+   * @returns {boolean}
+   */
+  static doesNameMatchRp(name, rpId) {
+    if (!name || !rpId) {
+      return false;
+    }
+    const cleanRpId = PasskeyWebauthnService.normalizeDomain(rpId);
+    if (!cleanRpId) {
+      return false;
+    }
+    const lowerName = name.toLowerCase();
+    const lowerRp = cleanRpId.toLowerCase();
+    if (lowerName.includes(lowerRp)) {
+      return true;
+    }
+
+    const strippedName = lowerName.replace(/[\s._-]+/g, "");
+    const labels = lowerRp.split(".").filter((label) => label.length > 3);
+    for (const label of labels) {
+      if (lowerName.includes(label) || strippedName.includes(label)) {
+        return true;
+      }
+    }
+
+    const rpWithoutTld = lowerRp.includes(".") ? lowerRp.slice(0, lowerRp.lastIndexOf(".")) : lowerRp;
+    const strippedRpNoTld = rpWithoutTld.replace(/[\s._-]+/g, "");
+    if (strippedRpNoTld.length > 3 && strippedName.includes(strippedRpNoTld)) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

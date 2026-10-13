@@ -436,5 +436,112 @@ describe("PasskeyVaultResourceService", () => {
       const parsed = await DecryptAndParseResourceSecretService.parse(JSON.stringify(secretDto), secretSchema);
       expect(parsed.toDto()).toStrictEqual(secretDto);
     });
+
+    it("filters out resources with non-matching metadata URIs without decrypting them", async () => {
+      const oracleSecret = buildPasskeySecretDto({
+        credential_id: "oracle-cred-id",
+        rp_id: "oraclecloud.com",
+      });
+      const matchingResource = {
+        id: "res-oracle",
+        resource_type_id: resourceType.id,
+        metadata: {
+          name: "Oracle passkey",
+          uris: ["https://idcs-bffa4b47e4ee4df29bef28d7a072bcfe.identity.oraclecloud.com"],
+        },
+        secret: oracleSecret,
+      };
+      const unrelatedResource = {
+        id: "res-uber",
+        resource_type_id: resourceType.id,
+        metadata: {
+          name: "Uber passkey",
+          uris: ["https://uber.com"],
+        },
+        secret: buildPasskeySecretDto({
+          credential_id: "uber-cred-id",
+          rp_id: "uber.com",
+        }),
+      };
+
+      const tryDecryptSpy = jest.spyOn(PasskeyVaultResourceService, "tryDecryptPasskeySecret");
+      jest
+        .spyOn(PasskeyVaultResourceService, "getPasskeyResources")
+        .mockResolvedValue([unrelatedResource, matchingResource]);
+
+      const result = await PasskeyVaultResourceService.findSecretForAssertion({
+        origin: "https://idcs-bffa4b47e4ee4df29bef28d7a072bcfe.identity.oraclecloud.com",
+        rpId: "oraclecloud.com",
+        allowCredentials: [{ type: "public-key", id: "oracle-cred-id" }],
+      });
+
+      expect(result).toStrictEqual(oracleSecret);
+      // unrelatedResource should not even be passed to tryDecryptPasskeySecret
+      expect(tryDecryptSpy).toHaveBeenCalledTimes(1);
+      expect(tryDecryptSpy).toHaveBeenCalledWith(
+        matchingResource,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("isResourceCandidateForRp", () => {
+    it("returns true when resource has matching origin URI", () => {
+      const resource = {
+        metadata: {
+          uris: ["https://idcs-bffa4b47e4ee4df29bef28d7a072bcfe.identity.oraclecloud.com"],
+        },
+      };
+      expect(
+        PasskeyVaultResourceService.isResourceCandidateForRp(
+          resource,
+          "oraclecloud.com",
+          "https://idcs-bffa4b47e4ee4df29bef28d7a072bcfe.identity.oraclecloud.com",
+        ),
+      ).toBe(true);
+    });
+
+    it("returns false when resource has completely different URI", () => {
+      const resource = {
+        metadata: {
+          uris: ["https://uber.com"],
+        },
+      };
+      expect(
+        PasskeyVaultResourceService.isResourceCandidateForRp(
+          resource,
+          "oraclecloud.com",
+          "https://idcs-bffa4b47e4ee4df29bef28d7a072bcfe.identity.oraclecloud.com",
+        ),
+      ).toBe(false);
+    });
+
+    it("returns true when resource lacks uris but name matches RP", () => {
+      const resource = {
+        metadata: {
+          name: "Oracle Cloud passkey",
+        },
+      };
+      expect(
+        PasskeyVaultResourceService.isResourceCandidateForRp(
+          resource,
+          "oraclecloud.com",
+          "https://idcs.oraclecloud.com",
+        ),
+      ).toBe(true);
+    });
+
+    it("returns true when resource lacks both uris and name for test mock compatibility", () => {
+      const resource = { id: "res-test" };
+      expect(
+        PasskeyVaultResourceService.isResourceCandidateForRp(
+          resource,
+          "oraclecloud.com",
+          "https://idcs.oraclecloud.com",
+        ),
+      ).toBe(true);
+    });
   });
 });
