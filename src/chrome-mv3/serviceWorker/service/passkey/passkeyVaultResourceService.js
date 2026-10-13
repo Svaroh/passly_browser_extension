@@ -112,6 +112,12 @@ class PasskeyVaultResourceService {
       console.warn("Unable to refresh passkey resources from Passly API.", refreshError);
     }
 
+    console.warn("[Passly Passkey] Assertion lookup failed.", {
+      rpId,
+      origin,
+      candidatesCount: resources.length,
+    });
+
     throw PasskeyWebauthnService.buildNotAllowedError("No Passly passkey matches this WebAuthn request.");
   }
 
@@ -232,7 +238,7 @@ class PasskeyVaultResourceService {
     rpId,
     origin,
   ) {
-    for (const resourceDto of resources) {
+    for (const [index, resourceDto] of resources.entries()) {
       const secretDto = await this.tryDecryptPasskeySecret(
         resourceDto,
         resourceType.definition?.secret,
@@ -240,11 +246,15 @@ class PasskeyVaultResourceService {
         findSecretService,
       );
 
-      if (
-        secretDto &&
-        PasskeyWebauthnService.isRpIdMatching(secretDto.rp_id, rpId, origin) &&
-        PasskeyWebauthnService.isCredentialAllowed(options.allowCredentials, secretDto.credential_id)
-      ) {
+      if (!secretDto) {
+        console.warn(`[Passly Passkey] Resource [${index}] ${resourceDto?.id}: unable to decrypt secret.`);
+        continue;
+      }
+
+      const rpMatches = PasskeyWebauthnService.isRpIdMatching(secretDto.rp_id, rpId, origin);
+      const credAllowed = PasskeyWebauthnService.isCredentialAllowed(options.allowCredentials, secretDto.credential_id);
+
+      if (rpMatches && credAllowed) {
         return secretDto;
       }
     }
@@ -268,6 +278,10 @@ class PasskeyVaultResourceService {
       }
 
       const secret = await findSecretService.findByResourceId(resourceDto.id);
+      if (!secret || !secret.data) {
+        return null;
+      }
+
       const plaintext = await DecryptAndParseResourceSecretService.decryptAndParse(
         secret,
         secretSchema,
@@ -275,7 +289,7 @@ class PasskeyVaultResourceService {
       );
       return plaintext.toDto();
     } catch (error) {
-      console.warn("Unable to decrypt Passly passkey resource.", error);
+      console.warn(`[Passly Passkey] Unable to decrypt passkey resource ${resourceDto?.id}.`, error);
       return null;
     }
   }

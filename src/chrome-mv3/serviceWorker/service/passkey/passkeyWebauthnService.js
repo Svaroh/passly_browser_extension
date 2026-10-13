@@ -151,15 +151,24 @@ class PasskeyWebauthnService {
    * @returns {object}
    */
   static parseRequestDetails(requestDetails) {
+    let parsed;
     if (typeof requestDetails === "string") {
-      return JSON.parse(requestDetails);
+      parsed = JSON.parse(requestDetails);
+    } else if (requestDetails && typeof requestDetails === "object") {
+      parsed = requestDetails;
+    } else {
+      throw new TypeError("The WebAuthn request details should be an object or a JSON string.");
     }
 
-    if (requestDetails && typeof requestDetails === "object") {
-      return requestDetails;
+    if (parsed && typeof parsed === "object" && parsed.publicKey && typeof parsed.publicKey === "object") {
+      return {
+        ...parsed,
+        ...parsed.publicKey,
+        origin: parsed.origin || parsed.publicKey.origin,
+      };
     }
 
-    throw new TypeError("The WebAuthn request details should be an object or a JSON string.");
+    return parsed;
   }
 
   /**
@@ -552,8 +561,58 @@ class PasskeyWebauthnService {
       }
 
       const candidateId = this.normalizeCredentialId(credential.id);
-      return candidateId === normalizedTargetId;
+      if (candidateId === normalizedTargetId) {
+        return true;
+      }
+
+      if (this.isHexMatch(candidateId, normalizedTargetId)) {
+        return true;
+      }
+
+      return false;
     });
+  }
+
+  /**
+   * Compare candidate and target IDs in case one is represented as a hex string
+   * and the other as base64url.
+   * @param {string} a
+   * @param {string} b
+   * @returns {boolean}
+   */
+  static isHexMatch(a, b) {
+    try {
+      const hexRegex = /^[0-9a-f]+$/i;
+      if (hexRegex.test(a) && a.length % 2 === 0 && a.length >= 32) {
+        const bytesA = this.hexToUint8Array(a);
+        const b64UrlA = PasskeyEncodingService.toBase64Url(bytesA).replaceAll("=", "").trim();
+        if (b64UrlA === b) {
+          return true;
+        }
+      }
+      if (hexRegex.test(b) && b.length % 2 === 0 && b.length >= 32) {
+        const bytesB = this.hexToUint8Array(b);
+        const b64UrlB = PasskeyEncodingService.toBase64Url(bytesB).replaceAll("=", "").trim();
+        if (b64UrlB === a) {
+          return true;
+        }
+      }
+    } catch {
+      // ignore parsing errors
+    }
+    return false;
+  }
+
+  /**
+   * @param {string} hex
+   * @returns {Uint8Array}
+   */
+  static hexToUint8Array(hex) {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes;
   }
 
   /**
@@ -567,20 +626,29 @@ class PasskeyWebauthnService {
       return "";
     }
 
-    if (typeof value === "string") {
-      return value.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
-    }
-
     if (
       value instanceof Uint8Array ||
       value instanceof ArrayBuffer ||
       ArrayBuffer.isView(value) ||
       Array.isArray(value)
     ) {
-      return PasskeyEncodingService.toBase64Url(value).replaceAll("=", "").trim();
+      try {
+        return PasskeyEncodingService.toBase64Url(value).replaceAll("=", "").trim();
+      } catch {
+        return "";
+      }
     }
 
-    return String(value).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+    let stringValue = String(value).trim();
+    if (stringValue.includes("%")) {
+      try {
+        stringValue = decodeURIComponent(stringValue).trim();
+      } catch {
+        // ignore malformed URI
+      }
+    }
+
+    return stringValue.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
   }
 
   /**

@@ -376,5 +376,65 @@ describe("PasskeyVaultResourceService", () => {
 
       expect(findAndUpdateAll).toHaveBeenCalledTimes(1);
     });
+
+    it("decrypts an encrypted passkey resource using DecryptAndParseResourceSecretService", async () => {
+      const secretDto = buildPasskeySecretDto({
+        credential_id: "encrypted-cred-id",
+        rp_id: "example.com",
+      });
+      const resourceDto = {
+        id: "res-enc",
+        resource_type_id: resourceType.id,
+      };
+
+      const findSecretService = {
+        findByResourceId: jest.fn().mockResolvedValue({ id: "sec-1", data: "pgp-encrypted-data" }),
+      };
+
+      const DecryptAndParseResourceSecretService =
+        require("../../../../all/background_page/service/secret/decryptAndParseResourceSecretService").default;
+      const decryptSpy = jest.spyOn(DecryptAndParseResourceSecretService, "decryptAndParse").mockResolvedValue({
+        toDto: () => secretDto,
+      });
+
+      const decrypted = await PasskeyVaultResourceService.tryDecryptPasskeySecret(
+        resourceDto,
+        resourceType.definition?.secret,
+        "private-key",
+        findSecretService,
+      );
+
+      expect(decrypted).toStrictEqual(secretDto);
+      expect(findSecretService.findByResourceId).toHaveBeenCalledWith("res-enc");
+      expect(decryptSpy).toHaveBeenCalledWith(
+        { id: "sec-1", data: "pgp-encrypted-data" },
+        resourceType.definition.secret,
+        "private-key",
+      );
+    });
+
+    it("parses real JSON passkey secret using DecryptAndParseResourceSecretService.parse", async () => {
+      const secretDto = buildPasskeySecretDto({
+        credential_id: "real-cred-id",
+        rp_id: "example.com",
+      });
+      const resourceTypes = new ResourceTypesCollection([
+        {
+          id: "333239fb-2598-580e-8d8a-508f9c49998b",
+          name: "Passkey",
+          slug: PASSKEY_RESOURCE_TYPE_SLUG,
+          definition: {},
+          description: "A resource with an encrypted passkey credential.",
+        },
+      ]);
+      const passkeyResourceType = resourceTypes.getFirstBySlug(PASSKEY_RESOURCE_TYPE_SLUG);
+      const secretSchema = passkeyResourceType.definition.secret;
+
+      const DecryptAndParseResourceSecretService =
+        require("../../../../all/background_page/service/secret/decryptAndParseResourceSecretService").default;
+
+      const parsed = await DecryptAndParseResourceSecretService.parse(JSON.stringify(secretDto), secretSchema);
+      expect(parsed.toDto()).toStrictEqual(secretDto);
+    });
   });
 });

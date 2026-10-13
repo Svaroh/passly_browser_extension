@@ -26,6 +26,14 @@ class PasskeyEncodingService {
       return new Uint8Array(value);
     }
 
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+
+    if (Array.isArray(value)) {
+      return new Uint8Array(value);
+    }
+
     throw new TypeError("The value should be an ArrayBuffer or Uint8Array.");
   }
 

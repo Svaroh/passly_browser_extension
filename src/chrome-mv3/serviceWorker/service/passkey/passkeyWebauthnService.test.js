@@ -326,4 +326,64 @@ describe("PasskeyWebauthnService", () => {
       expect(PasskeyWebauthnService.isRpIdMatching("notexample.com", "example.com")).toBe(false);
     });
   });
+
+  describe("parseRequestDetails", () => {
+    it("unwraps nested publicKey options to top-level properties", () => {
+      const details = {
+        publicKey: {
+          challenge: "test-challenge",
+          rpId: "example.com",
+          allowCredentials: [{ id: "cred-1", type: "public-key" }],
+        },
+      };
+
+      const parsed = PasskeyWebauthnService.parseRequestDetails(details);
+      expect(parsed.rpId).toBe("example.com");
+      expect(parsed.challenge).toBe("test-challenge");
+      expect(parsed.allowCredentials).toHaveLength(1);
+    });
+
+    it("parses JSON string with nested publicKey", () => {
+      const json = JSON.stringify({
+        origin: "https://example.com",
+        publicKey: {
+          rpId: "example.com",
+          challenge: "test-challenge",
+        },
+      });
+
+      const parsed = PasskeyWebauthnService.parseRequestDetails(json);
+      expect(parsed.rpId).toBe("example.com");
+      expect(parsed.origin).toBe("https://example.com");
+    });
+  });
+
+  describe("isCredentialAllowed with extended formats", () => {
+    it("matches when candidate is hex and target is base64url", () => {
+      const rawBytes = new Uint8Array([
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+      ]);
+      const base64UrlId = PasskeyEncodingService.toBase64Url(rawBytes);
+      const hexId = Array.from(rawBytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ id: hexId, type: "public-key" }], base64UrlId)).toBe(true);
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ id: base64UrlId, type: "public-key" }], hexId)).toBe(true);
+    });
+
+    it("matches when candidate is percent-encoded", () => {
+      expect(
+        PasskeyWebauthnService.isCredentialAllowed([{ id: "cred%2B123%2Fabc%3D", type: "public-key" }], "cred-123_abc"),
+      ).toBe(true);
+    });
+
+    it("matches when candidate is a byte array or TypedArray", () => {
+      const bytes = [1, 2, 3, 4, 5];
+      const targetB64Url = PasskeyEncodingService.toBase64Url(new Uint8Array(bytes));
+
+      expect(PasskeyWebauthnService.isCredentialAllowed([{ id: bytes, type: "public-key" }], targetB64Url)).toBe(true);
+      expect(
+        PasskeyWebauthnService.isCredentialAllowed([{ id: new Uint8Array(bytes), type: "public-key" }], targetB64Url),
+      ).toBe(true);
+    });
+  });
 });
