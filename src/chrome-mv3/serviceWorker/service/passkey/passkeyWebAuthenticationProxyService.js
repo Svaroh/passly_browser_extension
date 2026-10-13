@@ -548,10 +548,22 @@ class PasskeyWebAuthenticationProxyService {
       return { skipped: true, reason: skipReason };
     }
 
-    const secretDto = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
-    const result = await PasskeyWebauthnService.getAssertion(requestDetails, secretDto);
+    try {
+      const secretDto = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+      const result = await PasskeyWebauthnService.getAssertion(requestDetails, secretDto);
 
-    return result.credential;
+      return result.credential;
+    } catch (error) {
+      if (
+        error?.name === "NotAllowedError" &&
+        (error?.message?.includes("No Passly passkey matches") ||
+          error?.message?.includes("did not allow this passkey") ||
+          error?.message?.includes("does not belong to this relying party"))
+      ) {
+        return { skipped: true, reason: "no-matching-passkey" };
+      }
+      throw error;
+    }
   }
 
   /**

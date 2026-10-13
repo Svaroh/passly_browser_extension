@@ -533,6 +533,34 @@ describe("PasskeyWebAuthenticationProxyService", () => {
       );
     });
 
+    it("skips the content fallback when no passkey matches the assertion request", async () => {
+      PasskeyVaultResourceService.findSecretForAssertion.mockRejectedValueOnce(
+        PasskeyWebauthnService.buildNotAllowedError("No Passly passkey matches this WebAuthn request."),
+      );
+
+      const contentGetResponse = new Promise((resolve) => {
+        expect(
+          PasskeyWebAuthenticationProxyService.handleRuntimeMessage(
+            {
+              name: PasskeyWebAuthenticationProxyService.MESSAGE_CONTENT_GET,
+              requestDetails: {
+                challenge: "challenge",
+                origin: "https://login.example.com",
+                rpId: "login.example.com",
+              },
+            },
+            { url: "https://login.example.com/sign-in" },
+            resolve,
+          ),
+        ).toBe(true);
+      });
+
+      await expect(contentGetResponse).resolves.toEqual({
+        ok: true,
+        result: { skipped: true, reason: "no-matching-passkey" },
+      });
+    });
+
     it("skips the content fallback on the active Passly application origin", async () => {
       const contentCreateResponse = new Promise((resolve) => {
         expect(
