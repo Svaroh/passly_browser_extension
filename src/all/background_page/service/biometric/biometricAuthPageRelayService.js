@@ -15,6 +15,7 @@ import WorkerService from "../worker/workerService";
 import BrowserTabService from "../ui/browserTab.service";
 import WorkersSessionStorage from "../sessionStorage/workersSessionStorage";
 import User from "../../model/user";
+import BiometricAuthService from "./biometricAuthService";
 
 const PAGE_WORKER_RETRY_DELAY = 100;
 const PAGE_WORKER_RETRY_COUNT = 100;
@@ -29,6 +30,15 @@ class BiometricAuthPageRelayService {
    * @returns {Promise<*>}
    */
   static async request(worker, message, ...args) {
+    if (message === "passbolt.biometric-auth.is-available-in-page") {
+      const workerNames = this.getCandidateWorkerNames(worker);
+      const tabIds = await this.getCandidateTabIds(worker, workerNames).catch(() => []);
+      const pageWorker = await this.findPageWorker(tabIds, workerNames);
+      if (pageWorker) {
+        return pageWorker.port.request(message, ...args);
+      }
+      return new BiometricAuthService(worker?.account).isAvailable();
+    }
     const pageWorker = await this.getPageWorker(worker);
     return pageWorker.port.request(message, ...args);
   }
@@ -40,7 +50,7 @@ class BiometricAuthPageRelayService {
    */
   static async getPageWorker(worker) {
     const workerNames = this.getCandidateWorkerNames(worker);
-    const tabIds = await this.getCandidateTabIds(worker, workerNames);
+    const tabIds = await this.getCandidateTabIds(worker, workerNames).catch(() => []);
     const pageWorker = await this.findPageWorker(tabIds, workerNames);
     if (pageWorker) {
       return pageWorker;
@@ -87,7 +97,8 @@ class BiometricAuthPageRelayService {
    */
   static async openTrustedDomainTab() {
     const trustedDomain = User.getInstance().settings.getDomain();
-    return browser.tabs.create({ url: trustedDomain, active: true });
+    const tabs = (typeof browser !== "undefined" && browser?.tabs) || globalThis.chrome?.tabs;
+    return tabs.create({ url: trustedDomain, active: true });
   }
 
   /**

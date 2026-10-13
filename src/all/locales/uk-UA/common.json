@@ -192,5 +192,7 @@
   "Session duration": "Тривалість сесії",
   "Data retention": "Збереження даних",
   "Last sync": "Остання синхронізація",
-  "Unlimited": "Без обмежень"
+  "Unlimited": "Без обмежень",
+  "Session load error": "Не вдалося завантажити сесію Passly",
+  "An error occurred while loading quick access": "Виникла помилка під час завантаження швидкого доступу"
 }

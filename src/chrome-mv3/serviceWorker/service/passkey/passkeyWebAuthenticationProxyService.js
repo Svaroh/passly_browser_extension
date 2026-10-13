@@ -591,6 +591,9 @@ class PasskeyWebAuthenticationProxyService {
    * @returns {Promise<boolean>}
    */
   static async shouldSkipContentFallback(origin) {
+    if (this._suspendCount > 0) {
+      return true;
+    }
     return PasskeyContentFallbackService.shouldSkip(origin, () => this.isEnabled());
   }
 
@@ -600,6 +603,9 @@ class PasskeyWebAuthenticationProxyService {
    * @returns {Promise<string|null>}
    */
   static async getContentFallbackSkipReason(origin) {
+    if (this._suspendCount > 0) {
+      return "suspended";
+    }
     return PasskeyContentFallbackService.getSkipReason(origin, () => this.isEnabled());
   }
 

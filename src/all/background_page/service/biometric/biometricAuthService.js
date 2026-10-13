@@ -47,7 +47,11 @@ class BiometricAuthService {
       return false;
     }
 
-    return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    try {
+      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -209,7 +213,6 @@ class BiometricAuthService {
         { type: "public-key", alg: -257 },
       ],
       authenticatorSelection: {
-        authenticatorAttachment: "platform",
         residentKey: "discouraged",
         requireResidentKey: false,
         userVerification: "required",

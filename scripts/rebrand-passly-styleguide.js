@@ -148,7 +148,10 @@ const offlineTranslations = {
     "Session duration": "Тривалість сесії",
     "Data retention": "Збереження даних",
     "Last sync": "Остання синхронізація",
-    "Unlimited": "Без обмежень"
+    "Unlimited": "Без обмежень",
+    "Connecting your account": "Підключення вашого облікового запису",
+    "Session load error": "Не вдалося завантажити сесію Passly",
+    "An error occurred while loading quick access": "Виникла помилка під час завантаження швидкого доступу"
   }
 };
 
@@ -291,6 +294,9 @@ function patchQuickAccessVaultLocales() {
     }
 
     for (const locale of Object.keys(quickAccessVaultTranslations)) {
+      if (locale === "en-UK" && base.endsWith("src/all/locales")) {
+        continue;
+      }
       changed += updateQuickAccessVaultLocale(path.join(base, locale, "common.json"), locale) ? 1 : 0;
     }
   }
@@ -2598,16 +2604,16 @@ function patchQuickAccessPasskeyResourceLists() {
 
 function patchQuickAccessPrepareResourceContext() {
   const prepareResourceContext = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess/contexts/PrepareResourceContext.js");
-  let changed = 0;
+  if (!fs.existsSync(prepareResourceContext)) {
+    return 0;
+  }
 
-  changed += replaceIfMissing(prepareResourceContext, "USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX", [
-    [
-      `import { withAppContext } from "../../shared/context/AppContext/AppContext";
+  let content = fs.readFileSync(prepareResourceContext, "utf8");
+  const original = content;
 
-/**
- * Context related to prepare a resource ( name, url, username, password.)
- */`,
-      `import { withAppContext } from "../../shared/context/AppContext/AppContext";
+  // 1. Ensure constants and helper functions are defined
+  if (!content.includes("USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX")) {
+    const helpersBlock = `import { withAppContext } from "../../shared/context/AppContext/AppContext";
 
 const USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX = "passlyQuickAccessPasswordGeneratorSettings";
 const GENERATOR_TYPES = ["password", "passphrase"];
@@ -2640,7 +2646,7 @@ function clampInteger(value, min, max, fallback) {
 }
 
 function getUserGeneratorSettingsStorageKey(context) {
-  const userId = context.userSettings?.id || context.account?.id || "default";
+  const userId = context?.userSettings?.id || context?.account?.id || "default";
   return \`\${USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX}-\${userId}\`;
 }
 
@@ -2703,46 +2709,48 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
 
 /**
  * Context related to prepare a resource ( name, url, username, password.)
- */`,
-    ],
-  ]) ? 1 : 0;
-  changed += replaceIfMissing(prepareResourceContext, "onGeneratorSettingsChanged: () => {}", [
-    [
-      `  onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator
-  getSettings: () => {}, // Whenever the settings must be get`,
-      `  onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator
-  onGeneratorSettingsChanged: () => {}, // Whenever generator settings have been changed
-  getSettings: () => {}, // Whenever the settings must be get`,
-    ],
-  ]) ? 1 : 0;
-  changed += replaceIfMissing(prepareResourceContext, "onGeneratorSettingsChanged: this.onGeneratorSettingsChanged.bind(this)", [
-    [
-      `      onPasswordGenerated: this.onPasswordGenerated.bind(this), // Whenever the a password has been generated with the generator
-      consumePreparedResource: this.consumePreparedResource.bind(this), // Whenever the prepared resource must be get`,
-      `      onPasswordGenerated: this.onPasswordGenerated.bind(this), // Whenever the a password has been generated with the generator
-      onGeneratorSettingsChanged: this.onGeneratorSettingsChanged.bind(this), // Whenever generator settings have been changed
-      consumePreparedResource: this.consumePreparedResource.bind(this), // Whenever the prepared resource must be get`,
-    ],
-  ]) ? 1 : 0;
-  changed += replaceIfMissing(prepareResourceContext, "getSavedSecretGeneratorSettings", [
-    [
-      `  async resetSecretGeneratorSettings() {
-    const passwordPolicies = await this.props.passwordPoliciesContext.loadPolicies();
-    this.setState({ settings: passwordPolicies });
+ */`;
+
+    content = content.replace(
+      /import \{ withAppContext \} from "\.\.\/\.\.\/shared\/context\/AppContext\/AppContext";\s*\/\*\*[\s\S]*?\* Context related to prepare a resource \( name, url, username, password\.\)[\s\S]*?\*\//,
+      helpersBlock
+    );
   }
 
-  /**
-   * Whenever a password has been generated with the generator
-   * @param password The generated password
-   */
-  onPasswordGenerated(newPassword, newGeneratorSettings) {
-    this.setState({
-      lastGeneratedPassword: newPassword,
-      settings: newGeneratorSettings,
-    });
-  }`,
-      `  async resetSecretGeneratorSettings() {
-    const passwordPolicies = await this.props.passwordPoliciesContext.loadPolicies();
+  // 2. Ensure onGeneratorSettingsChanged in createContext
+  if (!content.includes("onGeneratorSettingsChanged: () => {}")) {
+    content = content.replace(
+      /onPasswordGenerated:\s*\(\)\s*=>\s*\{\},[\s\S]*?getSettings:\s*\(\)\s*=>\s*\{\}/,
+      `onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator\n  onGeneratorSettingsChanged: () => {}, // Whenever generator settings have been changed\n  getSettings: () => {}`
+    );
+  }
+
+  // 3. Ensure onGeneratorSettingsChanged in defaultState with safe bind guard
+  if (!content.includes("onGeneratorSettingsChanged: this.onGeneratorSettingsChanged")) {
+    content = content.replace(
+      /onPasswordGenerated:\s*this\.onPasswordGenerated\.bind\(this\),[\s\S]*?consumePreparedResource:\s*this\.consumePreparedResource\.bind\(this\)/,
+      `onPasswordGenerated: this.onPasswordGenerated ? this.onPasswordGenerated.bind(this) : () => {},\n      onGeneratorSettingsChanged: this.onGeneratorSettingsChanged ? this.onGeneratorSettingsChanged.bind(this) : () => {},\n      consumePreparedResource: this.consumePreparedResource ? this.consumePreparedResource.bind(this) : () => null`
+    );
+  } else {
+    // If it was previously bound unconditionally, make it safe with guard
+    content = content.replace(
+      /onGeneratorSettingsChanged:\s*this\.onGeneratorSettingsChanged\.bind\(this\)/,
+      `onGeneratorSettingsChanged: this.onGeneratorSettingsChanged ? this.onGeneratorSettingsChanged.bind(this) : () => {}`
+    );
+  }
+
+  // 4. Ensure methods on class
+  if (!content.includes("getSavedSecretGeneratorSettings")) {
+    const methodsBlock = `  async resetSecretGeneratorSettings() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    let passwordPolicies = null;
+    try {
+      if (this.props.passwordPoliciesContext?.loadPolicies) {
+        passwordPolicies = await this.props.passwordPoliciesContext.loadPolicies();
+      }
+    } catch (e) {
+      console.warn("Could not load password policies", e);
+    }
     const savedSettings = await this.getSavedSecretGeneratorSettings();
     const settings = applySavedGeneratorSettings(passwordPolicies, savedSettings);
     this.setState({ settings });
@@ -2753,15 +2761,15 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
    * @returns {Promise<object|null>}
    */
   async getSavedSecretGeneratorSettings() {
-    const storage = this.props.context.storage?.local;
+    const storage = this.props.context?.storage?.local || this.props.storage?.local;
     if (!storage) {
       return null;
     }
 
     try {
-      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context);
+      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context || this.props);
       const storageData = await storage.get([storageKey]);
-      return storageData[storageKey] || null;
+      return storageData?.[storageKey] || null;
     } catch (error) {
       console.error(error);
       return null;
@@ -2774,13 +2782,13 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
    * @returns {Promise<void>}
    */
   async saveSecretGeneratorSettings(generatorSettings) {
-    const storage = this.props.context.storage?.local;
+    const storage = this.props.context?.storage?.local || this.props.storage?.local;
     if (!storage || !generatorSettings) {
       return;
     }
 
     try {
-      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context);
+      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context || this.props);
       await storage.set({ [storageKey]: cloneGeneratorSettings(generatorSettings) });
     } catch (error) {
       console.error(error);
@@ -2806,11 +2814,19 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
       settings: newGeneratorSettings,
     });
     this.saveSecretGeneratorSettings(newGeneratorSettings);
-  }`,
-    ],
-  ]) ? 1 : 0;
+  }`;
 
-  return changed;
+    content = content.replace(
+      /async resetSecretGeneratorSettings\(\)\s*\{[\s\S]*?onPasswordGenerated\([^)]*\)\s*\{[\s\S]*?\n  \}/,
+      methodsBlock
+    );
+  }
+
+  if (content !== original) {
+    fs.writeFileSync(prepareResourceContext, content, "utf8");
+    return 1;
+  }
+  return 0;
 }
 
 function patchQuickAccessGeneratePasswordPage() {
@@ -3635,235 +3651,148 @@ function rebrandGeneratedBundles() {
   return changed;
 }
 
-function patchQuickAccessOfflineFallback() {
-  const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
-  const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
-  const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
-  const activeSessionFile = path.join(root, "node_modules/passbolt-styleguide/src/shared/context/ActiveSession/ActiveSessionLocalStorageContext.js");
-  const handleBootstrapRouteFile = path.join(base, "components/HandleBootstrapRoute/HandleBootstrapRoute.js");
-  const privateRouteFile = path.join(base, "components/PrivateRoute/PrivateRoute.js");
-  const prepareResourceContextFile = path.join(base, "contexts/PrepareResourceContext.js");
-  let changed = 0;
+function patchExtQuickAccessContext(contextFile) {
+  if (!fs.existsSync(contextFile)) {
+    return 0;
+  }
 
-  // Clean up any duplicate Trans imports in ExtQuickAccessContext
-  if (fs.existsSync(contextFile)) {
-    const rawContext = fs.readFileSync(contextFile, "utf8");
-    const dedupedContext = rawContext.replace(
-      /import { Trans } from "react-i18next";\s*import { Trans } from "react-i18next";/g,
-      'import { Trans } from "react-i18next";'
+  let content = fs.readFileSync(contextFile, "utf8");
+  const previous = content;
+
+  if (!content.includes('import { Trans } from "react-i18next";')) {
+    content = content.replace(
+      'import React from "react";',
+      'import React from "react";\nimport { Trans } from "react-i18next";'
     );
-    if (dedupedContext !== rawContext) {
-      fs.writeFileSync(contextFile, dedupedContext, "utf8");
-      changed++;
+  }
+  content = content.replace(
+    /(import { Trans } from "react-i18next";\s*)+/g,
+    'import { Trans } from "react-i18next";\n'
+  );
+
+  content = content.replace(
+    /await this\.checkPluginIsConfigured\(\);\s*/g,
+    "// quickaccess-addon-check-handled-in-root\n      "
+  );
+
+  const methodBlockPattern = /async initialize\(\)\s*\{[\s\S]*?(?=\s+bindCallbacks\(\)\s*\{)/;
+  const newMethodBlock = `async initialize() {
+    try {
+      const userSettingsPromise = this.getUserSettings();
+      const localePromise = this.getLocale();
+
+      let activeSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+
+      if (!activeSession && this.props.storage && this.props.account) {
+        try {
+          const storageKey = \`active_session-\${this.props.account.id}\`;
+          const storageData = await this.props.storage.local.get([storageKey]);
+          if (storageData && storageData[storageKey]) {
+            activeSession = new UserActiveSessionEntity(storageData[storageKey]);
+          }
+        } catch {
+          // ignore storage read error
+        }
+      }
+
+      const siteSettingsPromise = this.getOrFindSiteSettings();
+      const [siteSettings] = await Promise.all([siteSettingsPromise, userSettingsPromise, localePromise]);
+
+      if (activeSession) {
+        const isSessionOnline = Boolean(activeSession.isSessionOnline);
+        const isSessionOffline = Boolean(activeSession.isSessionOffline);
+        if (isSessionOnline) {
+          await this.loadOnlineData(siteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(siteSettings);
+        }
+      }
+
+      const updatePromise = this.props.activeSessionLocalStorageContext?.updateLocalStorage?.();
+
+      if (!activeSession) {
+        activeSession = await updatePromise;
+        const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+        const isServerReachable = Boolean(activeSession?.isServerReachable);
+        const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+        const freshSiteSettings =
+          isSessionOnline && isServerReachable ? await this.findAndUpdateSiteSettings() : siteSettings;
+
+        if (isSessionOnline) {
+          await this.loadOnlineData(freshSiteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(freshSiteSettings);
+        }
+        if (!isServerReachable) {
+          if (!this.state.loggedInUser) {
+            await this.getLoggedInUser();
+          }
+          if (!this.state.rbacs) {
+            await this.getOrFindRbacs(freshSiteSettings);
+          }
+        }
+      } else if (updatePromise) {
+        this.syncSessionInBackground(updatePromise);
+      }
+    } catch (e) {
+      console.error(e);
+      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+      if (!currentSession?.isServerReachable) {
+        if (typeof this.state.siteSettings === "undefined") {
+          this.setState({ siteSettings: null });
+        }
+        return;
+      }
+      this.setState({
+        hasError: true,
+        errorMessage: "Не вдалося завантажити сесію Passly",
+      });
     }
   }
 
-  changed += replaceIfExists(contextFile, [
-    [
-      `  async initialize() {
-    try {
-      await this.props.activeSessionLocalStorageContext.updateLocalStorage();
-      await this.getUserSettings();
-      await this.getLocale();
-      const siteSettings =
-        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable
-          ? await this.findAndUpdateSiteSettings()
-          : await this.getOrFindSiteSettings();
-      if (this.props.activeSession.isSessionOnline) {
-        this.loadOnlineData(siteSettings);
-      } else if (this.props.activeSession.isSessionOffline) {
-        this.loadOfflineData(siteSettings);
-      }
-    } catch (e) {
-      console.error(e);
-      this.setState({`,
-      `  async initialize() {
-    try {
-      const userSettingsPromise = this.getUserSettings();
-      const localePromise = this.getLocale();
-
-      let activeSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-
-      if (!activeSession && this.props.storage && this.props.account) {
-        try {
-          const storageKey = \`active_session-\${this.props.account.id}\`;
-          const storageData = await this.props.storage.local.get([storageKey]);
-          if (storageData && storageData[storageKey]) {
-            activeSession = new UserActiveSessionEntity(storageData[storageKey]);
-          }
-        } catch {
-          // ignore storage read error
-        }
-      }
-
-      const siteSettingsPromise = this.getOrFindSiteSettings();
-      const [siteSettings] = await Promise.all([siteSettingsPromise, userSettingsPromise, localePromise]);
-
-      if (activeSession) {
-        const isSessionOnline = Boolean(activeSession.isSessionOnline);
-        const isSessionOffline = Boolean(activeSession.isSessionOffline);
-        if (isSessionOnline) {
-          await this.loadOnlineData(siteSettings, activeSession);
-        } else if (isSessionOffline) {
-          await this.loadOfflineData(siteSettings);
-        }
-      }
-
-      const updatePromise = this.props.activeSessionLocalStorageContext?.updateLocalStorage?.();
-
-      if (!activeSession) {
-        activeSession = await updatePromise;
-        const isSessionOnline = Boolean(activeSession?.isSessionOnline);
-        const isServerReachable = Boolean(activeSession?.isServerReachable);
-        const isSessionOffline = Boolean(activeSession?.isSessionOffline);
-
-        const freshSiteSettings =
-          isSessionOnline && isServerReachable ? await this.findAndUpdateSiteSettings() : siteSettings;
-
-        if (isSessionOnline) {
-          await this.loadOnlineData(freshSiteSettings, activeSession);
-        } else if (isSessionOffline) {
-          await this.loadOfflineData(freshSiteSettings);
-        }
-        if (!isServerReachable) {
-          if (!this.state.loggedInUser) {
-            await this.getLoggedInUser();
-          }
-          if (!this.state.rbacs) {
-            await this.getOrFindRbacs(freshSiteSettings);
-          }
-        }
-      } else if (updatePromise) {
-        this.syncSessionInBackground(updatePromise);
-      }
-    } catch (e) {
-      console.error(e);
-      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-      if (!currentSession?.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }
-      this.setState({`,
-    ],
-    [
-      `  async initialize() {
-    try {
-      const activeSession =
-        (await this.props.activeSessionLocalStorageContext.updateLocalStorage()) ||
-        this.props.activeSessionLocalStorageContext.get() ||
-        this.props.activeSession;
-      await this.getUserSettings();
-      await this.getLocale();
-      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
-      const isServerReachable = Boolean(activeSession?.isServerReachable);
-      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
-
-      const siteSettings =
-        isSessionOnline && isServerReachable
-          ? await this.findAndUpdateSiteSettings()
-          : await this.getOrFindSiteSettings();
-      if (isSessionOnline) {
-        await this.loadOnlineData(siteSettings, activeSession);
-      } else if (isSessionOffline) {
-        await this.loadOfflineData(siteSettings);
-      }
-      // quickaccess-unreachable-fallback: resolve the offline capability from the local caches.
-      if (!isServerReachable) {
-        if (!this.state.loggedInUser) {
-          await this.getLoggedInUser();
-        }
-        if (!this.state.rbacs) {
-          await this.getOrFindRbacs(siteSettings);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-      if (!currentSession?.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }
-      this.setState({`,
-      `  async initialize() {
-    try {
-      const userSettingsPromise = this.getUserSettings();
-      const localePromise = this.getLocale();
-
-      let activeSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-
-      if (!activeSession && this.props.storage && this.props.account) {
-        try {
-          const storageKey = \`active_session-\${this.props.account.id}\`;
-          const storageData = await this.props.storage.local.get([storageKey]);
-          if (storageData && storageData[storageKey]) {
-            activeSession = new UserActiveSessionEntity(storageData[storageKey]);
-          }
-        } catch {
-          // ignore storage read error
-        }
-      }
-
-      const siteSettingsPromise = this.getOrFindSiteSettings();
-      const [siteSettings] = await Promise.all([siteSettingsPromise, userSettingsPromise, localePromise]);
-
-      if (activeSession) {
-        const isSessionOnline = Boolean(activeSession.isSessionOnline);
-        const isSessionOffline = Boolean(activeSession.isSessionOffline);
-        if (isSessionOnline) {
-          await this.loadOnlineData(siteSettings, activeSession);
-        } else if (isSessionOffline) {
-          await this.loadOfflineData(siteSettings);
-        }
-      }
-
-      const updatePromise = this.props.activeSessionLocalStorageContext?.updateLocalStorage?.();
-
-      if (!activeSession) {
-        activeSession = await updatePromise;
-        const isSessionOnline = Boolean(activeSession?.isSessionOnline);
-        const isServerReachable = Boolean(activeSession?.isServerReachable);
-        const isSessionOffline = Boolean(activeSession?.isSessionOffline);
-
-        const freshSiteSettings =
-          isSessionOnline && isServerReachable ? await this.findAndUpdateSiteSettings() : siteSettings;
-
-        if (isSessionOnline) {
-          await this.loadOnlineData(freshSiteSettings, activeSession);
-        } else if (isSessionOffline) {
-          await this.loadOfflineData(freshSiteSettings);
-        }
-        if (!isServerReachable) {
-          if (!this.state.loggedInUser) {
-            await this.getLoggedInUser();
-          }
-          if (!this.state.rbacs) {
-            await this.getOrFindRbacs(freshSiteSettings);
-          }
-        }
-      } else if (updatePromise) {
-        this.syncSessionInBackground(updatePromise);
-      }
-    } catch (e) {
-      console.error(e);
-      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-      if (!currentSession?.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }
-      this.setState({`,
-    ],
-    [
-      `  /**
-   * Bind callbacks
+  /**
+   * Load online data
+   * - Find and update site settings
+   * - If authenticated
+   *  - If Mfa is required redirect to the MFA screen and close the quick-access
+   *  - Get or find rbacs
+   *  - Get logged-in user
+   * @param {SiteSettingsEntity} siteSettings
+   * @param {UserActiveSessionEntity} [activeSession]
+   * @return {Promise<void>}
    */
-  bindCallbacks() {`,
-      `  /**
+  async loadOnlineData(
+    siteSettings,
+    activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get(),
+  ) {
+    if (activeSession?.isAuthenticated) {
+      if (activeSession?.isMfaRequired) {
+        await this.redirectToMfaAuthentication();
+        return;
+      }
+      await this.getLoggedInUser();
+      await this.getOrFindRbacs(siteSettings);
+    } else if (!activeSession?.isServerReachable) {
+      await this.getLoggedInUser();
+      await this.getOrFindRbacs(siteSettings);
+    }
+  }
+
+  /**
+   * Load offline data
+   * - Get or find site settings
+   * - Get or find rbacs
+   * - Get logged-in user
+   * @param {SiteSettingsEntity} siteSettings
+   * @return {Promise<void>}
+   */
+  async loadOfflineData(siteSettings) {
+    await this.getLoggedInUser();
+    await this.getOrFindRbacs(siteSettings);
+  }
+
+  /**
    * Sync the session in background without blocking the UI
    * @param {Promise<UserActiveSessionEntity>} updatePromise
    * @return {Promise<void>}
@@ -3879,23 +3808,13 @@ function patchQuickAccessOfflineFallback() {
       // ignore background sync errors
     }
   }
+`;
 
-  /**
-   * Bind callbacks
-   */
-  bindCallbacks() {`,
-    ],
-    [
-      `  isReady() {
-    return (
-      this.props.activeSession?.isAuthenticated !== null &&
-      this.state.userSettings !== null &&
-      this.state.siteSettings !== undefined &&
-      this.state.locale !== null &&
-      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
-    );
-  }`,
-      `  isReady() {
+  content = content.replace(methodBlockPattern, newMethodBlock);
+
+  content = content.replace(
+    /isReady\(\)\s*\{[\s\S]*?return \([\s\S]*?\);\s*\}/,
+    `isReady() {
     const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
     if (!activeSession) {
       return false;
@@ -3907,110 +3826,55 @@ function patchQuickAccessOfflineFallback() {
       this.state.locale !== null &&
       (!activeSession.isAuthenticated || Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
     );
-  }`,
-    ],
-    [
-      `await this.checkPluginIsConfigured();\n`,
-      `// quickaccess-addon-check-handled-in-root\n`,
-    ],
-    [
-      `await this.props.state.request("passbolt.tabs.open-website-getting-started-page");`,
-      `await this.state.port.request("passbolt.tabs.open-website-getting-started-page");`,
-    ],
-    [
-      `<p className="processing-text">Connecting your account</p>`,
-      `<p className="processing-text">
-                    <Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans>
-                  </p>`,
-    ],
-    [
-      `<Trans>Connecting your account</Trans>`,
-      `<Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans>`,
-    ],
-    [
-      `locale: "en-UK", // To avoid any weird blink, launch the quickaccess with a default english locale`,
-      `locale: "uk-UA",`,
-    ],
-    [
-      `<p className="processing-text">{this.state.errorMessage}</p>`,
-      `<p className="processing-text">
-                    <Trans>{this.state.errorMessage}</Trans>
-                  </p>`,
-    ],
-  ]) ? 1 : 0;
+  }`
+  );
 
-  // Extra safety guards for ExtQuickAccessContext
-  changed += replaceIfExists(contextFile, [
-    [
-      `import { Trans } from "react-i18next";\nimport { Trans } from "react-i18next";\n`,
-      `import { Trans } from "react-i18next";\n`,
-    ],
-    [
-      `      const siteSettings =
-        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable`,
-      `      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
-      const isServerReachable = Boolean(activeSession?.isServerReachable);
-      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+  content = content.replace(
+    'await this.props.state.request("passbolt.tabs.open-website-getting-started-page");',
+    'await this.state.port.request("passbolt.tabs.open-website-getting-started-page");'
+  );
 
-      const siteSettings =
-        isSessionOnline && isServerReachable`,
-    ],
-    [
-      `      if (this.props.activeSession.isSessionOnline) {
-        await this.loadOnlineData(siteSettings);
-      } else if (this.props.activeSession.isSessionOffline) {
-        await this.loadOfflineData(siteSettings);
-      }`,
-      `      if (isSessionOnline) {
-        await this.loadOnlineData(siteSettings, activeSession);
-      } else if (isSessionOffline) {
-        await this.loadOfflineData(siteSettings);
-      }`,
-    ],
-    [
-      `      if (!this.props.activeSession.isServerReachable) {`,
-      `      if (!isServerReachable) {`,
-    ],
-    [
-      `      if (!this.props.activeSession.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }`,
-      `      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-      if (!currentSession?.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }`,
-    ],
-    [
-      `  isReady() {
-    return (
-      this.props.activeSession?.isAuthenticated !== null &&
-      this.state.userSettings !== null &&
-      this.state.siteSettings !== undefined &&
-      this.state.locale !== null &&
-      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
-    );
-  }`,
-      `  isReady() {
-    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
-    if (!activeSession) {
-      return false;
-    }
-    return (
-      activeSession.isAuthenticated !== null &&
-      this.state.userSettings !== null &&
-      this.state.siteSettings !== undefined &&
-      this.state.locale !== null &&
-      (!activeSession.isAuthenticated || Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
-    );
-  }`,
-    ],
-  ]) ? 1 : 0;
+  content = content.replace(
+    /<p className="processing-text">Connecting your account<\/p>/g,
+    '<p className="processing-text"><Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans></p>'
+  );
+  content = content.replace(
+    /<Trans>Connecting your account<\/Trans>/g,
+    '<Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans>'
+  );
+
+  content = content.replace(
+    'locale: "en-UK", // To avoid any weird blink, launch the quickaccess with a default english locale',
+    'locale: "uk-UA",'
+  );
+
+  content = content.replace(
+    /<p className="processing-text">\{this\.state\.errorMessage\}<\/p>/g,
+    '<p className="processing-text"><Trans i18nKey="Session load error">{this.state.errorMessage || "Не вдалося завантажити сесію Passly"}</Trans></p>'
+  );
+  content = content.replace(
+    /<p className="processing-text">\s*<Trans>\{this\.state\.errorMessage\}<\/Trans>\s*<\/p>/g,
+    '<p className="processing-text"><Trans i18nKey="Session load error">{this.state.errorMessage || "Не вдалося завантажити сесію Passly"}</Trans></p>'
+  );
+
+  if (content !== previous) {
+    fs.writeFileSync(contextFile, content, "utf8");
+    return 1;
+  }
+  return 0;
+}
+
+function patchQuickAccessOfflineFallback() {
+  const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
+  const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
+  const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
+  const activeSessionFile = path.join(root, "node_modules/passbolt-styleguide/src/shared/context/ActiveSession/ActiveSessionLocalStorageContext.js");
+  const handleBootstrapRouteFile = path.join(base, "components/HandleBootstrapRoute/HandleBootstrapRoute.js");
+  const privateRouteFile = path.join(base, "components/PrivateRoute/PrivateRoute.js");
+  const prepareResourceContextFile = path.join(base, "contexts/PrepareResourceContext.js");
+  let changed = 0;
+
+  changed += patchExtQuickAccessContext(contextFile);
 
   // Guard ActiveSessionLocalStorageContext
   changed += replaceIfExists(activeSessionFile, [

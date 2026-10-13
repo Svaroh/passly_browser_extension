@@ -113,7 +113,8 @@ function usePasskeyAutoLoginRequest(port) {
     let isMounted = true;
     const consumeRequest = async () => {
       const trustedDomain = await port.request("passbolt.addon.get-domain");
-      return BiometricAuthFormService.consumePasskeyAutoLoginRequest(browser.storage, globalThis.location, {
+      const storage = (typeof browser !== "undefined" && browser.storage) || globalThis.chrome?.storage;
+      return BiometricAuthFormService.consumePasskeyAutoLoginRequest(storage, globalThis.location, {
         allowPendingRequestWithoutUrlToken: true,
         expectedOrigin: trustedDomain,
       });
@@ -239,7 +240,8 @@ async function main() {
   const portname = query.get("passbolt");
   const port = new Port(portname);
   await port.connect();
-  const storage = createLoginStorage(port, browser.storage);
+  const browserStorage = (typeof browser !== "undefined" && browser.storage) || globalThis.chrome?.storage;
+  const storage = createLoginStorage(port, browserStorage);
   const biometricOptions = { enableOnLogin: false };
   const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(port, biometricOptions, {
     requestMessage: "passbolt.auth.login",

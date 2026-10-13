@@ -71,10 +71,18 @@ describe("QuickAccess", () => {
       expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(true);
     });
 
-    it("Should keep the current flow outside Firefox extension pages.", () => {
+    it("Should require the HTTPS Passbolt page for Chrome extension pages.", () => {
       expect.assertions(1);
       delete global.location;
       global.location = new URL("chrome-extension://extension-id/webAccessibleResources/quickaccess.html");
+
+      expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(true);
+    });
+
+    it("Should not open a new page when already on the HTTPS Passbolt page.", () => {
+      expect.assertions(1);
+      delete global.location;
+      global.location = new URL("https://pass.66ton99.org.ua/auth/login");
 
       expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(false);
     });

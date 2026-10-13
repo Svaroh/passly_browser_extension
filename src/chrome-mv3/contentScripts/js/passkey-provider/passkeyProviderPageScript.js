@@ -70,6 +70,10 @@
         return originalCredentialsCreate(options);
       }
 
+      if (options.publicKey?.authenticatorSelection?.authenticatorAttachment === "platform") {
+        return runNativeCredentialsCreate(options);
+      }
+
       try {
         const requestDetails = serializeCreateOptions(options.publicKey);
         if (!(await confirmPasslyRequest("create", requestDetails))) {

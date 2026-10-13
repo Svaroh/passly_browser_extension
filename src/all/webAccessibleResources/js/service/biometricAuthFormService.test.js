@@ -19,6 +19,7 @@ jest.mock("./biometricAuthRuntimeService", () => ({
   default: {
     createConfiguration: jest.fn(),
     isUnavailableError: jest.fn(),
+    isAvailable: jest.fn().mockResolvedValue(true),
   },
 }));
 

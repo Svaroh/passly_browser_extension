@@ -90,7 +90,6 @@ describe("BiometricAuthService", () => {
       expect(navigator.credentials.create).toHaveBeenCalledWith({
         publicKey: expect.objectContaining({
           authenticatorSelection: expect.objectContaining({
-            authenticatorAttachment: "platform",
             userVerification: "required",
           }),
           extensions: expect.objectContaining({
