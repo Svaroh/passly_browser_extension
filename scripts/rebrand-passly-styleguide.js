@@ -1196,13 +1196,42 @@ function patchTrashFilterSource() {
   const workspaceContextTestPage = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.test.page.js");
   let changed = 0;
 
-  changed += replaceIfMissing(filters, "ResourceWorkspaceFilterTypes.TRASH", [
-    [
-      `import FavoriteSVG from "../../../../img/svg/favorite.svg";
+  const filtersContent = fs.existsSync(filters) ? fs.readFileSync(filters, "utf8") : "";
+  if (
+    filtersContent.includes(`import DeleteSVG from "../../../../img/svg/delete.svg";
+import DeleteSVG from "../../../../img/svg/delete.svg";`)
+  ) {
+    changed += replaceIfExists(filters, [
+      [
+        `import DeleteSVG from "../../../../img/svg/delete.svg";
+import DeleteSVG from "../../../../img/svg/delete.svg";`,
+        `import DeleteSVG from "../../../../img/svg/delete.svg";`,
+      ],
+    ])
+      ? 1
+      : 0;
+  }
+
+  const filtersImportReplacements = !filtersContent.includes('import DeleteSVG from "../../../../img/svg/delete.svg";')
+    ? [
+        [
+          `import FavoriteSVG from "../../../../img/svg/favorite.svg";
 import OwnedByMeSVG from "../../../../img/svg/owned_by_me.svg";`,
-      `import FavoriteSVG from "../../../../img/svg/favorite.svg";
+          `import FavoriteSVG from "../../../../img/svg/favorite.svg";
 import OwnedByMeSVG from "../../../../img/svg/owned_by_me.svg";
 import DeleteSVG from "../../../../img/svg/delete.svg";`,
+        ],
+      ]
+    : [];
+
+  changed += replaceIfMissing(filters, "handleTrashClick", [
+    ...filtersImportReplacements,
+    [
+      `    this.handleOfflineClick = this.handleOfflineClick.bind(this);
+    this.handleRemoveFilterClick = this.handleRemoveFilterClick.bind(this);`,
+      `    this.handleOfflineClick = this.handleOfflineClick.bind(this);
+    this.handleTrashClick = this.handleTrashClick.bind(this);
+    this.handleRemoveFilterClick = this.handleRemoveFilterClick.bind(this);`,
     ],
     [
       `    this.handleSharedWithMeClick = this.handleSharedWithMeClick.bind(this);
@@ -1229,6 +1258,32 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
         return (`,
     ],
     [
+      `  handleOfflineClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.OFFLINE };
+    this.props.history.push({ pathname: "/app/passwords", state: { filter } });
+  }
+
+  /**
+   * Whenever a filter has been removed go back to all items filter
+   */`,
+      `  handleOfflineClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.OFFLINE };
+    this.props.history.push({ pathname: "/app/passwords", state: { filter } });
+  }
+
+  /**
+   * Whenever the filter "Trash" has been selected
+   */
+  handleTrashClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.TRASH };
+    this.props.history.push({ pathname: "/app/passwords/filter/trash", state: { filter } });
+  }
+
+  /**
+   * Whenever a filter has been removed go back to all items filter
+   */`,
+    ],
+    [
       `  handleResourcesExpiredClick() {
     const filter = { type: ResourceWorkspaceFilterTypes.EXPIRED };
     this.props.history.push({ pathname: "/app/passwords/filter/expired", state: { filter } });
@@ -1253,6 +1308,38 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
   /**
    * Whenever a filter has been removed go back to all items filter
    */`,
+    ],
+    [
+      `              {this.canUseOfflineMode && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleOfflineClick}>
+                    <OfflineModeSVG />
+                    <span>
+                      <Trans>Available offline</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenu>`,
+      `              {this.canUseOfflineMode && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleOfflineClick}>
+                    <OfflineModeSVG />
+                    <span>
+                      <Trans>Available offline</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>
+            </DropdownMenu>`,
     ],
     [
       `              {this.props.passwordExpiryContext.isFeatureEnabled() && (
