@@ -1375,7 +1375,39 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     ],
   ]) ? 1 : 0;
 
-  changed += replaceIfMissing(workspaceContext, 'TRASH: "FILTER-BY-TRASH"', [
+  changed += replaceIfExists(filters, [
+    [
+      `      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );
+      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );`,
+      `      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, "get activeResources()", [
     [
       `  get resources() {
     return this.props.context.resources;
@@ -1398,28 +1430,9 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
   /**
    * Get the folders`,
     ],
-    [
-      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
-      if (isExpiredResourceLocation) {
-        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
-      } else if (this.props.match.params.selectedResourceId) {`,
-      `      const routeFilterType = {
-        expired: ResourceWorkspaceFilterTypes.EXPIRED,
-        trash: ResourceWorkspaceFilterTypes.TRASH,
-      }[this.props.match.params?.filterType];
-      if (routeFilterType) {
-        return { type: routeFilterType };
-      } else if (this.props.match.params.selectedResourceId) {`,
-    ],
-    [
-      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
-      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
-      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
-      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
-      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
-      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
-      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
-    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
     [
       `    this.sort(this.resources);
     this.setState({ filter, filteredResources: this.resources });`,
@@ -1436,14 +1449,90 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     [`const filteredResources = this.resources.filter((resource) => Boolean(resource.personal));`, `const filteredResources = this.activeResources.filter((resource) => Boolean(resource.personal));`],
     [`const filteredResources = this.resources.filter((resource) => resource.favorite !== null);`, `const filteredResources = this.activeResources.filter((resource) => resource.favorite !== null);`],
     [`const filteredResources = this.resources.filter((resource) => resource.permission.type < 15);`, `const filteredResources = this.activeResources.filter((resource) => resource.permission.type < 15);`],
-    [`const filteredResources = this.resources.filter(
-      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
-    );`, `const filteredResources = this.activeResources.filter(
-      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
-    );`],
     [
-      `  /** RESOURCE SELECTION */`,
-      `  /**
+      `const filteredResources = this.resources.filter(
+      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
+    );`,
+      `const filteredResources = this.activeResources.filter(
+      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
+    );`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === "expired";
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
+      const isTrashResourceLocation = this.props.match.params?.filterType === "trash";
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (isTrashResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.TRASH };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.OFFLINE]: this.searchByOffline.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.OFFLINE]: this.searchByOffline.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+    [
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+    [
+      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
+      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
+      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+  ]) ? 1 : 0;
+
+  const searchByTrashMethod = `  /**
    * Keep the deleted resources.
    * @param filter A "trash" filter
    */
@@ -1463,10 +1552,35 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
         this.props.loadingContext.remove();
       }
     });
-  }
+  }`;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `${searchByTrashMethod}
+
+${searchByTrashMethod}
+
+${searchByTrashMethod}`,
+      searchByTrashMethod,
+    ],
+    [
+      `${searchByTrashMethod}
+
+${searchByTrashMethod}`,
+      searchByTrashMethod,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, "searchByTrash(filter)", [
+    [
+      `  /** RESOURCE SELECTION */`,
+      `${searchByTrashMethod}
 
   /** RESOURCE SELECTION */`,
     ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, "isTrashFilter", [
     [
       `    // Case of resources
     const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
@@ -1483,29 +1597,13 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     // Case of resources
     const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
     ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, 'TRASH: "FILTER-BY-TRASH"', [
     [
       `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified`,
       `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
   TRASH: "FILTER-BY-TRASH", // Deleted resources`,
-    ],
-  ]) ? 1 : 0;
-
-  changed += replaceIfExists(workspaceContext, [
-    [
-      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
-      const isTrashResourceLocation = this.props.match.params?.filterType === "trash";
-      if (isExpiredResourceLocation) {
-        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
-      } else if (isTrashResourceLocation) {
-        return { type: ResourceWorkspaceFilterTypes.TRASH };
-      } else if (this.props.match.params.selectedResourceId) {`,
-      `      const routeFilterType = {
-        expired: ResourceWorkspaceFilterTypes.EXPIRED,
-        trash: ResourceWorkspaceFilterTypes.TRASH,
-      }[this.props.match.params?.filterType];
-      if (routeFilterType) {
-        return { type: routeFilterType };
-      } else if (this.props.match.params.selectedResourceId) {`,
     ],
   ]) ? 1 : 0;
 
