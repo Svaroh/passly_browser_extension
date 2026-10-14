@@ -1321,17 +1321,7 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
                 </DropdownMenuItem>
               )}
             </DropdownMenu>`,
-      `              {this.canUseOfflineMode && (
-                <DropdownMenuItem>
-                  <button type="button" className="no-border" onClick={this.handleOfflineClick}>
-                    <OfflineModeSVG />
-                    <span>
-                      <Trans>Available offline</Trans>
-                    </span>
-                  </button>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem>
+      `              <DropdownMenuItem>
                 <button type="button" className="no-border" onClick={this.handleTrashClick}>
                   <DeleteSVG />
                   <span>
@@ -1376,6 +1366,34 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
   ]) ? 1 : 0;
 
   changed += replaceIfExists(filters, [
+    [
+      `              {this.canUseOfflineMode && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleOfflineClick}>
+                    <OfflineModeSVG />
+                    <span>
+                      <Trans>Available offline</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>`,
+      `              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>`,
+    ],
     [
       `      case ResourceWorkspaceFilterTypes.TRASH:
         return (
