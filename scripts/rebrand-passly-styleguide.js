@@ -4458,6 +4458,570 @@ function patchOfflineSettingsEntity() {
   return changed;
 }
 
+function patchInputPassphraseStandardBiometric() {
+  const targetDirs = [
+    path.join(root, "node_modules/passbolt-styleguide"),
+    path.join(root, "node_modules/.passbolt-styleguide-npm-5.12.1"),
+  ];
+
+  const sourceStyleguideFile = path.resolve(
+    root,
+    "../passly_styleguide/src/react-extension/components/AuthenticationPassphrase/InputPassphrase/InputPassphrase.js"
+  );
+  let componentSource = "";
+  if (fs.existsSync(sourceStyleguideFile)) {
+    componentSource = fs.readFileSync(sourceStyleguideFile, "utf8");
+  } else {
+    componentSource = `import React, { Component } from "react";
+import PropTypes from "prop-types";
+import { withAppContext } from "../../../../shared/context/AppContext/AppContext";
+import UserAbortsOperationError from "../../../lib/Error/UserAbortsOperationError";
+import { Trans, withTranslation } from "react-i18next";
+import Password from "../../../../shared/components/Password/Password";
+import DialogWrapper from "../../Common/Dialog/DialogWrapper/DialogWrapper";
+import Select from "../../Common/Select/Select";
+import UserAvatar from "../../Common/Avatar/UserAvatar";
+import FingerprintSVG from "../../../../img/svg/fingerprint.svg";
+
+class InputPassphrase extends Component {
+  constructor(props) {
+    super(props);
+    this.state = this.getDefaultState();
+    this.initEventHandlers();
+    this.createInputRef();
+  }
+
+  componentDidMount() {
+    this.focusOnPassphrase();
+    this.initDefaultRememberMeChoice();
+    this.initBiometricAuth();
+  }
+
+  getDefaultState() {
+    return {
+      attempt: 0,
+      processing: false,
+      passphrase: "",
+      rememberMe: false,
+      passphraseError: "",
+      rememberMeDuration: 300,
+      biometricConfiguration: null,
+      isBiometricAvailable: false,
+      isUnlockingBiometric: false,
+      enableBiometric: false,
+      biometricError: "",
+      biometricRpId: null,
+    };
+  }
+
+  initEventHandlers() {
+    this.handleFormSubmit = this.handleFormSubmit.bind(this);
+    this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleRememberMeDurationSelectChange = this.handleRememberMeDurationSelectChange.bind(this);
+    this.handleCloseClick = this.handleCloseClick.bind(this);
+    this.handleBiometricUnlock = this.handleBiometricUnlock.bind(this);
+  }
+
+  async initDefaultRememberMeChoice() {
+    const defaultRememberMeChoice = await this.props.context.port.request(
+      "passbolt.remember-me.get-user-latest-choice",
+    );
+    this.setState({
+      rememberMe: defaultRememberMeChoice,
+      rememberMeDuration: this.getUntilILogOutDurationOrDefault(defaultRememberMeChoice),
+    });
+  }
+
+  async withPasskeySuspended(callback) {
+    const runtime = (typeof browser !== "undefined" && browser?.runtime) || globalThis.chrome?.runtime;
+    let suspended = false;
+    if (runtime?.sendMessage) {
+      try {
+        const response = await runtime.sendMessage({ name: "passkey-provider.suspend" });
+        suspended = response?.ok === true;
+      } catch {
+        // Ignored
+      }
+    }
+
+    try {
+      return await callback();
+    } finally {
+      if (suspended && runtime?.sendMessage) {
+        try {
+          await runtime.sendMessage({ name: "passkey-provider.resume" });
+        } catch {
+          // Ignored
+        }
+      }
+    }
+  }
+
+  async initBiometricAuth() {
+    const port = this.props.context?.port;
+    if (!port) {
+      return;
+    }
+
+    try {
+      const storedConfig = await port.request("passbolt.biometric-auth.get-configuration").catch(() => null);
+      let domain = null;
+      try {
+        domain = await port.request("passbolt.addon.get-domain");
+      } catch {
+        // Ignored
+      }
+
+      let rpId = null;
+      if (domain) {
+        try {
+          rpId = new URL(domain.startsWith("http") ? domain : \`https://\${domain}\`).hostname;
+        } catch {
+          rpId = domain;
+        }
+      }
+      if (!rpId && storedConfig?.rp_id) {
+        rpId = storedConfig.rp_id;
+      }
+
+      let compatibleConfig = null;
+      if (storedConfig) {
+        if (!rpId || !storedConfig.rp_id || storedConfig.rp_id === rpId) {
+          compatibleConfig = storedConfig;
+        }
+      }
+
+      let isAvailable = false;
+      try {
+        isAvailable = await port.request("passbolt.biometric-auth.is-available-in-page", rpId);
+      } catch {
+        isAvailable = false;
+      }
+
+      this.setState({
+        biometricConfiguration: compatibleConfig,
+        isBiometricAvailable: Boolean(isAvailable || compatibleConfig),
+        biometricRpId: rpId,
+      });
+    } catch (error) {
+      console.error("Biometric init error:", error);
+    }
+  }
+
+  async handleBiometricUnlock() {
+    const port = this.props.context?.port;
+    if (!port || !this.state.biometricConfiguration) {
+      return;
+    }
+
+    this.setState({ isUnlockingBiometric: true, biometricError: "" });
+    try {
+      const passphrase = await this.withPasskeySuspended(async () => {
+        return await port.request(
+          "passbolt.biometric-auth.unlock-in-page",
+          this.state.biometricConfiguration,
+          this.state.biometricRpId,
+        );
+      });
+
+      if (passphrase) {
+        await this.handleValidPassphrase(passphrase);
+      } else {
+        throw new Error("No passphrase returned from biometric unlock.");
+      }
+    } catch (error) {
+      console.error("Biometric unlock failed:", error);
+      const isUk = (this.props.context?.locale || document.documentElement.lang || "uk").toLowerCase().startsWith("uk");
+      this.setState({
+        isUnlockingBiometric: false,
+        biometricError: isUk
+          ? "Не вдалося виконати вхід по відбитку пальця."
+          : this.translate("Could not sign in with fingerprint."),
+      });
+    }
+  }
+
+  createInputRef() {
+    this.passphraseInputRef = React.createRef();
+  }
+
+  focusOnPassphrase() {
+    if (this.passphraseInputRef.current) {
+      this.passphraseInputRef.current.focus();
+    }
+  }
+
+  close() {
+    const error = new UserAbortsOperationError("The dialog has been closed.");
+    this.props.context.port.emit(this.props.context.passphraseRequestId, "ERROR", error);
+    this.props.context.setContext({ passphraseRequestId: null });
+    this.props.onClose();
+  }
+
+  handleCloseClick() {
+    this.close();
+  }
+
+  async handleFormSubmit(event) {
+    event.preventDefault();
+
+    this.setState({ processing: true, biometricError: "" });
+    if (await this.isValidPassphrase()) {
+      await this.handleValidPassphrase();
+    } else {
+      this.handleInvalidPassphrase();
+    }
+  }
+
+  async isValidPassphrase() {
+    try {
+      await this.props.context.port.request("passbolt.keyring.private.checkpassphrase", this.state.passphrase);
+    } catch (error) {
+      console.error(\`Invalid passphrase:\`, error);
+      return false;
+    }
+    return true;
+  }
+
+  hasRememberMeOptions() {
+    const options = this.props.context.siteSettings.getRememberMeOptions();
+
+    return options !== null && Object.keys(options).length > 0;
+  }
+
+  async handleValidPassphrase(validPassphrase = this.state.passphrase) {
+    let rememberMe = false;
+    if (this.state.rememberMe && this.hasRememberMeOptions()) {
+      rememberMe = this.state.rememberMeDuration;
+    }
+
+    if (this.state.enableBiometric && !this.state.biometricConfiguration) {
+      try {
+        const port = this.props.context?.port;
+        if (port) {
+          const newConfig = await this.withPasskeySuspended(async () => {
+            return await port.request(
+              "passbolt.biometric-auth.create-configuration-in-page",
+              validPassphrase,
+              this.state.biometricRpId,
+            );
+          });
+          if (newConfig) {
+            await port.request("passbolt.biometric-auth.save-configuration", newConfig);
+          }
+        }
+      } catch (err) {
+        console.error("Could not enroll biometric on passphrase submit:", err);
+      }
+    }
+
+    this.props.context.port.emit(this.props.context.passphraseRequestId, "SUCCESS", {
+      passphrase: validPassphrase,
+      rememberMe: rememberMe,
+    });
+    this.props.context.setContext({ passphraseRequestId: null });
+    this.props.onClose();
+  }
+
+  handleInvalidPassphrase() {
+    const isPassphraseEmpty = this.state.passphrase === "";
+    const passphraseError = isPassphraseEmpty
+      ? this.translate("The passphrase should not be empty.")
+      : this.translate("This is not a valid passphrase.");
+
+    let attempt = this.state.attempt;
+    if (!isPassphraseEmpty) {
+      attempt++;
+    }
+
+    this.setState({
+      processing: false,
+      attempt: attempt,
+      passphraseError: passphraseError,
+    });
+    if (attempt < 3) {
+      this.focusOnPassphrase();
+    }
+  }
+
+  handleInputChange(event) {
+    const target = event.target;
+    const value = target.type === "checkbox" ? target.checked : target.value;
+    const name = target.name;
+    this.setState({
+      [name]: value,
+    });
+  }
+
+  handleRememberMeDurationSelectChange(event) {
+    this.setState({
+      rememberMe: true,
+      rememberMeDuration: event.target.value,
+    });
+  }
+
+  renderRememberMeOptions() {
+    const selectOptions = [];
+    const rememberMeOptions = this.props.context.siteSettings.getRememberMeOptions();
+
+    for (const time in rememberMeOptions) {
+      selectOptions.push({ value: parseInt(time), label: rememberMeOptions[time] });
+    }
+
+    return selectOptions;
+  }
+
+  getUntilILogOutDurationOrDefault(rememberMe) {
+    const allOptions = this.props.context.siteSettings.getRememberMeOptions();
+    const limitedTimeOptions = Object.keys(allOptions).filter((option) => parseInt(option, 10) !== -1);
+    const firstOption = parseInt(limitedTimeOptions.at(0), 10);
+
+    if (!rememberMe) {
+      return firstOption;
+    }
+    const untilILogoutOrFirstOption = (-1) in allOptions ? -1 : firstOption;
+    return untilILogoutOrFirstOption;
+  }
+
+  get translate() {
+    return this.props.t;
+  }
+
+  get user() {
+    return this.props.context?.account?.user || this.props.context?.loggedInUser || null;
+  }
+
+  get fullname() {
+    const account = this.props.context?.account;
+    const userSettings = this.props.context?.userSettings;
+    const loggedInUser = this.props.context?.loggedInUser;
+    return (
+      userSettings?.fullName ||
+      (account?.first_name ? \`\${account.first_name} \${account.last_name}\` : "") ||
+      (loggedInUser?.profile?.first_name ? \`\${loggedInUser.profile.first_name} \${loggedInUser.profile.last_name}\` : "") ||
+      ""
+    );
+  }
+
+  get username() {
+    const account = this.props.context?.account;
+    const userSettings = this.props.context?.userSettings;
+    const loggedInUser = this.props.context?.loggedInUser;
+    return userSettings?.username || account?.username || loggedInUser?.username || "";
+  }
+
+  get trustedDomain() {
+    const account = this.props.context?.account;
+    const userSettings = this.props.context?.userSettings;
+    return userSettings?.getTrustedDomain ? userSettings.getTrustedDomain() : (account?.domain || "");
+  }
+
+  render() {
+    const user = this.user;
+    const fullname = this.fullname;
+    const username = this.username;
+    const trustedDomain = this.trustedDomain;
+    const hasRememberMeOptions = this.hasRememberMeOptions();
+    const isUk = (this.props.context?.locale || document.documentElement.lang || "uk").toLowerCase().startsWith("uk");
+
+    let passphraseInputLabel = this.translate("Passphrase");
+    if (this.state.passphraseError) {
+      passphraseInputLabel = this.translate("Please enter a valid passphrase.");
+    }
+
+    return (
+      <DialogWrapper
+        className="passphrase-entry"
+        title={this.translate("Please enter your passphrase.")}
+        onClose={this.handleCloseClick}
+      >
+        {this.state.attempt < 3 && (
+          <>
+            {(user || fullname || username) && (
+              <div className="login-user">
+                <UserAvatar user={user} baseUrl={trustedDomain} className="big avatar user-avatar" />
+                {fullname && <p className="login-user-name">{fullname}</p>}
+                {username && <p className="login-user-email">{username}</p>}
+              </div>
+            )}
+            {this.state.biometricConfiguration && (
+              <div className="biometric-actions">
+                <button
+                  type="button"
+                  className="button primary big full-width biometric-button"
+                  disabled={this.state.processing || this.state.isUnlockingBiometric}
+                  onClick={this.handleBiometricUnlock}
+                >
+                  <FingerprintSVG className="icon" />
+                  <span>
+                    {this.state.isUnlockingBiometric
+                      ? (isUk ? "Розблокування..." : this.translate("Unlocking..."))
+                      : (isUk ? "Вхід по відбитку пальця" : this.translate("Sign in with fingerprint"))}
+                  </span>
+                </button>
+                {this.state.biometricError && <div className="error-message">{this.state.biometricError}</div>}
+                <div className="biometric-divider">
+                  <span>{isUk ? "або введіть парольну фразу" : this.translate("or enter passphrase")}</span>
+                </div>
+              </div>
+            )}
+            <form onSubmit={this.handleFormSubmit}>
+              <div className="form-content">
+                <div className={\`input-password-wrapper input required \${this.state.passphraseError ? "error" : ""}\`}>
+                  <label htmlFor="passphrase-entry-form-passphrase">{passphraseInputLabel}</label>
+                  <Password
+                    id="passphrase-entry-form-passphrase"
+                    name="passphrase"
+                    autoComplete="off"
+                    placeholder={this.translate("Passphrase")}
+                    inputRef={this.passphraseInputRef}
+                    value={this.state.passphrase}
+                    onChange={this.handleInputChange}
+                    disabled={this.state.processing || this.state.isUnlockingBiometric}
+                    preview={true}
+                    securityToken={this.props.context?.userSettings?.getSecurityToken ? this.props.context.userSettings.getSecurityToken() : null}
+                  />
+                  {this.state.passphraseError && <div className="error-message">{this.state.passphraseError}</div>}
+                </div>
+                {this.state.isBiometricAvailable && !this.state.biometricConfiguration && (
+                  <div className="input checkbox biometric-enable">
+                    <input
+                      id="passphrase-entry-form-enable-biometric"
+                      type="checkbox"
+                      name="enableBiometric"
+                      checked={this.state.enableBiometric}
+                      onChange={this.handleInputChange}
+                    />
+                    <label htmlFor="passphrase-entry-form-enable-biometric">
+                      {isUk
+                        ? "Увімкнути вхід по відбитку пальця на цьому пристрої"
+                        : this.translate("Enable sign in with fingerprint on this device")}
+                    </label>
+                  </div>
+                )}
+                {hasRememberMeOptions && (
+                  <div className="remember-me">
+                    <div className="input checkbox">
+                      <input
+                        id="passphrase-entry-form-remember-me"
+                        type="checkbox"
+                        name="rememberMe"
+                        checked={this.state.rememberMe}
+                        onChange={this.handleInputChange}
+                      />
+                      <label htmlFor="passphrase-entry-form-remember-me">
+                        <Trans>Remember it for</Trans>{" "}
+                      </label>
+                    </div>
+                    <Select
+                      className="inline"
+                      name="rememberMeDuration"
+                      items={this.renderRememberMeOptions()}
+                      value={this.state.rememberMeDuration}
+                      onChange={this.handleRememberMeDurationSelectChange}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="submit-wrapper clearfix">
+                <button type="button" className="cancel link" onClick={this.handleCloseClick}>
+                  <Trans>Cancel</Trans>
+                </button>
+                <button
+                  type="submit"
+                  className="button primary form"
+                  role="button"
+                  disabled={this.state.processing || this.state.isUnlockingBiometric}
+                >
+                  <Trans>Ok</Trans>
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+        {this.state.attempt === 3 && (
+          <>
+            <div className="form-content">
+              <p>
+                <Trans>Your passphrase is wrong! The operation has been aborted.</Trans>
+              </p>
+            </div>
+            <div className="submit-wrapper clearfix">
+              <button type="button" className="primary" onClick={this.handleCloseClick}>
+                <Trans>Close</Trans>
+              </button>
+            </div>
+          </>
+        )}
+      </DialogWrapper>
+    );
+  }
+}
+
+InputPassphrase.propTypes = {
+  context: PropTypes.object,
+  onClose: PropTypes.func,
+  t: PropTypes.func,
+};
+
+export default withAppContext(withTranslation("common")(InputPassphrase));
+`;
+  }
+
+  const sourceLessFile = path.resolve(
+    root,
+    "../passly_styleguide/src/less/dialogs/passphrase/passphrase.less"
+  );
+  let lessSource = "";
+  if (fs.existsSync(sourceLessFile)) {
+    lessSource = fs.readFileSync(sourceLessFile, "utf8");
+  }
+
+  const cssRule = `\n.passphrase-entry.dialog-wrapper .login-user{width:100%;margin:0 auto 1.6rem auto;text-align:center;overflow-wrap:break-word}.passphrase-entry.dialog-wrapper .login-user>*{text-align:center;justify-content:center;margin-bottom:.8rem}.passphrase-entry.dialog-wrapper .login-user .user-avatar{margin:0 auto 1.2rem auto}.passphrase-entry.dialog-wrapper .login-user .login-user-name{font-weight:bold;font-size:1.6rem;line-height:2rem;margin:.8rem 0 .4rem 0}.passphrase-entry.dialog-wrapper .login-user .login-user-email{font-size:1.4rem;line-height:1.8rem;opacity:.75;margin:0 0 1.2rem 0}.passphrase-entry.dialog-wrapper .biometric-actions{margin-bottom:1.6rem}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-button{display:inline-flex;align-items:center;justify-content:center;gap:.8rem;width:100%;box-sizing:border-box}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-button .icon,.passphrase-entry.dialog-wrapper .biometric-actions .biometric-button svg{width:2rem;height:2rem;fill:currentColor}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider{display:flex;align-items:center;text-align:center;margin:1.2rem 0 .8rem 0;opacity:.6;font-size:1.3rem}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider::before,.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider::after{content:"";flex:1;border-bottom:1px solid currentColor;opacity:.25}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider span{padding:0 1rem}.passphrase-entry.dialog-wrapper .biometric-actions .error-message{margin-top:.8rem;text-align:center;color:#d32f2f;font-size:1.3rem}.passphrase-entry.dialog-wrapper .biometric-enable{margin:1rem 0}\n`;
+
+  const themes = ["default", "midgar", "solarized_light", "solarized_dark"];
+
+  for (const dir of targetDirs) {
+    if (!fs.existsSync(dir)) continue;
+
+    const componentPath = path.join(
+      dir,
+      "src/react-extension/components/AuthenticationPassphrase/InputPassphrase/InputPassphrase.js"
+    );
+    if (fs.existsSync(path.dirname(componentPath))) {
+      writeIfChanged(componentPath, componentSource);
+    }
+
+    if (lessSource) {
+      const lessPath = path.join(dir, "src/less/dialogs/passphrase/passphrase.less");
+      if (fs.existsSync(path.dirname(lessPath))) {
+        writeIfChanged(lessPath, lessSource);
+      }
+    }
+
+    for (const theme of themes) {
+      const extAppCssPath = path.join(dir, `build/css/themes/${theme}/ext_app.min.css`);
+      if (fs.existsSync(extAppCssPath)) {
+        const content = fs.readFileSync(extAppCssPath, "utf8");
+        if (!content.includes(".passphrase-entry.dialog-wrapper .biometric-actions")) {
+          writeIfChanged(extAppCssPath, content + cssRule);
+        }
+      }
+    }
+  }
+
+  // Also patch the built theme stylesheets in build/all if present
+  for (const theme of themes) {
+    const warExtAppCss = path.join(root, `build/all/webAccessibleResources/css/themes/${theme}/ext_app.min.css`);
+    if (fs.existsSync(warExtAppCss)) {
+      const content = fs.readFileSync(warExtAppCss, "utf8");
+      if (!content.includes(".passphrase-entry.dialog-wrapper .biometric-actions")) {
+        writeIfChanged(warExtAppCss, content + cssRule);
+      }
+    }
+  }
+}
+
 rebrandStyleguideSource();
 patchQuickAccessPasswordGeneratorSource();
 patchPasskeyResourceTypeSupport();
@@ -4465,4 +5029,6 @@ patchStyleguideRuntimeLogs();
 patchQuickAccessOfflineFallback();
 patchQuickAccessVaultLocales();
 patchOfflineSettingsEntity();
+patchInputPassphraseStandardBiometric();
 rebrandGeneratedBundles();
+
