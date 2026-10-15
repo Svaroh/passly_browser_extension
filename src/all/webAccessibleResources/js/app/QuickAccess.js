@@ -39,7 +39,7 @@ export async function ensureQuickAccessConfigured(port, { detached = false, clos
 }
 
 export function shouldOpenPassboltPageForQuickAccessPasskey() {
-  return globalThis.location?.protocol === "moz-extension:";
+  return ["chrome-extension:", "moz-extension:"].includes(globalThis.location?.protocol);
 }
 
 export async function openPassboltLoginPageForPasskey(port, { closeWindow = () => window.close() } = {}) {
@@ -53,8 +53,14 @@ export async function openPassboltLoginPageForPasskey(port, { closeWindow = () =
   const url = new URL("/auth/login", trustedDomain);
   url.searchParams.set("redirect", "/");
   url.searchParams.set("locale", locale || "uk-UA");
-  await BiometricAuthFormService.preparePasskeyAutoLoginUrl(browser.storage, url);
-  await browser.tabs.create({ url: url.toString(), active: true });
+  const storage = (typeof browser !== "undefined" && browser.storage) || globalThis.chrome?.storage;
+  await BiometricAuthFormService.preparePasskeyAutoLoginUrl(storage, url);
+  const tabs = (typeof browser !== "undefined" && browser.tabs) || globalThis.chrome?.tabs;
+  if (tabs?.create) {
+    await tabs.create({ url: url.toString(), active: true });
+  } else {
+    window.open(url.toString(), "_blank");
+  }
   closeWindow();
 }
 

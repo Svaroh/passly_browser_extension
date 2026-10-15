@@ -438,6 +438,13 @@ class PasskeyWebAuthenticationProxyService {
       return false;
     }
 
+    port.onDisconnect?.addListener?.(() => {
+      // Consume lastError when disconnected due to page navigation or bfcache
+      if (chrome?.runtime?.lastError) {
+        // acknowledged
+      }
+    });
+
     port.onMessage.addListener((message) =>
       PasskeyWebAuthenticationProxyService.handleRuntimePortMessage(port, message),
     );
@@ -481,7 +488,10 @@ class PasskeyWebAuthenticationProxyService {
     try {
       port.postMessage({ requestId, response });
     } catch {
-      // The page may have navigated away before the response could be posted.
+      // The page may have navigated away or entered bfcache before the response could be posted.
+      if (chrome?.runtime?.lastError) {
+        // acknowledge closed port error
+      }
     }
   }
 
@@ -524,6 +534,10 @@ class PasskeyWebAuthenticationProxyService {
       return { skipped: true, reason: skipReason };
     }
 
+    if (!PasskeyWebauthnService.supportsCreateOptions(requestDetails)) {
+      return { skipped: true, reason: "unsupported-create-options" };
+    }
+
     const result = await PasskeyWebauthnService.createCredential(requestDetails);
     await PasskeyVaultResourceService.createResourceForPasskey(requestDetails, result.secretDto);
 
@@ -544,10 +558,22 @@ class PasskeyWebAuthenticationProxyService {
       return { skipped: true, reason: skipReason };
     }
 
-    const secretDto = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
-    const result = await PasskeyWebauthnService.getAssertion(requestDetails, secretDto);
+    try {
+      const secretDto = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+      const result = await PasskeyWebauthnService.getAssertion(requestDetails, secretDto);
 
-    return result.credential;
+      return result.credential;
+    } catch (error) {
+      if (
+        error?.name === "NotAllowedError" &&
+        (error?.message?.includes("No Passly passkey matches") ||
+          error?.message?.includes("did not allow this passkey") ||
+          error?.message?.includes("does not belong to this relying party"))
+      ) {
+        return { skipped: true, reason: "no-matching-passkey" };
+      }
+      throw error;
+    }
   }
 
   /**
@@ -562,6 +588,10 @@ class PasskeyWebAuthenticationProxyService {
     const skipReason = await this.getContentFallbackSkipReason(requestDetails.origin);
     if (skipReason) {
       return { skipped: true, reason: skipReason };
+    }
+
+    if (requestDetails?.operation === "create" && !PasskeyWebauthnService.supportsCreateOptions(requestDetails)) {
+      return { skipped: true, reason: "unsupported-create-options" };
     }
 
     return { available: true };
@@ -591,6 +621,9 @@ class PasskeyWebAuthenticationProxyService {
    * @returns {Promise<boolean>}
    */
   static async shouldSkipContentFallback(origin) {
+    if (this._suspendCount > 0) {
+      return true;
+    }
     return PasskeyContentFallbackService.shouldSkip(origin, () => this.isEnabled());
   }
 
@@ -600,6 +633,9 @@ class PasskeyWebAuthenticationProxyService {
    * @returns {Promise<string|null>}
    */
   static async getContentFallbackSkipReason(origin) {
+    if (this._suspendCount > 0) {
+      return "suspended";
+    }
     return PasskeyContentFallbackService.getSkipReason(origin, () => this.isEnabled());
   }
 
@@ -629,6 +665,43 @@ class PasskeyWebAuthenticationProxyService {
   }
 
   /**
+   * Enrich requestDetailsJson with active tab origin and rpId if omitted by Chrome proxy.
+   * @param {string|object} requestDetails
+   * @returns {Promise<object>}
+   */
+  static async enrichProxyRequestDetails(requestDetails) {
+    let parsed;
+    try {
+      parsed = PasskeyWebauthnService.parseRequestDetails(requestDetails);
+    } catch {
+      return requestDetails;
+    }
+
+    let modified = false;
+    if (!parsed.origin || !parsed.rpId) {
+      try {
+        const tabs = await chrome?.tabs?.query?.({ active: true, lastFocusedWindow: true });
+        const activeTab = tabs?.[0] || (await chrome?.tabs?.query?.({ active: true, currentWindow: true }))?.[0];
+        if (activeTab?.url) {
+          const tabUrl = new URL(activeTab.url);
+          if (!parsed.origin) {
+            parsed.origin = tabUrl.origin;
+            modified = true;
+          }
+          if (!parsed.rpId && !parsed.rp?.id) {
+            parsed.rpId = tabUrl.hostname;
+            modified = true;
+          }
+        }
+      } catch {
+        // ignore tabs query error in background
+      }
+    }
+
+    return modified ? parsed : requestDetails;
+  }
+
+  /**
    * Handle navigator.credentials.create().
    * @param {object} requestInfo
    * @returns {Promise<void>}
@@ -640,8 +713,11 @@ class PasskeyWebAuthenticationProxyService {
     }
 
     try {
-      const result = await PasskeyWebauthnService.createCredential(requestInfo.requestDetailsJson);
-      await PasskeyVaultResourceService.createResourceForPasskey(requestInfo.requestDetailsJson, result.secretDto);
+      const requestDetails = await PasskeyWebAuthenticationProxyService.enrichProxyRequestDetails(
+        requestInfo.requestDetailsJson,
+      );
+      const result = await PasskeyWebauthnService.createCredential(requestDetails);
+      await PasskeyVaultResourceService.createResourceForPasskey(requestDetails, result.secretDto);
       await PasskeyWebAuthenticationProxyService.completeCreateRequestWithResponse(requestId, result.credential);
     } catch (error) {
       console.warn("Passly passkey create request failed.", error);
@@ -664,8 +740,11 @@ class PasskeyWebAuthenticationProxyService {
     }
 
     try {
-      const secretDto = await PasskeyVaultResourceService.findSecretForAssertion(requestInfo.requestDetailsJson);
-      const result = await PasskeyWebauthnService.getAssertion(requestInfo.requestDetailsJson, secretDto);
+      const requestDetails = await PasskeyWebAuthenticationProxyService.enrichProxyRequestDetails(
+        requestInfo.requestDetailsJson,
+      );
+      const secretDto = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+      const result = await PasskeyWebauthnService.getAssertion(requestDetails, secretDto);
       await PasskeyWebAuthenticationProxyService.completeGetRequestWithResponse(requestId, result.credential);
     } catch (error) {
       console.warn("Passly passkey get request failed.", error);

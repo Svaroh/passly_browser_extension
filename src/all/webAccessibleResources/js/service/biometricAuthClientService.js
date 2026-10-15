@@ -56,7 +56,11 @@ class BiometricAuthClientService {
       return false;
     }
 
-    return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    try {
+      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -67,7 +71,7 @@ class BiometricAuthClientService {
    */
   static async createConfiguration(passphrase, rpId = null) {
     rpId = this.normalizeRpId(rpId, null);
-    if (!this.isSupportedBrowserContext(rpId)) {
+    if (!this.isSupportedBrowserContext(rpId) || !(await this.isAvailable(rpId))) {
       throw new Error("Biometric authentication is not available in this browser context.");
     }
 
@@ -174,7 +178,6 @@ class BiometricAuthClientService {
         { type: "public-key", alg: -257 },
       ],
       authenticatorSelection: {
-        authenticatorAttachment: "platform",
         residentKey: "discouraged",
         requireResidentKey: false,
         userVerification: "required",
@@ -271,7 +274,9 @@ class BiometricAuthClientService {
     return (
       message.includes("Biometric authentication is not available in this browser context") ||
       message.includes("The operation is insecure") ||
-      error?.name === "SecurityError"
+      error?.name === "SecurityError" ||
+      error?.name === "NotAllowedError" ||
+      error?.name === "AbortError"
     );
   }
 

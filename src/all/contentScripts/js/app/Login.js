@@ -23,12 +23,42 @@ import BiometricAuthPageService from "../service/biometricAuthPageService";
 import BiometricAuthRuntimeService from "../../../webAccessibleResources/js/service/biometricAuthRuntimeService";
 import BiometricAuthFormService from "../../../webAccessibleResources/js/service/biometricAuthFormService";
 
+function usePasskeyAutoLoginRequest(port) {
+  const [autoLoginRequested, setAutoLoginRequested] = React.useState(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const consumeRequest = async () => {
+      const trustedDomain = await port.request("passbolt.addon.get-domain");
+      const storage = (typeof browser !== "undefined" && browser.storage) || globalThis.chrome?.storage;
+      return BiometricAuthFormService.consumePasskeyAutoLoginRequest(storage, globalThis.location, {
+        allowPendingRequestWithoutUrlToken: true,
+        expectedOrigin: trustedDomain,
+      });
+    };
+    const init = async () => {
+      const requested = await consumeRequest();
+      if (isMounted) {
+        setAutoLoginRequested(requested);
+      }
+    };
+    init().catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [port]);
+
+  return autoLoginRequested;
+}
+
 function BiometricLoginActions({ port, options }) {
   const [configuration, setConfiguration] = React.useState(null);
   const [enableOnLogin, setEnableOnLogin] = React.useState(false);
   const [error, setError] = React.useState("");
   const [isUnlocking, setIsUnlocking] = React.useState(false);
   const [portalTarget, setPortalTarget] = React.useState(null);
+  const autoLoginRequested = usePasskeyAutoLoginRequest(port);
+  const autoLoginStartedRef = React.useRef(false);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -85,6 +115,14 @@ function BiometricLoginActions({ port, options }) {
       setIsUnlocking(false);
     }
   }, [configuration, port]);
+
+  React.useEffect(() => {
+    if (!autoLoginRequested || autoLoginStartedRef.current || !configuration || !portalTarget) {
+      return;
+    }
+    autoLoginStartedRef.current = true;
+    handleLogin();
+  }, [autoLoginRequested, configuration, handleLogin, portalTarget]);
 
   if (!portalTarget) {
     return null;

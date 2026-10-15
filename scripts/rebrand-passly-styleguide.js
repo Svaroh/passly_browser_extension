@@ -148,7 +148,10 @@ const offlineTranslations = {
     "Session duration": "Тривалість сесії",
     "Data retention": "Збереження даних",
     "Last sync": "Остання синхронізація",
-    "Unlimited": "Без обмежень"
+    "Unlimited": "Без обмежень",
+    "Connecting your account": "Підключення вашого облікового запису",
+    "Session load error": "Не вдалося завантажити сесію Passly",
+    "An error occurred while loading quick access": "Виникла помилка під час завантаження швидкого доступу"
   }
 };
 
@@ -291,6 +294,9 @@ function patchQuickAccessVaultLocales() {
     }
 
     for (const locale of Object.keys(quickAccessVaultTranslations)) {
+      if (locale === "en-UK" && base.endsWith("src/all/locales")) {
+        continue;
+      }
       changed += updateQuickAccessVaultLocale(path.join(base, locale, "common.json"), locale) ? 1 : 0;
     }
   }
@@ -867,6 +873,18 @@ function patchWorkspaceEditFromQueryAction() {
       "const selectedResourceId = this.props.match.params.selectedResourceId;",
       "const selectedResourceId = this.props.match?.params?.selectedResourceId;",
     ],
+    [
+      `    if (this.canEditResource()) {
+      this.props.dialogContext.open(EditResource, { resource });
+    } else {
+      this.displayActionAborted();
+    }`,
+      `    this.handleEditClickEvent();`,
+    ],
+    [
+      `this.props.dialogContext.open(EditResource, { resource });`,
+      `this.handleEditClickEvent();`,
+    ],
   ]) ? 1 : 0;
   changed += replaceIfMissing(workspaceMenu, 'import { withRouter } from "react-router-dom";', [
     [
@@ -926,11 +944,7 @@ import { withActionFeedback } from "../../../contexts/ActionFeedbackContext";`,
     }
 
     this.removeEditResourceQuery(queryParameters);
-    if (this.canEditResource()) {
-      this.props.dialogContext.open(EditResource, { resource });
-    } else {
-      this.displayActionAborted();
-    }
+    this.handleEditClickEvent();
   }
 
   /**
@@ -1182,13 +1196,42 @@ function patchTrashFilterSource() {
   const workspaceContextTestPage = path.join(root, "node_modules/passbolt-styleguide/src/react-extension/contexts/ResourceWorkspaceContext.test.page.js");
   let changed = 0;
 
-  changed += replaceIfMissing(filters, "ResourceWorkspaceFilterTypes.TRASH", [
-    [
-      `import FavoriteSVG from "../../../../img/svg/favorite.svg";
+  const filtersContent = fs.existsSync(filters) ? fs.readFileSync(filters, "utf8") : "";
+  if (
+    filtersContent.includes(`import DeleteSVG from "../../../../img/svg/delete.svg";
+import DeleteSVG from "../../../../img/svg/delete.svg";`)
+  ) {
+    changed += replaceIfExists(filters, [
+      [
+        `import DeleteSVG from "../../../../img/svg/delete.svg";
+import DeleteSVG from "../../../../img/svg/delete.svg";`,
+        `import DeleteSVG from "../../../../img/svg/delete.svg";`,
+      ],
+    ])
+      ? 1
+      : 0;
+  }
+
+  const filtersImportReplacements = !filtersContent.includes('import DeleteSVG from "../../../../img/svg/delete.svg";')
+    ? [
+        [
+          `import FavoriteSVG from "../../../../img/svg/favorite.svg";
 import OwnedByMeSVG from "../../../../img/svg/owned_by_me.svg";`,
-      `import FavoriteSVG from "../../../../img/svg/favorite.svg";
+          `import FavoriteSVG from "../../../../img/svg/favorite.svg";
 import OwnedByMeSVG from "../../../../img/svg/owned_by_me.svg";
 import DeleteSVG from "../../../../img/svg/delete.svg";`,
+        ],
+      ]
+    : [];
+
+  changed += replaceIfMissing(filters, "handleTrashClick", [
+    ...filtersImportReplacements,
+    [
+      `    this.handleOfflineClick = this.handleOfflineClick.bind(this);
+    this.handleRemoveFilterClick = this.handleRemoveFilterClick.bind(this);`,
+      `    this.handleOfflineClick = this.handleOfflineClick.bind(this);
+    this.handleTrashClick = this.handleTrashClick.bind(this);
+    this.handleRemoveFilterClick = this.handleRemoveFilterClick.bind(this);`,
     ],
     [
       `    this.handleSharedWithMeClick = this.handleSharedWithMeClick.bind(this);
@@ -1215,6 +1258,32 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
         return (`,
     ],
     [
+      `  handleOfflineClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.OFFLINE };
+    this.props.history.push({ pathname: "/app/passwords", state: { filter } });
+  }
+
+  /**
+   * Whenever a filter has been removed go back to all items filter
+   */`,
+      `  handleOfflineClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.OFFLINE };
+    this.props.history.push({ pathname: "/app/passwords", state: { filter } });
+  }
+
+  /**
+   * Whenever the filter "Trash" has been selected
+   */
+  handleTrashClick() {
+    const filter = { type: ResourceWorkspaceFilterTypes.TRASH };
+    this.props.history.push({ pathname: "/app/passwords/filter/trash", state: { filter } });
+  }
+
+  /**
+   * Whenever a filter has been removed go back to all items filter
+   */`,
+    ],
+    [
       `  handleResourcesExpiredClick() {
     const filter = { type: ResourceWorkspaceFilterTypes.EXPIRED };
     this.props.history.push({ pathname: "/app/passwords/filter/expired", state: { filter } });
@@ -1239,6 +1308,28 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
   /**
    * Whenever a filter has been removed go back to all items filter
    */`,
+    ],
+    [
+      `              {this.canUseOfflineMode && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleOfflineClick}>
+                    <OfflineModeSVG />
+                    <span>
+                      <Trans>Available offline</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenu>`,
+      `              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>
+            </DropdownMenu>`,
     ],
     [
       `              {this.props.passwordExpiryContext.isFeatureEnabled() && (
@@ -1274,7 +1365,67 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     ],
   ]) ? 1 : 0;
 
-  changed += replaceIfMissing(workspaceContext, 'TRASH: "FILTER-BY-TRASH"', [
+  changed += replaceIfExists(filters, [
+    [
+      `              {this.canUseOfflineMode && (
+                <DropdownMenuItem>
+                  <button type="button" className="no-border" onClick={this.handleOfflineClick}>
+                    <OfflineModeSVG />
+                    <span>
+                      <Trans>Available offline</Trans>
+                    </span>
+                  </button>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>`,
+      `              <DropdownMenuItem>
+                <button type="button" className="no-border" onClick={this.handleTrashClick}>
+                  <DeleteSVG />
+                  <span>
+                    <Trans>Trash</Trans>
+                  </span>
+                </button>
+              </DropdownMenuItem>`,
+    ],
+    [
+      `      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );
+      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );`,
+      `      case ResourceWorkspaceFilterTypes.TRASH:
+        return (
+          <>
+            <DeleteSVG />
+            <span>
+              <Trans>Trash</Trans>
+            </span>
+          </>
+        );`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, "get activeResources()", [
     [
       `  get resources() {
     return this.props.context.resources;
@@ -1297,28 +1448,9 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
   /**
    * Get the folders`,
     ],
-    [
-      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
-      if (isExpiredResourceLocation) {
-        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
-      } else if (this.props.match.params.selectedResourceId) {`,
-      `      const routeFilterType = {
-        expired: ResourceWorkspaceFilterTypes.EXPIRED,
-        trash: ResourceWorkspaceFilterTypes.TRASH,
-      }[this.props.match.params?.filterType];
-      if (routeFilterType) {
-        return { type: routeFilterType };
-      } else if (this.props.match.params.selectedResourceId) {`,
-    ],
-    [
-      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
-      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
-      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
-      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
-      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
-      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
-      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
-    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
     [
       `    this.sort(this.resources);
     this.setState({ filter, filteredResources: this.resources });`,
@@ -1335,14 +1467,90 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     [`const filteredResources = this.resources.filter((resource) => Boolean(resource.personal));`, `const filteredResources = this.activeResources.filter((resource) => Boolean(resource.personal));`],
     [`const filteredResources = this.resources.filter((resource) => resource.favorite !== null);`, `const filteredResources = this.activeResources.filter((resource) => resource.favorite !== null);`],
     [`const filteredResources = this.resources.filter((resource) => resource.permission.type < 15);`, `const filteredResources = this.activeResources.filter((resource) => resource.permission.type < 15);`],
-    [`const filteredResources = this.resources.filter(
-      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
-    );`, `const filteredResources = this.activeResources.filter(
-      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
-    );`],
     [
-      `  /** RESOURCE SELECTION */`,
-      `  /**
+      `const filteredResources = this.resources.filter(
+      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
+    );`,
+      `const filteredResources = this.activeResources.filter(
+      (resource) => resource.expired && new Date(resource.expired) <= new Date(),
+    );`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === "expired";
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+    [
+      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
+      const isTrashResourceLocation = this.props.match.params?.filterType === "trash";
+      if (isExpiredResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
+      } else if (isTrashResourceLocation) {
+        return { type: ResourceWorkspaceFilterTypes.TRASH };
+      } else if (this.props.match.params.selectedResourceId) {`,
+      `      const routeFilterType = {
+        expired: ResourceWorkspaceFilterTypes.EXPIRED,
+        trash: ResourceWorkspaceFilterTypes.TRASH,
+      }[this.props.match.params?.filterType];
+      if (routeFilterType) {
+        return { type: routeFilterType };
+      } else if (this.props.match.params.selectedResourceId) {`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.OFFLINE]: this.searchByOffline.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.OFFLINE]: this.searchByOffline.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+    [
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+    [
+      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
+      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+      `      [ResourceWorkspaceFilterTypes.SHARED_WITH_ME]: this.searchBySharedWithMe.bind(this),
+      [ResourceWorkspaceFilterTypes.EXPIRED]: this.searchByExpired.bind(this),
+      [ResourceWorkspaceFilterTypes.TRASH]: this.searchByTrash.bind(this),
+      [ResourceWorkspaceFilterTypes.ALL]: this.searchAll.bind(this),`,
+    ],
+  ]) ? 1 : 0;
+
+  const searchByTrashMethod = `  /**
    * Keep the deleted resources.
    * @param filter A "trash" filter
    */
@@ -1362,10 +1570,35 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
         this.props.loadingContext.remove();
       }
     });
-  }
+  }`;
+
+  changed += replaceIfExists(workspaceContext, [
+    [
+      `${searchByTrashMethod}
+
+${searchByTrashMethod}
+
+${searchByTrashMethod}`,
+      searchByTrashMethod,
+    ],
+    [
+      `${searchByTrashMethod}
+
+${searchByTrashMethod}`,
+      searchByTrashMethod,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, "searchByTrash(filter)", [
+    [
+      `  /** RESOURCE SELECTION */`,
+      `${searchByTrashMethod}
 
   /** RESOURCE SELECTION */`,
     ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, "isTrashFilter", [
     [
       `    // Case of resources
     const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
@@ -1382,29 +1615,13 @@ import DeleteSVG from "../../../../img/svg/delete.svg";`,
     // Case of resources
     const mustRedirect = this.props.location.pathname !== "/app/passwords";`,
     ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(workspaceContext, 'TRASH: "FILTER-BY-TRASH"', [
     [
       `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified`,
       `  EXPIRED: "FILTER-BY-EXPIRED", // Resources recently modified
   TRASH: "FILTER-BY-TRASH", // Deleted resources`,
-    ],
-  ]) ? 1 : 0;
-
-  changed += replaceIfExists(workspaceContext, [
-    [
-      `      const isExpiredResourceLocation = this.props.match.params?.filterType === ResourceWorkspaceFilterTypes.EXPIRED;
-      const isTrashResourceLocation = this.props.match.params?.filterType === "trash";
-      if (isExpiredResourceLocation) {
-        return { type: ResourceWorkspaceFilterTypes.EXPIRED };
-      } else if (isTrashResourceLocation) {
-        return { type: ResourceWorkspaceFilterTypes.TRASH };
-      } else if (this.props.match.params.selectedResourceId) {`,
-      `      const routeFilterType = {
-        expired: ResourceWorkspaceFilterTypes.EXPIRED,
-        trash: ResourceWorkspaceFilterTypes.TRASH,
-      }[this.props.match.params?.filterType];
-      if (routeFilterType) {
-        return { type: routeFilterType };
-      } else if (this.props.match.params.selectedResourceId) {`,
     ],
   ]) ? 1 : 0;
 
@@ -2590,16 +2807,16 @@ function patchQuickAccessPasskeyResourceLists() {
 
 function patchQuickAccessPrepareResourceContext() {
   const prepareResourceContext = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess/contexts/PrepareResourceContext.js");
-  let changed = 0;
+  if (!fs.existsSync(prepareResourceContext)) {
+    return 0;
+  }
 
-  changed += replaceIfMissing(prepareResourceContext, "USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX", [
-    [
-      `import { withAppContext } from "../../shared/context/AppContext/AppContext";
+  let content = fs.readFileSync(prepareResourceContext, "utf8");
+  const original = content;
 
-/**
- * Context related to prepare a resource ( name, url, username, password.)
- */`,
-      `import { withAppContext } from "../../shared/context/AppContext/AppContext";
+  // 1. Ensure constants and helper functions are defined
+  if (!content.includes("USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX")) {
+    const helpersBlock = `import { withAppContext } from "../../shared/context/AppContext/AppContext";
 
 const USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX = "passlyQuickAccessPasswordGeneratorSettings";
 const GENERATOR_TYPES = ["password", "passphrase"];
@@ -2632,7 +2849,7 @@ function clampInteger(value, min, max, fallback) {
 }
 
 function getUserGeneratorSettingsStorageKey(context) {
-  const userId = context.userSettings?.id || context.account?.id || "default";
+  const userId = context?.userSettings?.id || context?.account?.id || "default";
   return \`\${USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX}-\${userId}\`;
 }
 
@@ -2695,46 +2912,48 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
 
 /**
  * Context related to prepare a resource ( name, url, username, password.)
- */`,
-    ],
-  ]) ? 1 : 0;
-  changed += replaceIfMissing(prepareResourceContext, "onGeneratorSettingsChanged: () => {}", [
-    [
-      `  onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator
-  getSettings: () => {}, // Whenever the settings must be get`,
-      `  onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator
-  onGeneratorSettingsChanged: () => {}, // Whenever generator settings have been changed
-  getSettings: () => {}, // Whenever the settings must be get`,
-    ],
-  ]) ? 1 : 0;
-  changed += replaceIfMissing(prepareResourceContext, "onGeneratorSettingsChanged: this.onGeneratorSettingsChanged.bind(this)", [
-    [
-      `      onPasswordGenerated: this.onPasswordGenerated.bind(this), // Whenever the a password has been generated with the generator
-      consumePreparedResource: this.consumePreparedResource.bind(this), // Whenever the prepared resource must be get`,
-      `      onPasswordGenerated: this.onPasswordGenerated.bind(this), // Whenever the a password has been generated with the generator
-      onGeneratorSettingsChanged: this.onGeneratorSettingsChanged.bind(this), // Whenever generator settings have been changed
-      consumePreparedResource: this.consumePreparedResource.bind(this), // Whenever the prepared resource must be get`,
-    ],
-  ]) ? 1 : 0;
-  changed += replaceIfMissing(prepareResourceContext, "getSavedSecretGeneratorSettings", [
-    [
-      `  async resetSecretGeneratorSettings() {
-    const passwordPolicies = await this.props.passwordPoliciesContext.loadPolicies();
-    this.setState({ settings: passwordPolicies });
+ */`;
+
+    content = content.replace(
+      /import \{ withAppContext \} from "\.\.\/\.\.\/shared\/context\/AppContext\/AppContext";\s*\/\*\*[\s\S]*?\* Context related to prepare a resource \( name, url, username, password\.\)[\s\S]*?\*\//,
+      helpersBlock
+    );
   }
 
-  /**
-   * Whenever a password has been generated with the generator
-   * @param password The generated password
-   */
-  onPasswordGenerated(newPassword, newGeneratorSettings) {
-    this.setState({
-      lastGeneratedPassword: newPassword,
-      settings: newGeneratorSettings,
-    });
-  }`,
-      `  async resetSecretGeneratorSettings() {
-    const passwordPolicies = await this.props.passwordPoliciesContext.loadPolicies();
+  // 2. Ensure onGeneratorSettingsChanged in createContext
+  if (!content.includes("onGeneratorSettingsChanged: () => {}")) {
+    content = content.replace(
+      /onPasswordGenerated:\s*\(\)\s*=>\s*\{\},[\s\S]*?getSettings:\s*\(\)\s*=>\s*\{\}/,
+      `onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator\n  onGeneratorSettingsChanged: () => {}, // Whenever generator settings have been changed\n  getSettings: () => {}`
+    );
+  }
+
+  // 3. Ensure onGeneratorSettingsChanged in defaultState with safe bind guard
+  if (!content.includes("onGeneratorSettingsChanged: this.onGeneratorSettingsChanged")) {
+    content = content.replace(
+      /onPasswordGenerated:\s*this\.onPasswordGenerated\.bind\(this\),[\s\S]*?consumePreparedResource:\s*this\.consumePreparedResource\.bind\(this\)/,
+      `onPasswordGenerated: this.onPasswordGenerated ? this.onPasswordGenerated.bind(this) : () => {},\n      onGeneratorSettingsChanged: this.onGeneratorSettingsChanged ? this.onGeneratorSettingsChanged.bind(this) : () => {},\n      consumePreparedResource: this.consumePreparedResource ? this.consumePreparedResource.bind(this) : () => null`
+    );
+  } else {
+    // If it was previously bound unconditionally, make it safe with guard
+    content = content.replace(
+      /onGeneratorSettingsChanged:\s*this\.onGeneratorSettingsChanged\.bind\(this\)/,
+      `onGeneratorSettingsChanged: this.onGeneratorSettingsChanged ? this.onGeneratorSettingsChanged.bind(this) : () => {}`
+    );
+  }
+
+  // 4. Ensure methods on class
+  if (!content.includes("getSavedSecretGeneratorSettings")) {
+    const methodsBlock = `  async resetSecretGeneratorSettings() {
+    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
+    let passwordPolicies = null;
+    try {
+      if (this.props.passwordPoliciesContext?.loadPolicies) {
+        passwordPolicies = await this.props.passwordPoliciesContext.loadPolicies();
+      }
+    } catch (e) {
+      console.warn("Could not load password policies", e);
+    }
     const savedSettings = await this.getSavedSecretGeneratorSettings();
     const settings = applySavedGeneratorSettings(passwordPolicies, savedSettings);
     this.setState({ settings });
@@ -2745,15 +2964,15 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
    * @returns {Promise<object|null>}
    */
   async getSavedSecretGeneratorSettings() {
-    const storage = this.props.context.storage?.local;
+    const storage = this.props.context?.storage?.local || this.props.storage?.local;
     if (!storage) {
       return null;
     }
 
     try {
-      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context);
+      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context || this.props);
       const storageData = await storage.get([storageKey]);
-      return storageData[storageKey] || null;
+      return storageData?.[storageKey] || null;
     } catch (error) {
       console.error(error);
       return null;
@@ -2766,13 +2985,13 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
    * @returns {Promise<void>}
    */
   async saveSecretGeneratorSettings(generatorSettings) {
-    const storage = this.props.context.storage?.local;
+    const storage = this.props.context?.storage?.local || this.props.storage?.local;
     if (!storage || !generatorSettings) {
       return;
     }
 
     try {
-      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context);
+      const storageKey = getUserGeneratorSettingsStorageKey(this.props.context || this.props);
       await storage.set({ [storageKey]: cloneGeneratorSettings(generatorSettings) });
     } catch (error) {
       console.error(error);
@@ -2798,11 +3017,19 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
       settings: newGeneratorSettings,
     });
     this.saveSecretGeneratorSettings(newGeneratorSettings);
-  }`,
-    ],
-  ]) ? 1 : 0;
+  }`;
 
-  return changed;
+    content = content.replace(
+      /async resetSecretGeneratorSettings\(\)\s*\{[\s\S]*?onPasswordGenerated\([^)]*\)\s*\{[\s\S]*?\n  \}/,
+      methodsBlock
+    );
+  }
+
+  if (content !== original) {
+    fs.writeFileSync(prepareResourceContext, content, "utf8");
+    return 1;
+  }
+  return 0;
 }
 
 function patchQuickAccessGeneratePasswordPage() {
@@ -3627,81 +3854,89 @@ function rebrandGeneratedBundles() {
   return changed;
 }
 
-function patchQuickAccessOfflineFallback() {
-  const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
-  const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
-  const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
-  const activeSessionFile = path.join(root, "node_modules/passbolt-styleguide/src/shared/context/ActiveSession/ActiveSessionLocalStorageContext.js");
-  const handleBootstrapRouteFile = path.join(base, "components/HandleBootstrapRoute/HandleBootstrapRoute.js");
-  const privateRouteFile = path.join(base, "components/PrivateRoute/PrivateRoute.js");
-  const prepareResourceContextFile = path.join(base, "contexts/PrepareResourceContext.js");
-  let changed = 0;
-
-  // Clean up any duplicate Trans imports in ExtQuickAccessContext
-  if (fs.existsSync(contextFile)) {
-    const rawContext = fs.readFileSync(contextFile, "utf8");
-    const dedupedContext = rawContext.replace(
-      /import { Trans } from "react-i18next";\s*import { Trans } from "react-i18next";/g,
-      'import { Trans } from "react-i18next";'
-    );
-    if (dedupedContext !== rawContext) {
-      fs.writeFileSync(contextFile, dedupedContext, "utf8");
-      changed++;
-    }
+function patchExtQuickAccessContext(contextFile) {
+  if (!fs.existsSync(contextFile)) {
+    return 0;
   }
 
-  changed += replaceIfMissing(contextFile, "quickaccess-unreachable-fallback", [
-    [
-      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\n`,
-      `import SiteSettingsServiceWorkerService from "../../shared/services/serviceWorker/siteSettings/siteSettingsServiceWorkerService";\nimport { Trans } from "react-i18next";\n`,
-    ],
-    [
-      `  async initialize() {
-    try {
-      await this.props.activeSessionLocalStorageContext.updateLocalStorage();
-      await this.getUserSettings();
-      await this.getLocale();
-      const siteSettings =
-        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable
-          ? await this.findAndUpdateSiteSettings()
-          : await this.getOrFindSiteSettings();
-      if (this.props.activeSession.isSessionOnline) {
-        this.loadOnlineData(siteSettings);
-      } else if (this.props.activeSession.isSessionOffline) {
-        this.loadOfflineData(siteSettings);
-      }
-    } catch (e) {
-      console.error(e);
-      this.setState({`,
-      `  async initialize() {
-    try {
-      const activeSession =
-        (await this.props.activeSessionLocalStorageContext.updateLocalStorage()) ||
-        this.props.activeSessionLocalStorageContext.get() ||
-        this.props.activeSession;
-      await this.getUserSettings();
-      await this.getLocale();
-      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
-      const isServerReachable = Boolean(activeSession?.isServerReachable);
-      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+  let content = fs.readFileSync(contextFile, "utf8");
+  const previous = content;
 
-      const siteSettings =
-        isSessionOnline && isServerReachable
-          ? await this.findAndUpdateSiteSettings()
-          : await this.getOrFindSiteSettings();
-      if (isSessionOnline) {
-        await this.loadOnlineData(siteSettings, activeSession);
-      } else if (isSessionOffline) {
-        await this.loadOfflineData(siteSettings);
+  if (!content.includes('import { Trans } from "react-i18next";')) {
+    content = content.replace(
+      'import React from "react";',
+      'import React from "react";\nimport { Trans } from "react-i18next";'
+    );
+  }
+  content = content.replace(
+    /(import { Trans } from "react-i18next";\s*)+/g,
+    'import { Trans } from "react-i18next";\n'
+  );
+
+  content = content.replace(
+    /await this\.checkPluginIsConfigured\(\);\s*/g,
+    "// quickaccess-addon-check-handled-in-root\n      "
+  );
+
+  const methodBlockPattern = /async initialize\(\)\s*\{[\s\S]*?(?=\s+bindCallbacks\(\)\s*\{)/;
+  const newMethodBlock = `async initialize() {
+    try {
+      const userSettingsPromise = this.getUserSettings();
+      const localePromise = this.getLocale();
+
+      let activeSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
+
+      if (!activeSession && this.props.storage && this.props.account) {
+        try {
+          const storageKey = \`active_session-\${this.props.account.id}\`;
+          const storageData = await this.props.storage.local.get([storageKey]);
+          if (storageData && storageData[storageKey]) {
+            activeSession = new UserActiveSessionEntity(storageData[storageKey]);
+          }
+        } catch {
+          // ignore storage read error
+        }
       }
-      // quickaccess-unreachable-fallback: resolve the offline capability from the local caches.
-      if (!isServerReachable) {
-        if (!this.state.loggedInUser) {
-          await this.getLoggedInUser();
+
+      const siteSettingsPromise = this.getOrFindSiteSettings();
+      const [siteSettings] = await Promise.all([siteSettingsPromise, userSettingsPromise, localePromise]);
+
+      if (activeSession) {
+        const isSessionOnline = Boolean(activeSession.isSessionOnline);
+        const isSessionOffline = Boolean(activeSession.isSessionOffline);
+        if (isSessionOnline) {
+          await this.loadOnlineData(siteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(siteSettings);
         }
-        if (!this.state.rbacs) {
-          await this.getOrFindRbacs(siteSettings);
+      }
+
+      const updatePromise = this.props.activeSessionLocalStorageContext?.updateLocalStorage?.();
+
+      if (!activeSession) {
+        activeSession = await updatePromise;
+        const isSessionOnline = Boolean(activeSession?.isSessionOnline);
+        const isServerReachable = Boolean(activeSession?.isServerReachable);
+        const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+
+        const freshSiteSettings =
+          isSessionOnline && isServerReachable ? await this.findAndUpdateSiteSettings() : siteSettings;
+
+        if (isSessionOnline) {
+          await this.loadOnlineData(freshSiteSettings, activeSession);
+        } else if (isSessionOffline) {
+          await this.loadOfflineData(freshSiteSettings);
         }
+        if (!isServerReachable) {
+          if (!this.state.loggedInUser) {
+            await this.getLoggedInUser();
+          }
+          if (!this.state.rbacs) {
+            await this.getOrFindRbacs(freshSiteSettings);
+          }
+        }
+      } else if (updatePromise) {
+        this.syncSessionInBackground(updatePromise);
       }
     } catch (e) {
       console.error(e);
@@ -3712,20 +3947,28 @@ function patchQuickAccessOfflineFallback() {
         }
         return;
       }
-      this.setState({`,
-    ],
-    [
-      `  async loadOnlineData(siteSettings) {
-    if (this.props.activeSession.isAuthenticated) {
-      if (this.props.activeSession.isMfaRequired) {
-        await this.redirectToMfaAuthentication();
-        return;
-      }
-      this.getLoggedInUser();
-      this.getOrFindRbacs(siteSettings);
+      this.setState({
+        hasError: true,
+        errorMessage: "Не вдалося завантажити сесію Passly",
+      });
     }
-  }`,
-      `  async loadOnlineData(siteSettings, activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get()) {
+  }
+
+  /**
+   * Load online data
+   * - Find and update site settings
+   * - If authenticated
+   *  - If Mfa is required redirect to the MFA screen and close the quick-access
+   *  - Get or find rbacs
+   *  - Get logged-in user
+   * @param {SiteSettingsEntity} siteSettings
+   * @param {UserActiveSessionEntity} [activeSession]
+   * @return {Promise<void>}
+   */
+  async loadOnlineData(
+    siteSettings,
+    activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get(),
+  ) {
     if (activeSession?.isAuthenticated) {
       if (activeSession?.isMfaRequired) {
         await this.redirectToMfaAuthentication();
@@ -3737,29 +3980,44 @@ function patchQuickAccessOfflineFallback() {
       await this.getLoggedInUser();
       await this.getOrFindRbacs(siteSettings);
     }
-  }`,
-    ],
-    [
-      `  async loadOfflineData(siteSettings) {
-    this.getLoggedInUser();
-    this.getOrFindRbacs(siteSettings);
-  }`,
-      `  async loadOfflineData(siteSettings) {
+  }
+
+  /**
+   * Load offline data
+   * - Get or find site settings
+   * - Get or find rbacs
+   * - Get logged-in user
+   * @param {SiteSettingsEntity} siteSettings
+   * @return {Promise<void>}
+   */
+  async loadOfflineData(siteSettings) {
     await this.getLoggedInUser();
     await this.getOrFindRbacs(siteSettings);
-  }`,
-    ],
-    [
-      `  isReady() {
-    return (
-      this.props.activeSession?.isAuthenticated !== null &&
-      this.state.userSettings !== null &&
-      this.state.siteSettings !== undefined &&
-      this.state.locale !== null &&
-      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
-    );
-  }`,
-      `  isReady() {
+  }
+
+  /**
+   * Sync the session in background without blocking the UI
+   * @param {Promise<UserActiveSessionEntity>} updatePromise
+   * @return {Promise<void>}
+   */
+  async syncSessionInBackground(updatePromise) {
+    try {
+      const updatedSession = await updatePromise;
+      if (updatedSession?.isSessionOnline && updatedSession?.isServerReachable) {
+        const freshSiteSettings = await this.findAndUpdateSiteSettings();
+        await this.loadOnlineData(freshSiteSettings, updatedSession);
+      }
+    } catch {
+      // ignore background sync errors
+    }
+  }
+`;
+
+  content = content.replace(methodBlockPattern, newMethodBlock);
+
+  content = content.replace(
+    /isReady\(\)\s*\{[\s\S]*?return \([\s\S]*?\);\s*\}/,
+    `isReady() {
     const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
     if (!activeSession) {
       return false;
@@ -3769,104 +4027,57 @@ function patchQuickAccessOfflineFallback() {
       this.state.userSettings !== null &&
       this.state.siteSettings !== undefined &&
       this.state.locale !== null &&
-      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
+      (!activeSession.isAuthenticated || Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
     );
-  }`,
-    ],
-    [
-      `await this.checkPluginIsConfigured();\n`,
-      `// quickaccess-addon-check-handled-in-root\n`,
-    ],
-    [
-      `await this.props.state.request("passbolt.tabs.open-website-getting-started-page");`,
-      `await this.state.port.request("passbolt.tabs.open-website-getting-started-page");`,
-    ],
-    [
-      `<p className="processing-text">Connecting your account</p>`,
-      `<p className="processing-text">
-                    <Trans>Connecting your account</Trans>
-                  </p>`,
-    ],
-    [
-      `<p className="processing-text">{this.state.errorMessage}</p>`,
-      `<p className="processing-text">
-                    <Trans>{this.state.errorMessage}</Trans>
-                  </p>`,
-    ],
-  ]) ? 1 : 0;
+  }`
+  );
 
-  // Extra safety guards for ExtQuickAccessContext
-  changed += replaceIfExists(contextFile, [
-    [
-      `import { Trans } from "react-i18next";\nimport { Trans } from "react-i18next";\n`,
-      `import { Trans } from "react-i18next";\n`,
-    ],
-    [
-      `      const siteSettings =
-        this.props.activeSession.isSessionOnline && this.props.activeSession.isServerReachable`,
-      `      const isSessionOnline = Boolean(activeSession?.isSessionOnline);
-      const isServerReachable = Boolean(activeSession?.isServerReachable);
-      const isSessionOffline = Boolean(activeSession?.isSessionOffline);
+  content = content.replace(
+    'await this.props.state.request("passbolt.tabs.open-website-getting-started-page");',
+    'await this.state.port.request("passbolt.tabs.open-website-getting-started-page");'
+  );
 
-      const siteSettings =
-        isSessionOnline && isServerReachable`,
-    ],
-    [
-      `      if (this.props.activeSession.isSessionOnline) {
-        await this.loadOnlineData(siteSettings);
-      } else if (this.props.activeSession.isSessionOffline) {
-        await this.loadOfflineData(siteSettings);
-      }`,
-      `      if (isSessionOnline) {
-        await this.loadOnlineData(siteSettings, activeSession);
-      } else if (isSessionOffline) {
-        await this.loadOfflineData(siteSettings);
-      }`,
-    ],
-    [
-      `      if (!this.props.activeSession.isServerReachable) {`,
-      `      if (!isServerReachable) {`,
-    ],
-    [
-      `      if (!this.props.activeSession.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }`,
-      `      const currentSession = this.props.activeSessionLocalStorageContext?.get() || this.props.activeSession;
-      if (!currentSession?.isServerReachable) {
-        if (typeof this.state.siteSettings === "undefined") {
-          this.setState({ siteSettings: null });
-        }
-        return;
-      }`,
-    ],
-    [
-      `  isReady() {
-    return (
-      this.props.activeSession?.isAuthenticated !== null &&
-      this.state.userSettings !== null &&
-      this.state.siteSettings !== undefined &&
-      this.state.locale !== null &&
-      (this.props.activeSession.isSessionOnline || this.isOfflineDataLoaded)
-    );
-  }`,
-      `  isReady() {
-    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
-    if (!activeSession) {
-      return false;
-    }
-    return (
-      activeSession.isAuthenticated !== null &&
-      this.state.userSettings !== null &&
-      this.state.siteSettings !== undefined &&
-      this.state.locale !== null &&
-      (Boolean(activeSession.isSessionOnline) || this.isOfflineDataLoaded)
-    );
-  }`,
-    ],
-  ]) ? 1 : 0;
+  content = content.replace(
+    /<p className="processing-text">Connecting your account<\/p>/g,
+    '<p className="processing-text"><Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans></p>'
+  );
+  content = content.replace(
+    /<Trans>Connecting your account<\/Trans>/g,
+    '<Trans i18nKey="Connecting your account">Підключення вашого облікового запису</Trans>'
+  );
+
+  content = content.replace(
+    'locale: "en-UK", // To avoid any weird blink, launch the quickaccess with a default english locale',
+    'locale: "uk-UA",'
+  );
+
+  content = content.replace(
+    /<p className="processing-text">\{this\.state\.errorMessage\}<\/p>/g,
+    '<p className="processing-text"><Trans i18nKey="Session load error">{this.state.errorMessage || "Не вдалося завантажити сесію Passly"}</Trans></p>'
+  );
+  content = content.replace(
+    /<p className="processing-text">\s*<Trans>\{this\.state\.errorMessage\}<\/Trans>\s*<\/p>/g,
+    '<p className="processing-text"><Trans i18nKey="Session load error">{this.state.errorMessage || "Не вдалося завантажити сесію Passly"}</Trans></p>'
+  );
+
+  if (content !== previous) {
+    fs.writeFileSync(contextFile, content, "utf8");
+    return 1;
+  }
+  return 0;
+}
+
+function patchQuickAccessOfflineFallback() {
+  const base = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess");
+  const contextFile = path.join(base, "contexts/ExtQuickAccessContext.js");
+  const serverUnavailableFile = path.join(base, "components/QuickAccessServerUnavailable/QuickAccessServerUnavailable.js");
+  const activeSessionFile = path.join(root, "node_modules/passbolt-styleguide/src/shared/context/ActiveSession/ActiveSessionLocalStorageContext.js");
+  const handleBootstrapRouteFile = path.join(base, "components/HandleBootstrapRoute/HandleBootstrapRoute.js");
+  const privateRouteFile = path.join(base, "components/PrivateRoute/PrivateRoute.js");
+  const prepareResourceContextFile = path.join(base, "contexts/PrepareResourceContext.js");
+  let changed = 0;
+
+  changed += patchExtQuickAccessContext(contextFile);
 
   // Guard ActiveSessionLocalStorageContext
   changed += replaceIfExists(activeSessionFile, [
@@ -3964,6 +4175,42 @@ function patchQuickAccessOfflineFallback() {
     if (!activeSession) {
       return "/webAccessibleResources/quickaccess/login";
     }`,
+    ],
+    [
+      `    /*
+     * An authenticated offline session should persist: the user stays in the app whether or not the server
+     * is reachable.
+     */
+    if (activeSession.isAuthenticated && activeSession.isSessionOffline) {
+      return "/webAccessibleResources/quickaccess/home";
+    }
+    /*
+     * Server not reachable. This covers an authenticated online session that lost the network as well
+     * as an unauthenticated user with no reachable server: both land on the server unavailable screen,
+     * which decides what actions to offer (sign out locally, offline sign-in)
+     */
+    if (!activeSession.isServerReachable) {
+      return "/webAccessibleResources/quickaccess/server-not-reachable";
+    }
+
+    // Server reachable but user not authenticated: online login page.
+    if (!activeSession.isAuthenticated) {
+      return "/webAccessibleResources/quickaccess/login";
+    }
+
+    return this.getOnlineAuthenticatedRoute();`,
+      `    if (activeSession.isAuthenticated) {
+      return this.getOnlineAuthenticatedRoute();
+    }
+    if (!activeSession.isServerReachable) {
+      const account = this.props.account || this.props.context?.account;
+      const canUseOfflineMode = this.props.context?.canUseOfflineMode;
+      if (account || canUseOfflineMode) {
+        return "/webAccessibleResources/quickaccess/login-offline";
+      }
+      return "/webAccessibleResources/quickaccess/server-not-reachable";
+    }
+    return "/webAccessibleResources/quickaccess/login";`,
     ],
     [
       `  render() {
@@ -4229,6 +4476,570 @@ function patchOfflineSettingsEntity() {
   return changed;
 }
 
+function patchInputPassphraseStandardBiometric() {
+  const targetDirs = [
+    path.join(root, "node_modules/passbolt-styleguide"),
+    path.join(root, "node_modules/.passbolt-styleguide-npm-5.12.1"),
+  ];
+
+  const sourceStyleguideFile = path.resolve(
+    root,
+    "../passly_styleguide/src/react-extension/components/AuthenticationPassphrase/InputPassphrase/InputPassphrase.js"
+  );
+  let componentSource = "";
+  if (fs.existsSync(sourceStyleguideFile)) {
+    componentSource = fs.readFileSync(sourceStyleguideFile, "utf8");
+  } else {
+    componentSource = `import React, { Component } from "react";
+import PropTypes from "prop-types";
+import { withAppContext } from "../../../../shared/context/AppContext/AppContext";
+import UserAbortsOperationError from "../../../lib/Error/UserAbortsOperationError";
+import { Trans, withTranslation } from "react-i18next";
+import Password from "../../../../shared/components/Password/Password";
+import DialogWrapper from "../../Common/Dialog/DialogWrapper/DialogWrapper";
+import Select from "../../Common/Select/Select";
+import UserAvatar from "../../Common/Avatar/UserAvatar";
+import FingerprintSVG from "../../../../img/svg/fingerprint.svg";
+
+class InputPassphrase extends Component {
+  constructor(props) {
+    super(props);
+    this.state = this.getDefaultState();
+    this.initEventHandlers();
+    this.createInputRef();
+  }
+
+  componentDidMount() {
+    this.focusOnPassphrase();
+    this.initDefaultRememberMeChoice();
+    this.initBiometricAuth();
+  }
+
+  getDefaultState() {
+    return {
+      attempt: 0,
+      processing: false,
+      passphrase: "",
+      rememberMe: false,
+      passphraseError: "",
+      rememberMeDuration: 300,
+      biometricConfiguration: null,
+      isBiometricAvailable: false,
+      isUnlockingBiometric: false,
+      enableBiometric: false,
+      biometricError: "",
+      biometricRpId: null,
+    };
+  }
+
+  initEventHandlers() {
+    this.handleFormSubmit = this.handleFormSubmit.bind(this);
+    this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleRememberMeDurationSelectChange = this.handleRememberMeDurationSelectChange.bind(this);
+    this.handleCloseClick = this.handleCloseClick.bind(this);
+    this.handleBiometricUnlock = this.handleBiometricUnlock.bind(this);
+  }
+
+  async initDefaultRememberMeChoice() {
+    const defaultRememberMeChoice = await this.props.context.port.request(
+      "passbolt.remember-me.get-user-latest-choice",
+    );
+    this.setState({
+      rememberMe: defaultRememberMeChoice,
+      rememberMeDuration: this.getUntilILogOutDurationOrDefault(defaultRememberMeChoice),
+    });
+  }
+
+  async withPasskeySuspended(callback) {
+    const runtime = (typeof browser !== "undefined" && browser?.runtime) || globalThis.chrome?.runtime;
+    let suspended = false;
+    if (runtime?.sendMessage) {
+      try {
+        const response = await runtime.sendMessage({ name: "passkey-provider.suspend" });
+        suspended = response?.ok === true;
+      } catch {
+        // Ignored
+      }
+    }
+
+    try {
+      return await callback();
+    } finally {
+      if (suspended && runtime?.sendMessage) {
+        try {
+          await runtime.sendMessage({ name: "passkey-provider.resume" });
+        } catch {
+          // Ignored
+        }
+      }
+    }
+  }
+
+  async initBiometricAuth() {
+    const port = this.props.context?.port;
+    if (!port) {
+      return;
+    }
+
+    try {
+      const storedConfig = await port.request("passbolt.biometric-auth.get-configuration").catch(() => null);
+      let domain = null;
+      try {
+        domain = await port.request("passbolt.addon.get-domain");
+      } catch {
+        // Ignored
+      }
+
+      let rpId = null;
+      if (domain) {
+        try {
+          rpId = new URL(domain.startsWith("http") ? domain : \`https://\${domain}\`).hostname;
+        } catch {
+          rpId = domain;
+        }
+      }
+      if (!rpId && storedConfig?.rp_id) {
+        rpId = storedConfig.rp_id;
+      }
+
+      let compatibleConfig = null;
+      if (storedConfig) {
+        if (!rpId || !storedConfig.rp_id || storedConfig.rp_id === rpId) {
+          compatibleConfig = storedConfig;
+        }
+      }
+
+      let isAvailable = false;
+      try {
+        isAvailable = await port.request("passbolt.biometric-auth.is-available-in-page", rpId);
+      } catch {
+        isAvailable = false;
+      }
+
+      this.setState({
+        biometricConfiguration: compatibleConfig,
+        isBiometricAvailable: Boolean(isAvailable || compatibleConfig),
+        biometricRpId: rpId,
+      });
+    } catch (error) {
+      console.error("Biometric init error:", error);
+    }
+  }
+
+  async handleBiometricUnlock() {
+    const port = this.props.context?.port;
+    if (!port || !this.state.biometricConfiguration) {
+      return;
+    }
+
+    this.setState({ isUnlockingBiometric: true, biometricError: "" });
+    try {
+      const passphrase = await this.withPasskeySuspended(async () => {
+        return await port.request(
+          "passbolt.biometric-auth.unlock-in-page",
+          this.state.biometricConfiguration,
+          this.state.biometricRpId,
+        );
+      });
+
+      if (passphrase) {
+        await this.handleValidPassphrase(passphrase);
+      } else {
+        throw new Error("No passphrase returned from biometric unlock.");
+      }
+    } catch (error) {
+      console.error("Biometric unlock failed:", error);
+      const isUk = (this.props.context?.locale || document.documentElement.lang || "uk").toLowerCase().startsWith("uk");
+      this.setState({
+        isUnlockingBiometric: false,
+        biometricError: isUk
+          ? "Не вдалося виконати вхід по відбитку пальця."
+          : this.translate("Could not sign in with fingerprint."),
+      });
+    }
+  }
+
+  createInputRef() {
+    this.passphraseInputRef = React.createRef();
+  }
+
+  focusOnPassphrase() {
+    if (this.passphraseInputRef.current) {
+      this.passphraseInputRef.current.focus();
+    }
+  }
+
+  close() {
+    const error = new UserAbortsOperationError("The dialog has been closed.");
+    this.props.context.port.emit(this.props.context.passphraseRequestId, "ERROR", error);
+    this.props.context.setContext({ passphraseRequestId: null });
+    this.props.onClose();
+  }
+
+  handleCloseClick() {
+    this.close();
+  }
+
+  async handleFormSubmit(event) {
+    event.preventDefault();
+
+    this.setState({ processing: true, biometricError: "" });
+    if (await this.isValidPassphrase()) {
+      await this.handleValidPassphrase();
+    } else {
+      this.handleInvalidPassphrase();
+    }
+  }
+
+  async isValidPassphrase() {
+    try {
+      await this.props.context.port.request("passbolt.keyring.private.checkpassphrase", this.state.passphrase);
+    } catch (error) {
+      console.error(\`Invalid passphrase:\`, error);
+      return false;
+    }
+    return true;
+  }
+
+  hasRememberMeOptions() {
+    const options = this.props.context.siteSettings.getRememberMeOptions();
+
+    return options !== null && Object.keys(options).length > 0;
+  }
+
+  async handleValidPassphrase(validPassphrase = this.state.passphrase) {
+    let rememberMe = false;
+    if (this.state.rememberMe && this.hasRememberMeOptions()) {
+      rememberMe = this.state.rememberMeDuration;
+    }
+
+    if (this.state.enableBiometric && !this.state.biometricConfiguration) {
+      try {
+        const port = this.props.context?.port;
+        if (port) {
+          const newConfig = await this.withPasskeySuspended(async () => {
+            return await port.request(
+              "passbolt.biometric-auth.create-configuration-in-page",
+              validPassphrase,
+              this.state.biometricRpId,
+            );
+          });
+          if (newConfig) {
+            await port.request("passbolt.biometric-auth.save-configuration", newConfig);
+          }
+        }
+      } catch (err) {
+        console.error("Could not enroll biometric on passphrase submit:", err);
+      }
+    }
+
+    this.props.context.port.emit(this.props.context.passphraseRequestId, "SUCCESS", {
+      passphrase: validPassphrase,
+      rememberMe: rememberMe,
+    });
+    this.props.context.setContext({ passphraseRequestId: null });
+    this.props.onClose();
+  }
+
+  handleInvalidPassphrase() {
+    const isPassphraseEmpty = this.state.passphrase === "";
+    const passphraseError = isPassphraseEmpty
+      ? this.translate("The passphrase should not be empty.")
+      : this.translate("This is not a valid passphrase.");
+
+    let attempt = this.state.attempt;
+    if (!isPassphraseEmpty) {
+      attempt++;
+    }
+
+    this.setState({
+      processing: false,
+      attempt: attempt,
+      passphraseError: passphraseError,
+    });
+    if (attempt < 3) {
+      this.focusOnPassphrase();
+    }
+  }
+
+  handleInputChange(event) {
+    const target = event.target;
+    const value = target.type === "checkbox" ? target.checked : target.value;
+    const name = target.name;
+    this.setState({
+      [name]: value,
+    });
+  }
+
+  handleRememberMeDurationSelectChange(event) {
+    this.setState({
+      rememberMe: true,
+      rememberMeDuration: event.target.value,
+    });
+  }
+
+  renderRememberMeOptions() {
+    const selectOptions = [];
+    const rememberMeOptions = this.props.context.siteSettings.getRememberMeOptions();
+
+    for (const time in rememberMeOptions) {
+      selectOptions.push({ value: parseInt(time), label: rememberMeOptions[time] });
+    }
+
+    return selectOptions;
+  }
+
+  getUntilILogOutDurationOrDefault(rememberMe) {
+    const allOptions = this.props.context.siteSettings.getRememberMeOptions();
+    const limitedTimeOptions = Object.keys(allOptions).filter((option) => parseInt(option, 10) !== -1);
+    const firstOption = parseInt(limitedTimeOptions.at(0), 10);
+
+    if (!rememberMe) {
+      return firstOption;
+    }
+    const untilILogoutOrFirstOption = (-1) in allOptions ? -1 : firstOption;
+    return untilILogoutOrFirstOption;
+  }
+
+  get translate() {
+    return this.props.t;
+  }
+
+  get user() {
+    return this.props.context?.account?.user || this.props.context?.loggedInUser || null;
+  }
+
+  get fullname() {
+    const account = this.props.context?.account;
+    const userSettings = this.props.context?.userSettings;
+    const loggedInUser = this.props.context?.loggedInUser;
+    return (
+      userSettings?.fullName ||
+      (account?.first_name ? \`\${account.first_name} \${account.last_name}\` : "") ||
+      (loggedInUser?.profile?.first_name ? \`\${loggedInUser.profile.first_name} \${loggedInUser.profile.last_name}\` : "") ||
+      ""
+    );
+  }
+
+  get username() {
+    const account = this.props.context?.account;
+    const userSettings = this.props.context?.userSettings;
+    const loggedInUser = this.props.context?.loggedInUser;
+    return userSettings?.username || account?.username || loggedInUser?.username || "";
+  }
+
+  get trustedDomain() {
+    const account = this.props.context?.account;
+    const userSettings = this.props.context?.userSettings;
+    return userSettings?.getTrustedDomain ? userSettings.getTrustedDomain() : (account?.domain || "");
+  }
+
+  render() {
+    const user = this.user;
+    const fullname = this.fullname;
+    const username = this.username;
+    const trustedDomain = this.trustedDomain;
+    const hasRememberMeOptions = this.hasRememberMeOptions();
+    const isUk = (this.props.context?.locale || document.documentElement.lang || "uk").toLowerCase().startsWith("uk");
+
+    let passphraseInputLabel = this.translate("Passphrase");
+    if (this.state.passphraseError) {
+      passphraseInputLabel = this.translate("Please enter a valid passphrase.");
+    }
+
+    return (
+      <DialogWrapper
+        className="passphrase-entry"
+        title={this.translate("Please enter your passphrase.")}
+        onClose={this.handleCloseClick}
+      >
+        {this.state.attempt < 3 && (
+          <>
+            {(user || fullname || username) && (
+              <div className="login-user">
+                <UserAvatar user={user} baseUrl={trustedDomain} className="big avatar user-avatar" />
+                {fullname && <p className="login-user-name">{fullname}</p>}
+                {username && <p className="login-user-email">{username}</p>}
+              </div>
+            )}
+            {this.state.biometricConfiguration && (
+              <div className="biometric-actions">
+                <button
+                  type="button"
+                  className="button primary big full-width biometric-button"
+                  disabled={this.state.processing || this.state.isUnlockingBiometric}
+                  onClick={this.handleBiometricUnlock}
+                >
+                  <FingerprintSVG className="icon" />
+                  <span>
+                    {this.state.isUnlockingBiometric
+                      ? (isUk ? "Розблокування..." : this.translate("Unlocking..."))
+                      : (isUk ? "Вхід по відбитку пальця" : this.translate("Sign in with fingerprint"))}
+                  </span>
+                </button>
+                {this.state.biometricError && <div className="error-message">{this.state.biometricError}</div>}
+                <div className="biometric-divider">
+                  <span>{isUk ? "або введіть парольну фразу" : this.translate("or enter passphrase")}</span>
+                </div>
+              </div>
+            )}
+            <form onSubmit={this.handleFormSubmit}>
+              <div className="form-content">
+                <div className={\`input-password-wrapper input required \${this.state.passphraseError ? "error" : ""}\`}>
+                  <label htmlFor="passphrase-entry-form-passphrase">{passphraseInputLabel}</label>
+                  <Password
+                    id="passphrase-entry-form-passphrase"
+                    name="passphrase"
+                    autoComplete="off"
+                    placeholder={this.translate("Passphrase")}
+                    inputRef={this.passphraseInputRef}
+                    value={this.state.passphrase}
+                    onChange={this.handleInputChange}
+                    disabled={this.state.processing || this.state.isUnlockingBiometric}
+                    preview={true}
+                    securityToken={this.props.context?.userSettings?.getSecurityToken ? this.props.context.userSettings.getSecurityToken() : null}
+                  />
+                  {this.state.passphraseError && <div className="error-message">{this.state.passphraseError}</div>}
+                </div>
+                {this.state.isBiometricAvailable && !this.state.biometricConfiguration && (
+                  <div className="input checkbox biometric-enable">
+                    <input
+                      id="passphrase-entry-form-enable-biometric"
+                      type="checkbox"
+                      name="enableBiometric"
+                      checked={this.state.enableBiometric}
+                      onChange={this.handleInputChange}
+                    />
+                    <label htmlFor="passphrase-entry-form-enable-biometric">
+                      {isUk
+                        ? "Увімкнути вхід по відбитку пальця на цьому пристрої"
+                        : this.translate("Enable sign in with fingerprint on this device")}
+                    </label>
+                  </div>
+                )}
+                {hasRememberMeOptions && (
+                  <div className="remember-me">
+                    <div className="input checkbox">
+                      <input
+                        id="passphrase-entry-form-remember-me"
+                        type="checkbox"
+                        name="rememberMe"
+                        checked={this.state.rememberMe}
+                        onChange={this.handleInputChange}
+                      />
+                      <label htmlFor="passphrase-entry-form-remember-me">
+                        <Trans>Remember it for</Trans>{" "}
+                      </label>
+                    </div>
+                    <Select
+                      className="inline"
+                      name="rememberMeDuration"
+                      items={this.renderRememberMeOptions()}
+                      value={this.state.rememberMeDuration}
+                      onChange={this.handleRememberMeDurationSelectChange}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="submit-wrapper clearfix">
+                <button type="button" className="cancel link" onClick={this.handleCloseClick}>
+                  <Trans>Cancel</Trans>
+                </button>
+                <button
+                  type="submit"
+                  className="button primary form"
+                  role="button"
+                  disabled={this.state.processing || this.state.isUnlockingBiometric}
+                >
+                  <Trans>Ok</Trans>
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+        {this.state.attempt === 3 && (
+          <>
+            <div className="form-content">
+              <p>
+                <Trans>Your passphrase is wrong! The operation has been aborted.</Trans>
+              </p>
+            </div>
+            <div className="submit-wrapper clearfix">
+              <button type="button" className="primary" onClick={this.handleCloseClick}>
+                <Trans>Close</Trans>
+              </button>
+            </div>
+          </>
+        )}
+      </DialogWrapper>
+    );
+  }
+}
+
+InputPassphrase.propTypes = {
+  context: PropTypes.object,
+  onClose: PropTypes.func,
+  t: PropTypes.func,
+};
+
+export default withAppContext(withTranslation("common")(InputPassphrase));
+`;
+  }
+
+  const sourceLessFile = path.resolve(
+    root,
+    "../passly_styleguide/src/less/dialogs/passphrase/passphrase.less"
+  );
+  let lessSource = "";
+  if (fs.existsSync(sourceLessFile)) {
+    lessSource = fs.readFileSync(sourceLessFile, "utf8");
+  }
+
+  const cssRule = `\n.passphrase-entry.dialog-wrapper .login-user{width:100%;margin:0 auto 1.6rem auto;text-align:center;overflow-wrap:break-word}.passphrase-entry.dialog-wrapper .login-user>*{text-align:center;justify-content:center;margin-bottom:.8rem}.passphrase-entry.dialog-wrapper .login-user .user-avatar{margin:0 auto 1.2rem auto}.passphrase-entry.dialog-wrapper .login-user .login-user-name{font-weight:bold;font-size:1.6rem;line-height:2rem;margin:.8rem 0 .4rem 0}.passphrase-entry.dialog-wrapper .login-user .login-user-email{font-size:1.4rem;line-height:1.8rem;opacity:.75;margin:0 0 1.2rem 0}.passphrase-entry.dialog-wrapper .biometric-actions{margin-bottom:1.6rem}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-button{display:inline-flex;align-items:center;justify-content:center;gap:.8rem;width:100%;box-sizing:border-box}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-button .icon,.passphrase-entry.dialog-wrapper .biometric-actions .biometric-button svg{width:2rem;height:2rem;fill:currentColor}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider{display:flex;align-items:center;text-align:center;margin:1.2rem 0 .8rem 0;opacity:.6;font-size:1.3rem}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider::before,.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider::after{content:"";flex:1;border-bottom:1px solid currentColor;opacity:.25}.passphrase-entry.dialog-wrapper .biometric-actions .biometric-divider span{padding:0 1rem}.passphrase-entry.dialog-wrapper .biometric-actions .error-message{margin-top:.8rem;text-align:center;color:#d32f2f;font-size:1.3rem}.passphrase-entry.dialog-wrapper .biometric-enable{margin:1rem 0}\n`;
+
+  const themes = ["default", "midgar", "solarized_light", "solarized_dark"];
+
+  for (const dir of targetDirs) {
+    if (!fs.existsSync(dir)) continue;
+
+    const componentPath = path.join(
+      dir,
+      "src/react-extension/components/AuthenticationPassphrase/InputPassphrase/InputPassphrase.js"
+    );
+    if (fs.existsSync(path.dirname(componentPath))) {
+      writeIfChanged(componentPath, componentSource);
+    }
+
+    if (lessSource) {
+      const lessPath = path.join(dir, "src/less/dialogs/passphrase/passphrase.less");
+      if (fs.existsSync(path.dirname(lessPath))) {
+        writeIfChanged(lessPath, lessSource);
+      }
+    }
+
+    for (const theme of themes) {
+      const extAppCssPath = path.join(dir, `build/css/themes/${theme}/ext_app.min.css`);
+      if (fs.existsSync(extAppCssPath)) {
+        const content = fs.readFileSync(extAppCssPath, "utf8");
+        if (!content.includes(".passphrase-entry.dialog-wrapper .biometric-actions")) {
+          writeIfChanged(extAppCssPath, content + cssRule);
+        }
+      }
+    }
+  }
+
+  // Also patch the built theme stylesheets in build/all if present
+  for (const theme of themes) {
+    const warExtAppCss = path.join(root, `build/all/webAccessibleResources/css/themes/${theme}/ext_app.min.css`);
+    if (fs.existsSync(warExtAppCss)) {
+      const content = fs.readFileSync(warExtAppCss, "utf8");
+      if (!content.includes(".passphrase-entry.dialog-wrapper .biometric-actions")) {
+        writeIfChanged(warExtAppCss, content + cssRule);
+      }
+    }
+  }
+}
+
 rebrandStyleguideSource();
 patchQuickAccessPasswordGeneratorSource();
 patchPasskeyResourceTypeSupport();
@@ -4236,4 +5047,6 @@ patchStyleguideRuntimeLogs();
 patchQuickAccessOfflineFallback();
 patchQuickAccessVaultLocales();
 patchOfflineSettingsEntity();
+patchInputPassphraseStandardBiometric();
 rebrandGeneratedBundles();
+

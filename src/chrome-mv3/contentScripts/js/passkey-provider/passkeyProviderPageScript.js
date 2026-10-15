@@ -70,6 +70,10 @@
         return originalCredentialsCreate(options);
       }
 
+      if (options.publicKey?.authenticatorSelection?.authenticatorAttachment === "platform") {
+        return runNativeCredentialsCreate(options);
+      }
+
       try {
         const requestDetails = serializeCreateOptions(options.publicKey);
         if (!(await confirmPasslyRequest("create", requestDetails))) {
@@ -82,6 +86,9 @@
         }
         return buildCredential(result);
       } catch (error) {
+        if (error?.name === "NotSupportedError") {
+          return runNativeCredentialsCreate(options);
+        }
         throw toDomException(error);
       }
     };
@@ -108,6 +115,14 @@
         }
         return buildCredential(result);
       } catch (error) {
+        if (
+          error?.name === "NotAllowedError" &&
+          (error?.message?.includes("No Passly passkey matches") ||
+            error?.message?.includes("did not allow this passkey") ||
+            error?.message?.includes("does not belong to this relying party"))
+        ) {
+          return runNativeCredentialsGet(options);
+        }
         throw toDomException(error);
       }
     };
@@ -287,11 +302,45 @@
   }
 
   function serializeCredentialDescriptors(descriptors = []) {
-    return Array.from(descriptors || []).map((descriptor) => ({
-      ...clonePlain(descriptor),
-      id: toBase64Url(descriptor.id),
-      transports: descriptor.transports ? Array.from(descriptor.transports) : undefined,
-    }));
+    return Array.from(descriptors || []).map((descriptor) => {
+      if (!descriptor) {
+        return descriptor;
+      }
+      if (typeof descriptor === "string" || descriptor instanceof ArrayBuffer || ArrayBuffer.isView(descriptor)) {
+        return {
+          type: "public-key",
+          id: toSafeBase64Url(descriptor),
+        };
+      }
+      const rawId = descriptor.id ?? descriptor.rawId ?? descriptor.credentialId ?? descriptor.credential_id;
+      return {
+        ...clonePlain(descriptor),
+        id: toSafeBase64Url(rawId),
+        transports: descriptor.transports ? Array.from(descriptor.transports) : undefined,
+      };
+    });
+  }
+
+  function toSafeBase64Url(value) {
+    if (!value) {
+      return "";
+    }
+    if (typeof value === "string") {
+      let stringValue = value.trim();
+      if (stringValue.includes("%")) {
+        try {
+          stringValue = decodeURIComponent(stringValue).trim();
+        } catch {
+          // ignore malformed URI
+        }
+      }
+      return stringValue.replace(/\s+/g, "").replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+    }
+    try {
+      return toBase64Url(value);
+    } catch {
+      return String(value);
+    }
   }
 
   function buildCredential(dto) {
@@ -306,25 +355,39 @@
     };
 
     if (responseDto.attestationObject) {
+      const attestationObject = fromBase64Url(responseDto.attestationObject).buffer;
+      const clientDataJSON = fromBase64Url(responseDto.clientDataJSON).buffer;
       const authenticatorData = responseDto.authenticatorData
         ? fromBase64Url(responseDto.authenticatorData).buffer
         : null;
       const publicKey = responseDto.publicKey ? fromBase64Url(responseDto.publicKey).buffer : null;
+      const transports = Array.from(responseDto.transports || []);
       credential.response = {
-        attestationObject: fromBase64Url(responseDto.attestationObject).buffer,
-        clientDataJSON: fromBase64Url(responseDto.clientDataJSON).buffer,
+        attestationObject,
+        clientDataJSON,
+        authenticatorData,
+        publicKey,
+        transports,
         getAuthenticatorData: () => authenticatorData,
         getPublicKey: () => publicKey,
         getPublicKeyAlgorithm: () => responseDto.publicKeyAlgorithm,
-        getTransports: () => Array.from(responseDto.transports || []),
+        getTransports: () => transports,
       };
       setPrototypeIfAvailable(credential.response, "AuthenticatorAttestationResponse");
     } else {
+      const authenticatorData = fromBase64Url(responseDto.authenticatorData).buffer;
+      const clientDataJSON = fromBase64Url(responseDto.clientDataJSON).buffer;
+      const signature = fromBase64Url(responseDto.signature).buffer;
+      const userHandle = responseDto.userHandle ? fromBase64Url(responseDto.userHandle).buffer : null;
       credential.response = {
-        authenticatorData: fromBase64Url(responseDto.authenticatorData).buffer,
-        clientDataJSON: fromBase64Url(responseDto.clientDataJSON).buffer,
-        signature: fromBase64Url(responseDto.signature).buffer,
-        userHandle: responseDto.userHandle ? fromBase64Url(responseDto.userHandle).buffer : null,
+        authenticatorData,
+        clientDataJSON,
+        signature,
+        userHandle,
+        getAuthenticatorData: () => authenticatorData,
+        getClientDataJSON: () => clientDataJSON,
+        getSignature: () => signature,
+        getUserHandle: () => userHandle,
       };
       setPrototypeIfAvailable(credential.response, "AuthenticatorAssertionResponse");
     }
@@ -384,6 +447,18 @@
     }
     if (ArrayBuffer.isView(value)) {
       return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+    if (Array.isArray(value)) {
+      return new Uint8Array(value);
+    }
+    if (value && typeof value === "object") {
+      if (Array.isArray(value.data)) {
+        return new Uint8Array(value.data);
+      }
+      const numericKeys = Object.keys(value).filter((k) => /^\d+$/.test(k));
+      if (numericKeys.length > 0) {
+        return new Uint8Array(numericKeys.map((k) => value[k]));
+      }
     }
     throw new TypeError("The WebAuthn binary value should be an ArrayBuffer or typed array.");
   }

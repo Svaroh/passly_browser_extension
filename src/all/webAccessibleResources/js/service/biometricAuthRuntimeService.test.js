@@ -41,10 +41,10 @@ describe("BiometricAuthRuntimeService", () => {
   };
 
   describe("::usePassboltPageOrigin", () => {
-    it("Should use Chrome extension pages directly.", () => {
+    it("Should delegate WebAuthn from Chrome extension pages to the Passbolt HTTPS origin.", () => {
       mockLocation({ protocol: "chrome-extension:" });
 
-      expect(BiometricAuthRuntimeService.usePassboltPageOrigin()).toBe(false);
+      expect(BiometricAuthRuntimeService.usePassboltPageOrigin()).toBe(true);
     });
 
     it("Should delegate WebAuthn from Firefox extension pages to the Passbolt HTTPS origin.", () => {
@@ -67,14 +67,14 @@ describe("BiometricAuthRuntimeService", () => {
       await expect(BiometricAuthRuntimeService.getRpId({ request: jest.fn() })).resolves.toBe("pass.66ton99.org.ua");
     });
 
-    it("Should use the extension origin default from Chrome extension pages.", async () => {
+    it("Should use the configured trusted domain from Chrome extension pages.", async () => {
       mockLocation({ protocol: "chrome-extension:" });
       const port = {
         request: jest.fn().mockResolvedValue("https://pass.66ton99.org.ua/"),
       };
 
-      await expect(BiometricAuthRuntimeService.getRpId(port)).resolves.toBeNull();
-      expect(port.request).not.toHaveBeenCalled();
+      await expect(BiometricAuthRuntimeService.getRpId(port)).resolves.toBe("pass.66ton99.org.ua");
+      expect(port.request).toHaveBeenCalledWith("passbolt.addon.get-domain");
     });
 
     it("Should use the configured trusted domain from Firefox extension pages.", async () => {
@@ -89,22 +89,26 @@ describe("BiometricAuthRuntimeService", () => {
   });
 
   describe("::getCompatibleConfiguration", () => {
-    it("Should return extension-origin configurations on Chrome extension pages.", async () => {
+    it("Should return configurations matching the Passbolt domain on Chrome extension pages.", async () => {
       mockLocation({ protocol: "chrome-extension:" });
-      const configuration = { credential_id: "credential", rp_id: null };
-
-      await expect(
-        BiometricAuthRuntimeService.getCompatibleConfiguration({ request: jest.fn() }, configuration),
-      ).resolves.toBe(configuration);
-    });
-
-    it("Should reject HTTPS-origin configurations on Chrome extension pages.", async () => {
-      mockLocation({ protocol: "chrome-extension:" });
+      const port = {
+        request: jest.fn().mockResolvedValue("https://pass.66ton99.org.ua/"),
+      };
       const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
 
-      await expect(
-        BiometricAuthRuntimeService.getCompatibleConfiguration({ request: jest.fn() }, configuration),
-      ).resolves.toBeNull();
+      await expect(BiometricAuthRuntimeService.getCompatibleConfiguration(port, configuration)).resolves.toBe(
+        configuration,
+      );
+    });
+
+    it("Should reject mismatched domain configurations on Chrome extension pages.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      const port = {
+        request: jest.fn().mockResolvedValue("https://pass.66ton99.org.ua/"),
+      };
+      const configuration = { credential_id: "credential", rp_id: "other.domain.com" };
+
+      await expect(BiometricAuthRuntimeService.getCompatibleConfiguration(port, configuration)).resolves.toBeNull();
     });
 
     it("Should reject legacy extension-origin configurations without rp_id.", async () => {
@@ -127,10 +131,32 @@ describe("BiometricAuthRuntimeService", () => {
   });
 
   describe("::unlock", () => {
-    it("Should suspend the MV3 passkey provider while running the local biometric WebAuthn unlock.", async () => {
+    it("Should delegate unlock to the Passbolt page from extension pages.", async () => {
       mockLocation({ protocol: "chrome-extension:" });
+      const port = {
+        request: jest.fn((message) => {
+          if (message === "passbolt.addon.get-domain") {
+            return Promise.resolve("https://pass.66ton99.org.ua/");
+          }
+          if (message === "passbolt.biometric-auth.unlock-in-page") {
+            return Promise.resolve("passphrase");
+          }
+        }),
+      };
+      const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
+
+      await expect(BiometricAuthRuntimeService.unlock(port, configuration)).resolves.toBe("passphrase");
+      expect(port.request).toHaveBeenCalledWith(
+        "passbolt.biometric-auth.unlock-in-page",
+        configuration,
+        "pass.66ton99.org.ua",
+      );
+    });
+
+    it("Should suspend the MV3 passkey provider while running the local biometric WebAuthn unlock.", async () => {
+      mockLocation({ protocol: "https:", hostname: "pass.66ton99.org.ua" });
       const port = { request: jest.fn() };
-      const configuration = { credential_id: "credential", rp_id: null };
+      const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
       jest.spyOn(browser.runtime, "sendMessage").mockResolvedValue({ ok: true });
       jest.spyOn(BiometricAuthClientService, "unlock").mockImplementation(async () => {
         expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(1);
@@ -140,15 +166,15 @@ describe("BiometricAuthRuntimeService", () => {
 
       await expect(BiometricAuthRuntimeService.unlock(port, configuration)).resolves.toBe("passphrase");
 
-      expect(BiometricAuthClientService.unlock).toHaveBeenCalledWith(configuration, null);
+      expect(BiometricAuthClientService.unlock).toHaveBeenCalledWith(configuration, "pass.66ton99.org.ua");
       expect(browser.runtime.sendMessage).toHaveBeenCalledTimes(2);
       expect(browser.runtime.sendMessage).toHaveBeenNthCalledWith(2, { name: passkeyProviderResumeMessage });
     });
 
     it("Should resume the MV3 passkey provider when the local biometric WebAuthn unlock fails.", async () => {
-      mockLocation({ protocol: "chrome-extension:" });
+      mockLocation({ protocol: "https:", hostname: "pass.66ton99.org.ua" });
       const port = { request: jest.fn() };
-      const configuration = { credential_id: "credential", rp_id: null };
+      const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
       const error = new Error("Biometric unlock failed.");
       jest.spyOn(browser.runtime, "sendMessage").mockResolvedValue({ ok: true });
       jest.spyOn(BiometricAuthClientService, "unlock").mockRejectedValue(error);
@@ -161,9 +187,9 @@ describe("BiometricAuthRuntimeService", () => {
     });
 
     it("Should directly detach and re-attach the MV3 passkey provider if the runtime message is not acknowledged.", async () => {
-      mockLocation({ protocol: "chrome-extension:" });
+      mockLocation({ protocol: "https:", hostname: "pass.66ton99.org.ua" });
       const port = { request: jest.fn() };
-      const configuration = { credential_id: "credential", rp_id: null };
+      const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
       chrome.webAuthenticationProxy = {
         attach: jest.fn().mockResolvedValue(),
         detach: jest.fn().mockResolvedValue(),
@@ -183,9 +209,9 @@ describe("BiometricAuthRuntimeService", () => {
     });
 
     it("Should let the service worker re-attach after a direct detach when runtime resume recovers.", async () => {
-      mockLocation({ protocol: "chrome-extension:" });
+      mockLocation({ protocol: "https:", hostname: "pass.66ton99.org.ua" });
       const port = { request: jest.fn() };
-      const configuration = { credential_id: "credential", rp_id: null };
+      const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
       chrome.webAuthenticationProxy = {
         attach: jest.fn().mockResolvedValue(),
         detach: jest.fn().mockResolvedValue(),

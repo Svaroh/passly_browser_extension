@@ -23,7 +23,7 @@ class BiometricAuthRuntimeService {
    * @returns {boolean}
    */
   static usePassboltPageOrigin() {
-    return globalThis.location?.protocol === "moz-extension:";
+    return ["chrome-extension:", "moz-extension:"].includes(globalThis.location?.protocol);
   }
 
   /**
@@ -54,10 +54,17 @@ class BiometricAuthRuntimeService {
   static async isAvailable(port) {
     return this.withPasskeyProviderSuspended(async () => {
       const rpId = await this.getRpId(port);
-      if (this.usePassboltPageOrigin()) {
-        return port.request("passbolt.biometric-auth.is-available-in-page", rpId);
+      if (await BiometricAuthClientService.isAvailable(rpId).catch(() => false)) {
+        return true;
       }
-      return BiometricAuthClientService.isAvailable(rpId);
+      if (this.usePassboltPageOrigin()) {
+        try {
+          return await port.request("passbolt.biometric-auth.is-available-in-page", rpId);
+        } catch {
+          return false;
+        }
+      }
+      return false;
     });
   }
 
@@ -173,12 +180,13 @@ class BiometricAuthRuntimeService {
    * @returns {Promise<boolean>} true when the service worker acknowledged it.
    */
   static async sendPasskeyProviderMessage(name) {
-    if (typeof browser === "undefined" || !browser.runtime?.sendMessage) {
+    const runtime = (typeof browser !== "undefined" && browser?.runtime) || globalThis.chrome?.runtime;
+    if (!runtime?.sendMessage) {
       return false;
     }
 
     try {
-      const response = await browser.runtime.sendMessage({ name });
+      const response = await runtime.sendMessage({ name });
       return response?.ok === true && response?.result !== false;
     } catch {
       return false;
@@ -202,12 +210,13 @@ class BiometricAuthRuntimeService {
    * @returns {Promise<boolean>}
    */
   static async isPasskeyProviderEnabled() {
-    if (typeof browser === "undefined" || !browser.storage?.local?.get) {
+    const storage = (typeof browser !== "undefined" && browser?.storage) || globalThis.chrome?.storage;
+    if (!storage?.local?.get) {
       return true;
     }
 
     try {
-      const settings = await browser.storage.local.get(PASSKEY_PROVIDER_ENABLED_STORAGE_KEY);
+      const settings = await storage.local.get(PASSKEY_PROVIDER_ENABLED_STORAGE_KEY);
       return settings[PASSKEY_PROVIDER_ENABLED_STORAGE_KEY] ?? true;
     } catch {
       return true;

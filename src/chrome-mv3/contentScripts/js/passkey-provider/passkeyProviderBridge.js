@@ -86,6 +86,26 @@
 
     try {
       if (name === MESSAGE_CONFIRM) {
+        try {
+          const skipCheck = await sendRuntimeMessage({
+            name: MESSAGE_UVPAA,
+            requestDetails: event.detail.requestDetails,
+          });
+          if (skipCheck?.result?.skipped || skipCheck?.skipped || !skipCheck?.ok) {
+            dispatchResponse(requestId, {
+              ok: true,
+              result: { confirmed: false, skipped: true },
+            });
+            return;
+          }
+        } catch {
+          dispatchResponse(requestId, {
+            ok: true,
+            result: { confirmed: false, skipped: true },
+          });
+          return;
+        }
+
         dispatchResponse(requestId, {
           ok: true,
           result: await showConfirmation(event.detail.requestDetails),

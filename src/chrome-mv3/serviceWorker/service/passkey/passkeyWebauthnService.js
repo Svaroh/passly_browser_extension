@@ -108,7 +108,7 @@ class PasskeyWebauthnService {
 
     const origin = this.getOrigin(options);
     const rpId = this.getRequestRpId(options, origin);
-    if (rpId !== secretDto.rp_id) {
+    if (!this.isRpIdMatching(secretDto.rp_id, rpId, origin)) {
       throw this.buildNotAllowedError("The passkey does not belong to this relying party.");
     }
 
@@ -118,7 +118,8 @@ class PasskeyWebauthnService {
 
     const clientDataJSON = this.buildClientDataJson(WEBAUTHN_TYPE_GET, options.challenge, origin);
     const clientDataHash = await this.sha256(PasskeyEncodingService.utf8ToUint8Array(clientDataJSON));
-    const authenticatorData = await this.buildAssertionAuthenticatorData(rpId, secretDto.sign_count || 0);
+    const assertionRpId = this.getEffectiveAssertionRpId(options, secretDto, origin);
+    const authenticatorData = await this.buildAssertionAuthenticatorData(assertionRpId, secretDto.sign_count || 0);
     const signatureBase = PasskeyEncodingService.concat(authenticatorData, clientDataHash);
     const privateKey = await this.importEs256PrivateKey(secretDto.private_key_pkcs8);
     const rawSignature = await crypto.subtle.sign(
@@ -150,15 +151,78 @@ class PasskeyWebauthnService {
    * @returns {object}
    */
   static parseRequestDetails(requestDetails) {
+    let parsed;
     if (typeof requestDetails === "string") {
-      return JSON.parse(requestDetails);
+      parsed = JSON.parse(requestDetails);
+    } else if (requestDetails && typeof requestDetails === "object") {
+      parsed = requestDetails;
+    } else {
+      throw new TypeError("The WebAuthn request details should be an object or a JSON string.");
     }
 
-    if (requestDetails && typeof requestDetails === "object") {
-      return requestDetails;
+    if (parsed && typeof parsed === "object" && parsed.publicKey && typeof parsed.publicKey === "object") {
+      return {
+        ...parsed,
+        ...parsed.publicKey,
+        origin: parsed.origin || parsed.publicKey.origin,
+      };
     }
 
-    throw new TypeError("The WebAuthn request details should be an object or a JSON string.");
+    return parsed;
+  }
+
+  /**
+   * @param {object} parameter
+   * @returns {boolean}
+   */
+  static isEs256CredParam(parameter) {
+    if (!parameter || typeof parameter !== "object") {
+      return false;
+    }
+
+    const type = parameter.type;
+    if (typeof type === "string" && type.toLowerCase() !== "public-key") {
+      return false;
+    }
+
+    const alg = Number(parameter.alg);
+    return alg === PASSKEY_ALGORITHM_ES256;
+  }
+
+  /**
+   * Check whether WebAuthn creation options can be fulfilled by the Passly passkey provider.
+   * @param {object|string} requestDetails
+   * @returns {boolean}
+   */
+  static supportsCreateOptions(requestDetails) {
+    let options;
+    try {
+      options = this.parseRequestDetails(requestDetails);
+    } catch {
+      return false;
+    }
+
+    if (!options || typeof options !== "object") {
+      return false;
+    }
+
+    if (typeof options.challenge !== "string") {
+      return false;
+    }
+
+    if (typeof options?.rp?.name !== "string") {
+      return false;
+    }
+
+    if (typeof options?.user?.id !== "string" || typeof options?.user?.name !== "string") {
+      return false;
+    }
+
+    if (!Array.isArray(options.pubKeyCredParams) || options.pubKeyCredParams.length === 0) {
+      return true;
+    }
+
+    return options.pubKeyCredParams.some((parameter) => this.isEs256CredParam(parameter));
   }
 
   /**
@@ -177,11 +241,11 @@ class PasskeyWebauthnService {
       throw new TypeError("The WebAuthn creation request should contain a user id and user name.");
     }
 
-    const supportsEs256 = options.pubKeyCredParams?.some(
-      (parameter) => parameter.type === "public-key" && parameter.alg === PASSKEY_ALGORITHM_ES256,
-    );
-    if (!supportsEs256) {
-      throw this.buildNotSupportedError("Passly passkey MVP supports only ES256 public-key credentials.");
+    if (Array.isArray(options.pubKeyCredParams) && options.pubKeyCredParams.length > 0) {
+      const supportsEs256 = options.pubKeyCredParams.some((parameter) => this.isEs256CredParam(parameter));
+      if (!supportsEs256) {
+        throw this.buildNotSupportedError("Passly passkey MVP supports only ES256 public-key credentials.");
+      }
     }
   }
 
@@ -230,10 +294,16 @@ class PasskeyWebauthnService {
    */
   static getRpId(options, origin) {
     if (typeof options?.rp?.id === "string" && options.rp.id) {
-      return options.rp.id;
+      return this.normalizeDomain(options.rp.id);
+    }
+    if (typeof options.rpId === "string" && options.rpId) {
+      return this.normalizeDomain(options.rpId);
+    }
+    if (typeof options.rp_id === "string" && options.rp_id) {
+      return this.normalizeDomain(options.rp_id);
     }
 
-    return new URL(origin).hostname;
+    return this.normalizeDomain(new URL(origin).hostname);
   }
 
   /**
@@ -243,10 +313,42 @@ class PasskeyWebauthnService {
    */
   static getRequestRpId(options, origin) {
     if (typeof options.rpId === "string" && options.rpId) {
-      return options.rpId;
+      return this.normalizeDomain(options.rpId);
+    }
+    if (typeof options?.rp?.id === "string" && options.rp.id) {
+      return this.normalizeDomain(options.rp.id);
+    }
+    if (typeof options.rp_id === "string" && options.rp_id) {
+      return this.normalizeDomain(options.rp_id);
     }
 
-    return new URL(origin).hostname;
+    return this.normalizeDomain(new URL(origin).hostname);
+  }
+
+  /**
+   * Determine the effective RP ID to hash into the assertion authenticator data.
+   * WebAuthn relying parties verify rpIdHash against the rpId requested in options
+   * (or the caller's origin hostname when rpId was omitted).
+   * @param {object} options
+   * @param {object} secretDto
+   * @param {string} origin
+   * @returns {string}
+   */
+  static getEffectiveAssertionRpId(options, secretDto, origin) {
+    if (typeof options.rpId === "string" && options.rpId) {
+      return this.normalizeDomain(options.rpId);
+    }
+    if (typeof options?.rp?.id === "string" && options.rp.id) {
+      return this.normalizeDomain(options.rp.id);
+    }
+    if (typeof options.rp_id === "string" && options.rp_id) {
+      return this.normalizeDomain(options.rp_id);
+    }
+    if (secretDto?.rp_id) {
+      return this.normalizeDomain(secretDto.rp_id);
+    }
+
+    return this.getRequestRpId(options, origin);
   }
 
   /**
@@ -443,7 +545,310 @@ class PasskeyWebauthnService {
       return true;
     }
 
-    return allowCredentials.some((credential) => credential.type === "public-key" && credential.id === credentialId);
+    const targetBytes = this.toCredentialBytes(credentialId);
+    const normalizedTargetId = this.normalizeCredentialId(credentialId);
+
+    return allowCredentials.some((credential) => {
+      if (!credential) {
+        return false;
+      }
+
+      let candidateRaw = credential;
+      if (
+        typeof credential === "object" &&
+        !ArrayBuffer.isView(credential) &&
+        !(credential instanceof ArrayBuffer) &&
+        !Array.isArray(credential)
+      ) {
+        const type = credential.type;
+        if (typeof type === "string" && type.toLowerCase() !== "public-key") {
+          return false;
+        }
+        candidateRaw = credential.id ?? credential.rawId ?? credential.credentialId ?? credential.credential_id;
+      }
+
+      if (!candidateRaw) {
+        return false;
+      }
+
+      const candidateId = this.normalizeCredentialId(candidateRaw);
+      if (candidateId && normalizedTargetId && candidateId === normalizedTargetId) {
+        return true;
+      }
+
+      if (this.isHexMatch(candidateId, normalizedTargetId)) {
+        return true;
+      }
+
+      const candidateBytes = this.toCredentialBytes(candidateRaw);
+      if (candidateBytes && targetBytes && candidateBytes.length === targetBytes.length) {
+        let byteMatch = true;
+        for (let i = 0; i < targetBytes.length; i++) {
+          if (candidateBytes[i] !== targetBytes[i]) {
+            byteMatch = false;
+            break;
+          }
+        }
+        if (byteMatch) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }
+
+  /**
+   * Convert any credential ID representation (Base64, Base64URL, Hex, Array,
+   * Buffer, or ArrayBufferView) into a raw Uint8Array for binary comparison.
+   * @param {any} value
+   * @returns {Uint8Array|null}
+   */
+  static toCredentialBytes(value) {
+    if (!value) {
+      return null;
+    }
+    if (value instanceof Uint8Array) {
+      return value;
+    }
+    if (value instanceof ArrayBuffer) {
+      return new Uint8Array(value);
+    }
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+    if (Array.isArray(value)) {
+      return new Uint8Array(value);
+    }
+    if (typeof value === "object") {
+      if (Array.isArray(value.data)) {
+        return new Uint8Array(value.data);
+      }
+      const numericKeys = Object.keys(value).filter((k) => /^\d+$/.test(k));
+      if (numericKeys.length > 0) {
+        return new Uint8Array(numericKeys.map((k) => value[k]));
+      }
+    }
+    if (typeof value === "string") {
+      let stringValue = value.trim();
+      if (stringValue.includes("%")) {
+        try {
+          stringValue = decodeURIComponent(stringValue).trim();
+        } catch {
+          // ignore malformed URI
+        }
+      }
+      stringValue = stringValue.replace(/\s+/g, "");
+
+      const hexRegex = /^[0-9a-f]{32,}$/i;
+      if (hexRegex.test(stringValue) && stringValue.length % 2 === 0) {
+        return this.hexToUint8Array(stringValue);
+      }
+
+      try {
+        return PasskeyEncodingService.base64UrlToUint8Array(stringValue);
+      } catch {
+        // ignore decoding errors
+      }
+
+      if (stringValue.length > 0) {
+        const bytes = new Uint8Array(stringValue.length);
+        let allBytesValid = true;
+        for (let i = 0; i < stringValue.length; i++) {
+          const code = stringValue.charCodeAt(i);
+          if (code > 255) {
+            allBytesValid = false;
+            break;
+          }
+          bytes[i] = code;
+        }
+        if (allBytesValid && bytes.length >= 16) {
+          return bytes;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Compare candidate and target IDs in case one is represented as a hex string
+   * and the other as base64url.
+   * @param {string} a
+   * @param {string} b
+   * @returns {boolean}
+   */
+  static isHexMatch(a, b) {
+    try {
+      const hexRegex = /^[0-9a-f]+$/i;
+      if (hexRegex.test(a) && a.length % 2 === 0 && a.length >= 32) {
+        const bytesA = this.hexToUint8Array(a);
+        const b64UrlA = PasskeyEncodingService.toBase64Url(bytesA).replaceAll("=", "").trim();
+        if (b64UrlA === b) {
+          return true;
+        }
+      }
+      if (hexRegex.test(b) && b.length % 2 === 0 && b.length >= 32) {
+        const bytesB = this.hexToUint8Array(b);
+        const b64UrlB = PasskeyEncodingService.toBase64Url(bytesB).replaceAll("=", "").trim();
+        if (b64UrlB === a) {
+          return true;
+        }
+      }
+    } catch {
+      // ignore parsing errors
+    }
+    return false;
+  }
+
+  /**
+   * @param {string} hex
+   * @returns {Uint8Array}
+   */
+  static hexToUint8Array(hex) {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes;
+  }
+
+  /**
+   * Normalize a credential ID for robust comparison across Base64, Base64URL,
+   * with or without padding.
+   * @param {string|Uint8Array|ArrayBuffer|Array<number>|object} value
+   * @returns {string}
+   */
+  static normalizeCredentialId(value) {
+    if (!value) {
+      return "";
+    }
+
+    const rawBytes = this.toCredentialBytes(value);
+    if (rawBytes && rawBytes.length > 0) {
+      try {
+        return PasskeyEncodingService.toBase64Url(rawBytes).replaceAll("=", "").trim();
+      } catch {
+        // fallback to string manipulation
+      }
+    }
+
+    let stringValue = String(value).trim();
+    if (stringValue.includes("%")) {
+      try {
+        stringValue = decodeURIComponent(stringValue).trim();
+      } catch {
+        // ignore malformed URI
+      }
+    }
+
+    return stringValue.replace(/\s+/g, "").replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").trim();
+  }
+
+  /**
+   * Check whether a stored passkey RP ID matches a requested RP ID and/or origin.
+   * Handles subdomains, casing, origin relaxation, and stored origin fallbacks.
+   * @param {string} storedRpId
+   * @param {string} requestedRpId
+   * @param {string} [origin]
+   * @param {string} [storedOrigin]
+   * @returns {boolean}
+   */
+  static isRpIdMatching(storedRpId, requestedRpId, origin = null, storedOrigin = null) {
+    const normStored = this.normalizeDomain(storedRpId);
+    const normRequested = this.normalizeDomain(requestedRpId);
+
+    if (normRequested) {
+      if (normStored && this.isDomainRelated(normStored, normRequested)) {
+        return true;
+      }
+      if (storedOrigin) {
+        try {
+          const storedOriginHostname = this.normalizeDomain(new URL(storedOrigin).hostname);
+          if (storedOriginHostname && this.isDomainRelated(storedOriginHostname, normRequested)) {
+            return true;
+          }
+        } catch {
+          // ignore invalid storedOrigin URLs
+        }
+      }
+      return false;
+    }
+
+    if (origin) {
+      try {
+        const originHostname = this.normalizeDomain(new URL(origin).hostname);
+        if (originHostname) {
+          if (normStored && this.isDomainRelated(normStored, originHostname)) {
+            return true;
+          }
+          if (storedOrigin) {
+            const storedOriginHostname = this.normalizeDomain(new URL(storedOrigin).hostname);
+            if (storedOriginHostname && this.isDomainRelated(storedOriginHostname, originHostname)) {
+              return true;
+            }
+          }
+        }
+      } catch {
+        // ignore invalid origin URLs
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check whether two domain names are equal or subdomain of one another.
+   * @param {string} domainA
+   * @param {string} domainB
+   * @returns {boolean}
+   */
+  static isDomainRelated(domainA, domainB) {
+    const normA = this.normalizeDomain(domainA);
+    const normB = this.normalizeDomain(domainB);
+    if (!normA || !normB) {
+      return false;
+    }
+    if (normA === normB) {
+      return true;
+    }
+    if (normA.endsWith(`.${normB}`)) {
+      return true;
+    }
+    if (normB.endsWith(`.${normA}`)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Normalize domain names to lowercase without scheme, port, or surrounding dots.
+   * @param {string|null|undefined} domain
+   * @returns {string}
+   */
+  static normalizeDomain(domain) {
+    if (!domain || typeof domain !== "string") {
+      return "";
+    }
+
+    let cleaned = domain.trim().toLowerCase();
+    if (cleaned.startsWith("https://") || cleaned.startsWith("http://")) {
+      try {
+        cleaned = new URL(cleaned).hostname.toLowerCase();
+      } catch {
+        // keep cleaned as is
+      }
+    }
+
+    cleaned = cleaned.split(":")[0];
+    while (cleaned.startsWith(".")) {
+      cleaned = cleaned.slice(1);
+    }
+    while (cleaned.endsWith(".")) {
+      cleaned = cleaned.slice(0, -1);
+    }
+
+    return cleaned;
   }
 
   /**
