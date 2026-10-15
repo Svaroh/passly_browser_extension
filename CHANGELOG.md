@@ -3,6 +3,29 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.0] - 2026-10-15
+### Added
+- Seamless offline mode and automatic fallback when server is unreachable
+- Non-blocking QuickAccess rendering from cached local storage
+- Biometric unlock in passphrase prompt dialog
+- Offline-first passkey assertion and creation
+- Passkey import and export in KDBX files
+- Byte-level credential ID matching and native WebAuthn fallback
+- Trash restore and permanent delete actions in workspace
+- Ukrainian localization for offline UI and connection states
+
+### Changed
+- Update extension version to 6.1.0 across all browser targets and package manifests
+- Update browser extension tooling and dependencies to upstream v5.16.1
+- Retain cached resources across restarts in local storage and OPFS
+- Filter passkey candidates by Relying Party domain before decryption
+
+### Fixed
+- Fix trash filter routing and search in workspace context
+- Fix resource edit trigger from URL query parameters
+- Fix OPFS encrypted resources snapshotting and unblock passphrase prompt
+- Fix passkey signature DER conversion
+
 ## [5.16.1] - 2026-08-17
 ### Fixed
 - PB-53792 - Copy/pasting issues on Safari
