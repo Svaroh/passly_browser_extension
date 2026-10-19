@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.1] - 2026-10-19
+### Fixed
+- Fix TypeError: Cannot read properties of null (reading 'default_generator') when loading QuickAccess
+- Add fallback default generator settings and null guards for password generator initialization in QuickAccess
+
 ## [6.1.0] - 2026-10-15
 ### Added
 - Seamless offline mode and automatic fallback when server is unreachable
