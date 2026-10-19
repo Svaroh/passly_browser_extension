@@ -2805,6 +2805,118 @@ function patchQuickAccessPasskeyResourceLists() {
   return changed;
 }
 
+function patchSecretGeneratorSource() {
+  const secretGeneratorPath = path.join(
+    root,
+    "node_modules/passbolt-styleguide/src/shared/lib/SecretGenerator/SecretGenerator.js"
+  );
+  if (!fs.existsSync(secretGeneratorPath)) {
+    return 0;
+  }
+
+  let changed = 0;
+  changed += replaceIfMissing(secretGeneratorPath, "DEFAULT_GENERATOR_CONFIGURATION", [
+    [
+      `export const SecretGenerator = {
+  /**
+   * Generate a secret given a generator configuration
+   * @param {PasswordPoliciesDto} configuration A generator configuration
+   * @return {string} A generated secret
+   */
+  generate: (configuration) => {
+    const type = configuration.default_generator;
+    if (type === "password") {
+      return PasswordGenerator.generate(configuration.password_generator_settings);
+    } else if (type === "passphrase") {
+      return PassphraseGenerator.generate(configuration.passphrase_generator_settings);
+    }
+  },
+  /**
+   * Calculates the secret entropy
+   * @param {string} secret A secret
+   * @return {Number} The secret entropy
+   */
+  entropy: (secret) => {
+    const { numberWords, separator, isPassphrase } = PassphraseGenerator.detectPassphrase(secret);
+    if (isPassphrase) {
+      return SecretGeneratorComplexity.entropyPassphrase(numberWords, separator);
+    } else {
+      return SecretGeneratorComplexity.entropyPassword(secret);
+    }
+  },
+};`,
+      `export const DEFAULT_GENERATOR_CONFIGURATION = {
+  default_generator: "password",
+  external_dictionary_check: true,
+  password_generator_settings: {
+    length: 18,
+    min_length: 8,
+    max_length: 128,
+    mask_upper: true,
+    mask_lower: true,
+    mask_digit: true,
+    mask_parenthesis: true,
+    mask_char1: true,
+    mask_char2: true,
+    mask_char3: true,
+    mask_char4: true,
+    mask_char5: true,
+    mask_emoji: false,
+    exclude_look_alike_chars: true,
+  },
+  passphrase_generator_settings: {
+    words: 9,
+    min_words: 4,
+    max_words: 40,
+    word_separator: " ",
+    word_case: "lowercase",
+  },
+  source: "default",
+};
+
+export const SecretGenerator = {
+  /**
+   * Generate a secret given a generator configuration
+   * @param {PasswordPoliciesDto} configuration A generator configuration
+   * @return {string} A generated secret
+   */
+  generate: (configuration) => {
+    const config = configuration || DEFAULT_GENERATOR_CONFIGURATION;
+    const type = config?.default_generator || "password";
+    if (type === "password") {
+      const passwordSettings =
+        config.password_generator_settings || DEFAULT_GENERATOR_CONFIGURATION.password_generator_settings;
+      return PasswordGenerator.generate(passwordSettings);
+    } else if (type === "passphrase") {
+      const passphraseSettings =
+        config.passphrase_generator_settings || DEFAULT_GENERATOR_CONFIGURATION.passphrase_generator_settings;
+      return PassphraseGenerator.generate(passphraseSettings);
+    }
+    return "";
+  },
+  /**
+   * Calculates the secret entropy
+   * @param {string} secret A secret
+   * @return {Number} The secret entropy
+   */
+  entropy: (secret) => {
+    if (!secret || typeof secret !== "string") {
+      return null;
+    }
+    const { numberWords, separator, isPassphrase } = PassphraseGenerator.detectPassphrase(secret);
+    if (isPassphrase) {
+      return SecretGeneratorComplexity.entropyPassphrase(numberWords, separator);
+    } else {
+      return SecretGeneratorComplexity.entropyPassword(secret);
+    }
+  },
+};`,
+    ],
+  ]) ? 1 : 0;
+
+  return changed;
+}
+
 function patchQuickAccessPrepareResourceContext() {
   const prepareResourceContext = path.join(root, "node_modules/passbolt-styleguide/src/react-quickaccess/contexts/PrepareResourceContext.js");
   if (!fs.existsSync(prepareResourceContext)) {
@@ -2816,9 +2928,7 @@ function patchQuickAccessPrepareResourceContext() {
 
   // 1. Ensure constants and helper functions are defined
   if (!content.includes("USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX")) {
-    const helpersBlock = `import { withAppContext } from "../../shared/context/AppContext/AppContext";
-
-const USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX = "passlyQuickAccessPasswordGeneratorSettings";
+    const helpersBlock = `const USER_GENERATOR_SETTINGS_STORAGE_KEY_PREFIX = "passlyQuickAccessPasswordGeneratorSettings";
 const GENERATOR_TYPES = ["password", "passphrase"];
 const PASSWORD_GENERATOR_MASKS = [
   "mask_upper",
@@ -2834,6 +2944,34 @@ const PASSWORD_GENERATOR_MASKS = [
 ];
 const PASSWORD_GENERATOR_BOOLEAN_FIELDS = [...PASSWORD_GENERATOR_MASKS, "exclude_look_alike_chars"];
 const PASSPHRASE_WORD_CASES = ["lowercase", "uppercase", "camelcase"];
+const DEFAULT_GENERATOR_SETTINGS = {
+  default_generator: "password",
+  external_dictionary_check: true,
+  password_generator_settings: {
+    length: 18,
+    min_length: 8,
+    max_length: 128,
+    mask_upper: true,
+    mask_lower: true,
+    mask_digit: true,
+    mask_parenthesis: true,
+    mask_char1: true,
+    mask_char2: true,
+    mask_char3: true,
+    mask_char4: true,
+    mask_char5: true,
+    mask_emoji: false,
+    exclude_look_alike_chars: true,
+  },
+  passphrase_generator_settings: {
+    words: 9,
+    min_words: 4,
+    max_words: 40,
+    word_separator: " ",
+    word_case: "lowercase",
+  },
+  source: "default",
+};
 
 function cloneGeneratorSettings(settings) {
   return settings ? JSON.parse(JSON.stringify(settings)) : settings;
@@ -2892,8 +3030,9 @@ function mergeSavedPassphraseGeneratorSettings(settings, savedSettings) {
 }
 
 function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
-  const settings = cloneGeneratorSettings(passwordPolicies);
-  if (!settings || !savedSettings || typeof savedSettings !== "object") {
+  const basePolicies = passwordPolicies || DEFAULT_GENERATOR_SETTINGS;
+  const settings = cloneGeneratorSettings(basePolicies) || cloneGeneratorSettings(DEFAULT_GENERATOR_SETTINGS);
+  if (!savedSettings || typeof savedSettings !== "object") {
     return settings;
   }
 
@@ -2909,14 +3048,11 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
 
   return settings;
 }
-
-/**
- * Context related to prepare a resource ( name, url, username, password.)
- */`;
+`;
 
     content = content.replace(
-      /import \{ withAppContext \} from "\.\.\/\.\.\/shared\/context\/AppContext\/AppContext";\s*\/\*\*[\s\S]*?\* Context related to prepare a resource \( name, url, username, password\.\)[\s\S]*?\*\//,
-      helpersBlock
+      /\/\*\*[\s\r\n]*\* Context related to prepare a resource/,
+      `${helpersBlock}\n/**\n * Context related to prepare a resource`
     );
   }
 
@@ -2924,11 +3060,11 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
   if (!content.includes("onGeneratorSettingsChanged: () => {}")) {
     content = content.replace(
       /onPasswordGenerated:\s*\(\)\s*=>\s*\{\},[\s\S]*?getSettings:\s*\(\)\s*=>\s*\{\}/,
-      `onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator\n  onGeneratorSettingsChanged: () => {}, // Whenever generator settings have been changed\n  getSettings: () => {}`
+      `onPasswordGenerated: () => {}, // Whenever the a password has been generated with the generator\n  onGeneratorSettingsChanged: () => {}, // Whenever generator settings have been changed\n  getSettings: () => cloneGeneratorSettings(DEFAULT_GENERATOR_SETTINGS)`
     );
   }
 
-  // 3. Ensure onGeneratorSettingsChanged in defaultState with safe bind guard
+  // 3. Ensure onGeneratorSettingsChanged in defaultState with safe bind guard and default settings
   if (!content.includes("onGeneratorSettingsChanged: this.onGeneratorSettingsChanged")) {
     content = content.replace(
       /onPasswordGenerated:\s*this\.onPasswordGenerated\.bind\(this\),[\s\S]*?consumePreparedResource:\s*this\.consumePreparedResource\.bind\(this\)/,
@@ -2942,10 +3078,14 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
     );
   }
 
+  content = content.replace(
+    /settings:\s*null,\s*\/\/\s*The current settings of generators/g,
+    `settings: cloneGeneratorSettings(DEFAULT_GENERATOR_SETTINGS), // The current settings of generators`
+  );
+
   // 4. Ensure methods on class
   if (!content.includes("getSavedSecretGeneratorSettings")) {
     const methodsBlock = `  async resetSecretGeneratorSettings() {
-    const activeSession = this.props.activeSession || this.props.activeSessionLocalStorageContext?.get();
     let passwordPolicies = null;
     try {
       if (this.props.passwordPoliciesContext?.loadPolicies) {
@@ -2956,7 +3096,7 @@ function applySavedGeneratorSettings(passwordPolicies, savedSettings) {
     }
     const savedSettings = await this.getSavedSecretGeneratorSettings();
     const settings = applySavedGeneratorSettings(passwordPolicies, savedSettings);
-    this.setState({ settings });
+    this.setState({ settings: settings || cloneGeneratorSettings(DEFAULT_GENERATOR_SETTINGS) });
   }
 
   /**
@@ -3078,7 +3218,7 @@ function patchQuickAccessGeneratePasswordPage() {
     return this.props.t;
   }`,
       `  get isStandalone() {
-    return Boolean(this.props.location?.state?.standalone);
+        return Boolean(this.props.location?.state?.standalone);
   }
 
   get translate() {
@@ -3104,11 +3244,141 @@ function patchQuickAccessGeneratePasswordPage() {
     ],
   ]) ? 1 : 0;
 
+  changed += replaceIfMissing(generatePasswordPage, "componentDidUpdate(prevProps)", [
+    [
+      `  componentDidMount() {
+    const generatorSettings = this.props.prepareResourceContext.getSettings();
+    const password = this.generatePassword(generatorSettings);
+    this.setState({ generatorSettings, password });
+  }`,
+      `  componentDidMount() {
+    const generatorSettings =
+      this.props.prepareResourceContext?.getSettings?.() ||
+      this.props.prepareResourceContext?.settings;
+    const password = this.generatePassword(generatorSettings);
+    this.setState({ generatorSettings, password });
+  }
+
+  componentDidUpdate(prevProps) {
+    const prevSettings =
+      prevProps.prepareResourceContext?.getSettings?.() || prevProps.prepareResourceContext?.settings;
+    const currentSettings =
+      this.props.prepareResourceContext?.getSettings?.() || this.props.prepareResourceContext?.settings;
+    if (currentSettings && currentSettings !== prevSettings) {
+      if (!this.state.generatorSettings || !this.state.password) {
+        const password = this.generatePassword(currentSettings);
+        this.setState({ generatorSettings: currentSettings, password });
+      }
+    }
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(generatePasswordPage, "const config = generatorConfiguration || this.state?.generatorSettings;", [
+    [
+      `  generatePassword(generatorConfiguration) {
+    const password = SecretGenerator.generate(generatorConfiguration);
+    const passwordEntropy = password?.length > 0 ? SecretGenerator.entropy(password) : null;
+    this.setState({ passwordEntropy });
+    return password;
+  }`,
+      `  generatePassword(generatorConfiguration) {
+    const config = generatorConfiguration || this.state?.generatorSettings;
+    const password = SecretGenerator.generate(config);
+    const passwordEntropy = password?.length > 0 ? SecretGenerator.entropy(password) : null;
+    this.setState({ passwordEntropy });
+    return password;
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(generatePasswordPage, "const currentSettings = this.state.generatorSettings || this.props.prepareResourceContext?.getSettings?.();", [
+    [
+      `  handlePasswordGeneratorConfigurationChanged(generator) {
+    const settings = JSON.parse(JSON.stringify(this.state.generatorSettings));
+    settings.password_generator_settings = generator;
+    this.handleGeneratorConfigurationChanged(settings);
+  }
+
+  /**
+   * Handle when the passphrase generator configuration has changed
+   * @param generator The generator configuration
+   */
+  handlePassphraseGeneratorConfigurationChanged(generator) {
+    const settings = JSON.parse(JSON.stringify(this.state.generatorSettings));
+    settings.passphrase_generator_settings = generator;
+    this.handleGeneratorConfigurationChanged(settings);
+  }
+
+  /**
+   * Handle when the generator type has changed
+   * @param generatorConfiguration The generator configuration
+   */
+  handleGeneratorTypeChanged(generatorType) {
+    const generatorConfiguration = JSON.parse(JSON.stringify(this.state.generatorSettings));
+    generatorConfiguration.default_generator = generatorType;
+    this.handleGeneratorConfigurationChanged(generatorConfiguration);
+  }`,
+      `  handlePasswordGeneratorConfigurationChanged(generator) {
+    const currentSettings = this.state.generatorSettings || this.props.prepareResourceContext?.getSettings?.();
+    const settings = currentSettings ? JSON.parse(JSON.stringify(currentSettings)) : {};
+    settings.password_generator_settings = generator;
+    this.handleGeneratorConfigurationChanged(settings);
+  }
+
+  /**
+   * Handle when the passphrase generator configuration has changed
+   * @param generator The generator configuration
+   */
+  handlePassphraseGeneratorConfigurationChanged(generator) {
+    const currentSettings = this.state.generatorSettings || this.props.prepareResourceContext?.getSettings?.();
+    const settings = currentSettings ? JSON.parse(JSON.stringify(currentSettings)) : {};
+    settings.passphrase_generator_settings = generator;
+    this.handleGeneratorConfigurationChanged(settings);
+  }
+
+  /**
+   * Handle when the generator type has changed
+   * @param generatorConfiguration The generator configuration
+   */
+  handleGeneratorTypeChanged(generatorType) {
+    const currentSettings = this.state.generatorSettings || this.props.prepareResourceContext?.getSettings?.();
+    const generatorConfiguration = currentSettings
+      ? JSON.parse(JSON.stringify(currentSettings))
+      : { default_generator: generatorType };
+    generatorConfiguration.default_generator = generatorType;
+    this.handleGeneratorConfigurationChanged(generatorConfiguration);
+  }`,
+    ],
+  ]) ? 1 : 0;
+
+  changed += replaceIfMissing(generatePasswordPage, "activeTabName={generatorConfiguration?.default_generator || \"password\"}", [
+    [
+      `<Tabs activeTabName={generatorConfiguration.default_generator}>
+                <Tab
+                  key={"password"}
+                  name={this.props.t("password")}
+                  type={"password"}
+                  onClick={() => this.handleGeneratorTypeChanged("password")}
+                >
+                  {generatorConfiguration.default_generator === "password" && (`,
+      `<Tabs activeTabName={generatorConfiguration?.default_generator || "password"}>
+                <Tab
+                  key={"password"}
+                  name={this.props.t("password")}
+                  type={"password"}
+                  onClick={() => this.handleGeneratorTypeChanged("password")}
+                >
+                  {(!generatorConfiguration?.default_generator || generatorConfiguration.default_generator === "password") && (`,
+    ],
+  ]) ? 1 : 0;
+
   return changed;
 }
 
 function patchQuickAccessPasswordGeneratorSource() {
-  return patchQuickAccessHomePage()
+  return patchSecretGeneratorSource()
+    + patchQuickAccessHomePage()
     + patchQuickAccessPasskeyResourceLists()
     + patchQuickAccessPrepareResourceContext()
     + patchQuickAccessGeneratePasswordPage()

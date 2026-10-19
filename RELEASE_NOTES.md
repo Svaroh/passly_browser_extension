@@ -1,3 +1,10 @@
+Passly 6.1.1 fixes a QuickAccess password generator crash when generator settings are uninitialized.
+
+### Fixed
+- Fix TypeError: Cannot read properties of null (reading 'default_generator') when loading QuickAccess popup.
+- Add fallback default generator settings and null safety to secret generator and password generator page.
+
+# v6.1.0
 Passly 6.1.0 introduces seamless offline mode, non-blocking QuickAccess rendering, biometric unlock for the master passphrase prompt, offline-first PassKey operations, and KDBX PassKey import/export.
 
 ### Added
