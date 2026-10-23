@@ -13,6 +13,8 @@
  */
 
 import GetActiveAccountService from "../../../../all/background_page/service/account/getActiveAccountService";
+import isMissingAccountError from "../../../../all/background_page/service/account/isMissingAccountError";
+import storage from "../../../../all/background_page/sdk/storage";
 
 class PasskeyContentFallbackService {
   /**
@@ -65,19 +67,29 @@ class PasskeyContentFallbackService {
       return "disabled";
     }
 
-    let account;
+    let ownDomain = null;
     try {
-      account = await GetActiveAccountService.get();
-    } catch {
-      return "no-active-account";
+      const account = await GetActiveAccountService.get();
+      ownDomain = account?.domain;
+    } catch (error) {
+      if (isMissingAccountError(error)) {
+        return "no-active-account";
+      }
+      try {
+        ownDomain = storage?.getItem?.("user")?.settings?.domain;
+      } catch {
+        // ignore
+      }
     }
 
-    try {
-      if (new URL(account.domain).origin === new URL(origin).origin) {
-        return "own-passly-domain";
+    if (ownDomain && origin) {
+      try {
+        if (new URL(ownDomain).origin === new URL(origin).origin) {
+          return "own-passly-domain";
+        }
+      } catch {
+        return "invalid-origin";
       }
-    } catch {
-      return "invalid-origin";
     }
 
     return null;

@@ -31,6 +31,7 @@
   const PORT_NAME = "passly.passkey-provider.port";
   const PAGE_SCRIPT_PATH = "contentScripts/js/passkey-provider/passkeyProviderPageScript.js";
   const THEME_STORAGE_KEY = "_passbolt_data";
+  const PASSKEY_ENABLED_KEY = "passlyPasskeyProviderEnabled";
   const THEME_CONFIG_KEY = "user.settings.theme";
   const VALID_THEMES = ["default", "midgar", "solarized_light", "solarized_dark"];
   const ALLOWED_MESSAGES = new Set([
@@ -86,24 +87,31 @@
 
     try {
       if (name === MESSAGE_CONFIRM) {
-        try {
-          const skipCheck = await sendRuntimeMessage({
-            name: MESSAGE_UVPAA,
-            requestDetails: event.detail.requestDetails,
-          });
-          if (skipCheck?.result?.skipped || skipCheck?.skipped || !skipCheck?.ok) {
-            dispatchResponse(requestId, {
-              ok: true,
-              result: { confirmed: false, skipped: true },
-            });
-            return;
-          }
-        } catch {
+        const active = await isPasskeyProviderActive();
+        if (!active) {
           dispatchResponse(requestId, {
             ok: true,
             result: { confirmed: false, skipped: true },
           });
           return;
+        }
+
+        if (event.detail.requestDetails?.operation === "create") {
+          try {
+            const skipCheck = await sendRuntimeMessage({
+              name: MESSAGE_UVPAA,
+              requestDetails: event.detail.requestDetails,
+            });
+            if (skipCheck?.result?.reason === "unsupported-create-options") {
+              dispatchResponse(requestId, {
+                ok: true,
+                result: { confirmed: false, skipped: true },
+              });
+              return;
+            }
+          } catch {
+            // Do not block confirmation on UVPAA runtime message error
+          }
         }
 
         dispatchResponse(requestId, {
@@ -503,6 +511,44 @@
         });
       } catch {
         resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Determine whether Passly passkey provider should actively prompt on this page.
+   * Only returns false if explicitly disabled by settings or when visiting Passly's own server.
+   * @returns {Promise<boolean>}
+   */
+  function isPasskeyProviderActive() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([PASSKEY_ENABLED_KEY, THEME_STORAGE_KEY], (items) => {
+          if (chrome.runtime?.lastError) {
+            resolve(true);
+            return;
+          }
+          if (items?.[PASSKEY_ENABLED_KEY] === false) {
+            resolve(false);
+            return;
+          }
+          const ownDomain =
+            items?.[THEME_STORAGE_KEY]?.user?.settings?.domain ||
+            items?.[THEME_STORAGE_KEY]?.config?.["App.server.url"];
+          if (ownDomain) {
+            try {
+              if (new URL(ownDomain).origin === window.location.origin) {
+                resolve(false);
+                return;
+              }
+            } catch {
+              // ignore URL parsing error
+            }
+          }
+          resolve(true);
+        });
+      } catch {
+        resolve(true);
       }
     });
   }

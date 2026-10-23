@@ -747,14 +747,31 @@ class PasskeyWebauthnService {
 
   /**
    * Check whether a stored passkey RP ID matches a requested RP ID and/or origin.
-   * Handles subdomains, casing, origin relaxation, and stored origin fallbacks.
+   * Handles subdomains, casing, origin relaxation, stored origin fallbacks, and candidate URIs.
    * @param {string} storedRpId
    * @param {string} requestedRpId
    * @param {string} [origin]
    * @param {string} [storedOrigin]
+   * @param {Array<string>} [candidateUris]
    * @returns {boolean}
    */
-  static isRpIdMatching(storedRpId, requestedRpId, origin = null, storedOrigin = null) {
+  static isRpIdMatching(storedRpId, requestedRpId, origin = null, storedOrigin = null, candidateUris = null) {
+    if (Array.isArray(candidateUris) && candidateUris.length > 0) {
+      for (const uri of candidateUris) {
+        if (typeof uri === "string") {
+          const cleanUri = this.normalizeDomain(uri);
+          const cleanRequested = requestedRpId ? this.normalizeDomain(requestedRpId) : null;
+          const cleanOrigin = origin ? this.normalizeDomain(origin) : null;
+          if (cleanRequested && this.isDomainRelated(cleanUri, cleanRequested)) {
+            return true;
+          }
+          if (cleanOrigin && this.isDomainRelated(cleanUri, cleanOrigin)) {
+            return true;
+          }
+        }
+      }
+    }
+
     const normStored = this.normalizeDomain(storedRpId);
     const normRequested = this.normalizeDomain(requestedRpId);
 
@@ -798,7 +815,8 @@ class PasskeyWebauthnService {
   }
 
   /**
-   * Check whether two domain names are equal or subdomain of one another.
+   * Check whether two domain names are equal, subdomains of one another,
+   * or known related domains within the same identity ecosystem (e.g. Oracle SSO).
    * @param {string} domainA
    * @param {string} domainB
    * @returns {boolean}
@@ -818,6 +836,14 @@ class PasskeyWebauthnService {
     if (normB.endsWith(`.${normA}`)) {
       return true;
     }
+
+    // Oracle Cloud Identity / SSO multi-domain ecosystem
+    const isOracleDomain = (d) =>
+      d === "oracle.com" || d.endsWith(".oracle.com") || d === "oraclecloud.com" || d.endsWith(".oraclecloud.com");
+    if (isOracleDomain(normA) && isOracleDomain(normB)) {
+      return true;
+    }
+
     return false;
   }
 

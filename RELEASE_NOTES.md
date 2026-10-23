@@ -1,3 +1,13 @@
+Passly 6.1.2 fixes Passkey interception by ensuring confirmation dialogs display by default, deferring vault unlocking, and supporting Oracle SSO multi-domain matching.
+
+### Fixed
+- Passkey confirmation dialog displays by default for WebAuthn get and create requests without silent background skips.
+- Vault unlocking is deferred until after the user confirms passkey usage.
+- Support Oracle SSO multi-domain ecosystem (oracle.com and oraclecloud.com) and resource URIs during passkey assertion matching.
+- Reset passkey provider suspend count on user confirmation and add safety auto-resume timeout.
+- Remove platform authenticator attachment early bypass on passkey creation.
+
+# v6.1.1
 Passly 6.1.1 fixes a QuickAccess password generator crash when generator settings are uninitialized.
 
 ### Fixed

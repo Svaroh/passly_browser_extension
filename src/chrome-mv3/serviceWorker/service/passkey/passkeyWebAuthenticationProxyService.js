@@ -126,6 +126,12 @@ class PasskeyWebAuthenticationProxyService {
   static _suspendCount = 0;
 
   /**
+   * @type {any}
+   * @private
+   */
+  static _suspendTimer = null;
+
+  /**
    * @type {Set<number>}
    * @private
    */
@@ -367,6 +373,18 @@ class PasskeyWebAuthenticationProxyService {
     this._suspendCount++;
     await this.detach();
 
+    if (this._suspendTimer) {
+      clearTimeout(this._suspendTimer);
+    }
+    this._suspendTimer = setTimeout(() => {
+      this._suspendTimer = null;
+      if (this._suspendCount > 0) {
+        this._suspendCount = 0;
+        this.attachIfEnabled(true).catch(() => {});
+      }
+    }, 30_000);
+    this._suspendTimer.unref?.();
+
     return true;
   }
 
@@ -376,6 +394,10 @@ class PasskeyWebAuthenticationProxyService {
    */
   static async resume() {
     this._suspendCount = Math.max(0, this._suspendCount - 1);
+    if (this._suspendCount <= 0 && this._suspendTimer) {
+      clearTimeout(this._suspendTimer);
+      this._suspendTimer = null;
+    }
     if (this._suspendCount > 0) {
       return false;
     }
@@ -528,6 +550,7 @@ class PasskeyWebAuthenticationProxyService {
    * @returns {Promise<object>}
    */
   static async handleContentCreateRequest(message, sender) {
+    this._suspendCount = 0;
     const requestDetails = await this.prepareContentRequestDetails(message?.requestDetails, sender);
     const skipReason = await this.getContentFallbackSkipReason(requestDetails.origin);
     if (skipReason) {
@@ -552,6 +575,7 @@ class PasskeyWebAuthenticationProxyService {
    * @returns {Promise<object>}
    */
   static async handleContentGetRequest(message, sender) {
+    this._suspendCount = 0;
     const requestDetails = await this.prepareContentRequestDetails(message?.requestDetails, sender);
     const skipReason = await this.getContentFallbackSkipReason(requestDetails.origin);
     if (skipReason) {
@@ -935,6 +959,10 @@ class PasskeyWebAuthenticationProxyService {
     this._runtimePortListenerRegistered = false;
     this._attached = false;
     this._suspendCount = 0;
+    if (this._suspendTimer) {
+      clearTimeout(this._suspendTimer);
+      this._suspendTimer = null;
+    }
     this._canceledRequestIds.clear();
   }
 }

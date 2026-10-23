@@ -325,6 +325,34 @@ describe("PasskeyWebauthnService", () => {
       expect(PasskeyWebauthnService.isRpIdMatching("example.com", "evil.example")).toBe(false);
       expect(PasskeyWebauthnService.isRpIdMatching("notexample.com", "example.com")).toBe(false);
     });
+
+    it("matches Oracle Cloud Identity domain with Oracle SSO domain", () => {
+      expect(
+        PasskeyWebauthnService.isRpIdMatching(
+          "idcs-9dc693e80d9b469480d7afe00e743931.identity.oraclecloud.com",
+          "oracle.com",
+          "https://signon-int.oracle.com",
+        ),
+      ).toBe(true);
+      expect(
+        PasskeyWebauthnService.isRpIdMatching(
+          "oracle.com",
+          "idcs-9dc693e80d9b469480d7afe00e743931.identity.oraclecloud.com",
+        ),
+      ).toBe(true);
+    });
+
+    it("matches via candidate resource URIs", () => {
+      expect(
+        PasskeyWebauthnService.isRpIdMatching(
+          "custom-rp.internal",
+          "signon-int.oracle.com",
+          "https://signon-int.oracle.com",
+          null,
+          ["https://signon-int.oracle.com"],
+        ),
+      ).toBe(true);
+    });
   });
 
   describe("parseRequestDetails", () => {

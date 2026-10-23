@@ -302,7 +302,14 @@ class PasskeyVaultResourceService {
         continue;
       }
 
-      const rpMatches = PasskeyWebauthnService.isRpIdMatching(secretDto.rp_id, rpId, origin, secretDto.origin);
+      const candidateUris = resourceDto?.metadata?.uris || resourceDto?.uris;
+      const rpMatches = PasskeyWebauthnService.isRpIdMatching(
+        secretDto.rp_id,
+        rpId,
+        origin,
+        secretDto.origin,
+        candidateUris,
+      );
       const credAllowed = PasskeyWebauthnService.isCredentialAllowed(options.allowCredentials, secretDto.credential_id);
 
       if (candidateDiagnostics) {
@@ -400,7 +407,13 @@ class PasskeyVaultResourceService {
     }
 
     if (resourceDto?.secret?.rp_id) {
-      return PasskeyWebauthnService.isRpIdMatching(resourceDto.secret.rp_id, rpId, origin, resourceDto.secret.origin);
+      return PasskeyWebauthnService.isRpIdMatching(
+        resourceDto.secret.rp_id,
+        rpId,
+        origin,
+        resourceDto.secret.origin,
+        uris,
+      );
     }
 
     const name = resourceDto?.metadata?.name || resourceDto?.name || "";
