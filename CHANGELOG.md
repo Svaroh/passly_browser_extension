@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.2] - 2026-10-23
+### Fixed
+- Ensure Passly passkey confirmation dialog displays by default without silent UVPAA pre-check skips
+- Defer vault unlocking until after user confirms passkey usage instead of aborting beforehand
+- Support Oracle SSO multi-domain ecosystem (oracle.com and oraclecloud.com) and candidate resource URIs during passkey assertion matching
+- Reset passkey provider suspend count on user confirmation and add safety auto-resume timeout
+- Remove platform authenticator attachment early bypass on passkey creation
+
 ## [6.1.1] - 2026-10-19
 ### Fixed
 - Fix TypeError: Cannot read properties of null (reading 'default_generator') when loading QuickAccess

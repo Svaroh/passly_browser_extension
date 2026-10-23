@@ -314,6 +314,31 @@ describe("PasskeyVaultResourceService", () => {
       expect(result).toStrictEqual(secretDto);
     });
 
+    it("matches Oracle Cloud Identity passkey with resource URI on Oracle signon page", async () => {
+      const secretDto = buildPasskeySecretDto({
+        credential_id: "oracle-passkey-id",
+        rp_id: "idcs-9dc693e80d9b469480d7afe00e743931.identity.oraclecloud.com",
+      });
+      const resourceDto = {
+        id: "res-oracle",
+        name: "idcs-9dc693e80d9b469480d7afe00e743931 passkey",
+        resource_type_id: resourceType.id,
+        uris: ["https://signon-int.oracle.com"],
+        secret: secretDto,
+      };
+
+      jest.spyOn(PasskeyVaultResourceService, "getPasskeyResources").mockResolvedValue([resourceDto]);
+
+      const requestDetails = {
+        origin: "https://signon-int.oracle.com",
+        rpId: "oracle.com",
+        allowCredentials: [{ type: "public-key", id: "oracle-passkey-id" }],
+      };
+
+      const result = await PasskeyVaultResourceService.findSecretForAssertion(requestDetails);
+      expect(result).toStrictEqual(secretDto);
+    });
+
     it("refreshes resources from Passly API when local cache does not have matching passkey", async () => {
       const oldResourceDto = {
         id: "res-old",
