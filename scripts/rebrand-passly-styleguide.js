@@ -536,6 +536,8 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
       `    this.handleGoToUrlClick = this.handleGoToUrlClick.bind(this);
     this.handleUseOnThisTabClick = this.handleUseOnThisTabClick.bind(this);
     this.handleDeleteResourceClick = this.handleDeleteResourceClick.bind(this);
+    this.handleViewInVaultClick = this.handleViewInVaultClick.bind(this);
+    this.handleEditInVaultClick = this.handleEditInVaultClick.bind(this);
     this.handleDeleteResourceCancel = this.handleDeleteResourceCancel.bind(this);
     this.handleDeleteResourceSubmit = this.handleDeleteResourceSubmit.bind(this);
     this.handleViewPasswordButtonClick = this.handleViewPasswordButtonClick.bind(this);`,
@@ -545,7 +547,51 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
     [
       `  async handleUseOnThisTabClick(event) {
     event.preventDefault();`,
-      `  handleDeleteResourceClick(event) {
+      `  /**
+   * Open this resource in the vault.
+   * @param {ReactEvent} event The event
+   */
+  async handleViewInVaultClick(event) {
+    event.preventDefault();
+    await this.openInVault();
+  }
+
+  /**
+   * Open this resource in the vault, ready to be edited.
+   * @param {ReactEvent} event The event
+   */
+  async handleEditInVaultClick(event) {
+    event.preventDefault();
+    await this.openInVault("edit");
+  }
+
+  /**
+   * Ask the background page to open this resource in the vault.
+   * @param {string} [action] the action to run once there
+   * @returns {Promise<void>}
+   */
+  async openInVault(action = null) {
+    try {
+      await this.props.context.port.request("passbolt.tabs.open-vault-page", {
+        pathname: \`/app/passwords/view/\${this.props.match.params.id}\`,
+        action,
+      });
+      window.close();
+    } catch (error) {
+      console.error(error);
+      const domain = this.props.context?.userSettings?.getTrustedDomain?.();
+      if (domain) {
+        const url = new URL(\`\${domain.replace(/\\/*$/, "")}/app/passwords/view/\${this.props.match.params.id}\`);
+        if (action) {
+          url.searchParams.set("action", action);
+        }
+        window.open(url.toString(), "_blank", "noopener,noreferrer");
+      }
+      window.close();
+    }
+  }
+
+  handleDeleteResourceClick(event) {
     event.preventDefault();
     this.setState({ deleteDialogOpen: true, deleteError: "" });
   }
@@ -562,9 +608,14 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
       return;
     }
 
+    const resourceId = this.state.resource?.id || this.props.match?.params?.id;
+    if (!resourceId) {
+      return;
+    }
+
     this.setState({ deletingResource: true, deleteError: "" });
     try {
-      await this.props.context.port.request("passbolt.resources.delete-all", [this.state.resource.id]);
+      await this.props.context.port.request("passbolt.resources.delete-all", [resourceId]);
       this.props.history.replace("/webAccessibleResources/quickaccess/home");
     } catch (error) {
       console.error(error);
@@ -713,8 +764,7 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
       `          <a
             href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}\`}
             className="secondary-action button-transparent button"
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={this.handleViewInVaultClick}
             title={this.translate("View in the vault")}
           >`,
       `          {this.canUpdateResource && (
@@ -734,8 +784,7 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
           <a
             href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}\`}
             className="secondary-action button-transparent button"
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={this.handleViewInVaultClick}
             title={this.translate("View in the vault")}
           >`,
     ],
@@ -771,8 +820,7 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
           <a
             href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}\`}
             className="secondary-action button-transparent button"
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={this.handleViewInVaultClick}
             title={this.translate("View in the vault")}
           >
             <GoSVG />
@@ -784,8 +832,7 @@ import { RESOURCE_TYPE_V5_PASSKEY_SLUG } from "../../../shared/models/entity/res
             <a
               href={\`\${this.props.context.userSettings.getTrustedDomain()}/app/passwords/view/\${this.props.match.params.id}?action=edit\`}
               className="secondary-action button-transparent button"
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={this.handleEditInVaultClick}
               title={this.translate("Edit in the vault")}
             >
               <EditSVG />
@@ -5310,6 +5357,39 @@ export default withAppContext(withTranslation("common")(InputPassphrase));
   }
 }
 
+function patchQuickAccessDeleteDialogStyles() {
+  const cssRule = `\n.quickaccess .delete-password-dialog.dialog-wrapper{position:absolute;top:0;left:0;right:0;bottom:0;z-index:100;background:hsl(from var(--Dialog-Dialog-background) h s l / 0.7);display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:1.6rem}.quickaccess .delete-password-dialog.dialog-wrapper .dialog{position:relative;width:100%;max-width:34rem;margin:0;background:var(--Dialog-Dialog-header-and-footer);border-radius:var(--Section-border-radius);box-sizing:border-box;padding:0 1.6rem 1.6rem}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .dialog-header{display:flex;align-items:center;padding:1.2rem 0}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .dialog-header .dialog-title-wrapper{flex:1}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .dialog-header .dialog-title-wrapper h2{margin:0;padding:0;font-size:1.6rem;color:var(--Text-and-icons-Main-text)}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .form-content{padding:1.6rem;border-radius:var(--Section-border-radius);background:var(--Dialog-Dialog-fill);margin-bottom:1.6rem}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .form-content p{margin-bottom:1.2rem;font-size:1.4rem;line-height:1.8rem}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .form-content p:last-child{margin-bottom:0}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .form-content .error-message{margin-top:1rem;color:var(--Action-delete-hover,#d32f2f);font-size:1.3rem}.quickaccess .delete-password-dialog.dialog-wrapper .dialog .submit-wrapper{display:flex;justify-content:flex-end;gap:1.2rem;padding:0;background:transparent}\n`;
+
+  const targetDirs = [
+    path.resolve(root, "node_modules/passbolt-styleguide"),
+    path.resolve(root, "../passly_styleguide"),
+  ];
+  const themes = ["default", "midgar", "solarized_light", "solarized_dark"];
+
+  for (const dir of targetDirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const theme of themes) {
+      const extQaCssPath = path.join(dir, `build/css/themes/${theme}/ext_quickaccess.min.css`);
+      if (fs.existsSync(extQaCssPath)) {
+        const content = fs.readFileSync(extQaCssPath, "utf8");
+        if (!content.includes(".delete-password-dialog.dialog-wrapper")) {
+          writeIfChanged(extQaCssPath, content + cssRule);
+        }
+      }
+    }
+  }
+
+  for (const theme of themes) {
+    const warExtQaCss = path.join(root, `build/all/webAccessibleResources/css/themes/${theme}/ext_quickaccess.min.css`);
+    if (fs.existsSync(warExtQaCss)) {
+      const content = fs.readFileSync(warExtQaCss, "utf8");
+      if (!content.includes(".delete-password-dialog.dialog-wrapper")) {
+        writeIfChanged(warExtQaCss, content + cssRule);
+      }
+    }
+  }
+}
+
 rebrandStyleguideSource();
 patchQuickAccessPasswordGeneratorSource();
 patchPasskeyResourceTypeSupport();
@@ -5318,5 +5398,6 @@ patchQuickAccessOfflineFallback();
 patchQuickAccessVaultLocales();
 patchOfflineSettingsEntity();
 patchInputPassphraseStandardBiometric();
+patchQuickAccessDeleteDialogStyles();
 rebrandGeneratedBundles();
 

@@ -84,6 +84,7 @@ import UpdateResourceTagsController from "../controller/tag/updateResourceTagsCo
 import AddTagsToResourcesController from "../controller/tag/addTagsToResourcesController";
 import OpenAdministrationPageController from "../controller/tab/openAdministrationPageController";
 import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainTabController";
+import OpenVaultPageTabController from "../controller/tab/openVaultPageTabController";
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
 import OpenResourceUriTabController from "../controller/tab/openResourceUriTabController";
 import FindOfflineSettingsController from "../controller/offline/findOfflineSettingsController";
@@ -896,6 +897,17 @@ const listen = function (worker, apiClientOptions, account) {
   worker.port.on("passbolt.tabs.open-website-getting-started-page", async (requestId) => {
     const controller = new OpenWebsiteGettingStartedPageController(worker, requestId);
     await controller._exec();
+  });
+
+  /**
+   * Opens a page of the vault in a new tab.
+   * @param {string} requestId
+   * @param {{pathname: string, action: string}} page
+   * @listens passbolt.tabs.open-vault-page
+   */
+  worker.port.on("passbolt.tabs.open-vault-page", async (requestId, page) => {
+    const controller = new OpenVaultPageTabController(worker, requestId);
+    await controller._exec(page);
   });
 
   /**

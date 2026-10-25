@@ -9,6 +9,7 @@ import CloseActiveTabController from "../controller/tab/closeActiveTabController
 import BrowserTabService from "../service/ui/browserTab.service";
 import OpenTrustedDomainTabController from "../controller/tab/openTrustedDomainTabController";
 import OpenWebsiteGettingStartedPageController from "../controller/tab/openWebsiteGettingStartedPageController";
+import OpenVaultPageTabController from "../controller/tab/openVaultPageTabController";
 
 const listen = function (worker) {
   /*
@@ -57,6 +58,17 @@ const listen = function (worker) {
   worker.port.on("passbolt.tabs.open-website-getting-started-page", async (requestId) => {
     const controller = new OpenWebsiteGettingStartedPageController(worker, requestId);
     await controller._exec();
+  });
+
+  /**
+   * Opens a page of the vault in a new tab.
+   * @param {string} requestId
+   * @param {{pathname: string, action: string}} page
+   * @listens passbolt.tabs.open-vault-page
+   */
+  worker.port.on("passbolt.tabs.open-vault-page", async (requestId, page) => {
+    const controller = new OpenVaultPageTabController(worker, requestId);
+    await controller._exec(page);
   });
 };
 

@@ -48,7 +48,7 @@ Use commands from `passly_browser_extension/`.
 
 ```bash
 npm ci
-npm run build
+npm run build && npm run build:chromium-mv3 && rsync -a --delete build/all/ build/chromium-mv3-unpacked/
 npm run lint
 npm run test:unit
 grunt build
@@ -83,9 +83,24 @@ testing the rebrand script itself.
 - `grunt build` and `npm run build` generate build artifacts under `build/`.
   Treat generated build outputs as disposable unless the user explicitly asks
   for release artifacts.
+- **Always finish builds by targeting Chromium MV3:**
+  The root `npm run build` (and default `webpack`) runs all 4 browser configs
+  sequentially into the shared `build/all/` directory: Firefox -> Chromium MV2 ->
+  Chromium MV3 -> Safari. Because Safari runs last, it leaves its Manifest V2
+  (`manifest_version: 2`) file in `build/all/manifest.json`. Modern Chromium
+  rejects Manifest V2 extensions ("unsupported manifest version"). Therefore,
+  always run `npm run build:chromium-mv3` after `npm run build` and sync the
+  unpacked directory:
+  ```bash
+  npm run build && npm run build:chromium-mv3 && rsync -a --delete build/all/ build/chromium-mv3-unpacked/
+  ```
+  This guarantees both `build/all/` and `build/chromium-mv3-unpacked/` contain
+  a valid Manifest V3 build ready to be loaded via Chrome's "Load unpacked".
 - Always ensure the build also produces unpacked extension directories for the
   browser targets that support them, not just packaged `.zip` or `.crx`
-  artifacts.
+  artifacts. For development / testing:
+  - Chromium MV3 unpacked: `build/chromium-mv3-unpacked/` (or `build/all/` after `build:chromium-mv3`).
+  - Firefox unpacked: `build/firefox-unpacked/`.
 - Safari conversion uses the `dev:safari:convert` npm script and writes into
   `build-safari-extension/`.
 - If a build depends on a browser signing, store, or private key credential,
