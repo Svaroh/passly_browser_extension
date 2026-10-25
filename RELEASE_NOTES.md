@@ -1,3 +1,10 @@
+Passly 6.1.3 fixes QuickAccess vault navigation and resource deletion actions.
+
+### Fixed
+- Fix QuickAccess "View in the vault" and "Edit in the vault" buttons by adding `passbolt.tabs.open-vault-page` background handler and navigation controller.
+- Fix QuickAccess "Delete" button by integrating scoped dialog styling for popup view and ensuring reliable resource ID resolution.
+
+# v6.1.2
 Passly 6.1.2 fixes Passkey interception by ensuring confirmation dialogs display by default, deferring vault unlocking, and supporting Oracle SSO multi-domain matching.
 
 ### Fixed

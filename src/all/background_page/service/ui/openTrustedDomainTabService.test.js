@@ -73,4 +73,54 @@ describe("OpenTrustedDomainTabService", () => {
       await expect(service.openTab()).rejects.toThrow("Trusted domain is not set");
     });
   });
+
+  describe("::openTabAtPath", () => {
+    it("Should open a new tab with the resource path on the trusted domain", async () => {
+      expect.assertions(1);
+      const domain = "https://passbolt.local";
+      jest.spyOn(User, "getInstance").mockImplementation(() => ({
+        settings: {
+          getDomain: () => domain,
+        },
+      }));
+      jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
+
+      const service = new OpenTrustedDomainTabService();
+      await service.openTabAtPath("/app/passwords/view/123", "edit");
+
+      expect(BrowserTabService.openTab).toHaveBeenCalledWith(
+        "https://passbolt.local/app/passwords/view/123?action=edit",
+      );
+    });
+
+    it("Should open a new tab with the resource path without action when action is null", async () => {
+      expect.assertions(1);
+      const domain = "https://passbolt.local/";
+      jest.spyOn(User, "getInstance").mockImplementation(() => ({
+        settings: {
+          getDomain: () => domain,
+        },
+      }));
+      jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
+
+      const service = new OpenTrustedDomainTabService();
+      await service.openTabAtPath("/app/passwords/view/123");
+
+      expect(BrowserTabService.openTab).toHaveBeenCalledWith("https://passbolt.local/app/passwords/view/123");
+    });
+  });
+
+  describe("::buildUrl", () => {
+    it("Should return domain when no pathname is provided", async () => {
+      const service = new OpenTrustedDomainTabService();
+      expect(await service.buildUrl("https://passbolt.local")).toBe("https://passbolt.local");
+    });
+
+    it("Should construct URL with pathname and action parameter", async () => {
+      const service = new OpenTrustedDomainTabService();
+      expect(await service.buildUrl("https://passbolt.local/", "/app/passwords/view/456", "edit")).toBe(
+        "https://passbolt.local/app/passwords/view/456?action=edit",
+      );
+    });
+  });
 });

@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.3] - 2026-10-25
+### Fixed
+- Fix QuickAccess "View in the vault" and "Edit in the vault" actions by implementing openVaultPage background tab controller and event listener
+- Fix QuickAccess "Delete" action by adding responsive popup dialog styles and fallback resource ID resolution
+
 ## [6.1.2] - 2026-10-23
 ### Fixed
 - Ensure Passly passkey confirmation dialog displays by default without silent UVPAA pre-check skips
