@@ -33,9 +33,15 @@ class PortManager {
     if (this.isPasskeyPort(port)) {
       return;
     }
-    if (await this.isQuickAccessPort(port.sender)) {
+    if (await this.isQuickAccessPort(port.sender, port)) {
       // Quickaccess is not stored in the session storage and there is no worker entity referenced
       await this.registerAndAttachEvent(port, "QuickAccess");
+    } else if (await this.isSigninPort(port)) {
+      // The local sign in page of the extension
+      await this.registerAndAttachEvent(port, "Auth");
+    } else if (await this.isWorkspacePort(port)) {
+      // The extension-hosted workspace container or detached app
+      await this.registerAndAttachEvent(port, "App");
     } else if (await this.isMobileTransferEntrypointPort(port)) {
       // The local setup/recover entrypoint is an extension tab and does not have a bootstrap worker.
       await this.registerAndAttachEvent(port, "MobileTransferEntrypoint");
@@ -67,17 +73,41 @@ class PortManager {
   /**
    * Is quickAccess port sender
    * @param sender
+   * @param port
    * @returns {Promise<boolean>}
    */
-  async isQuickAccessPort(sender) {
-    if (sender.tab) {
-      // Tab property will only be present when the connection was opened from a tab
-      return false;
-    }
-
+  async isQuickAccessPort(sender, port = null) {
     const quickAppUrl = await browser.runtime.getURL("/webAccessibleResources/quickaccess.html");
-    const isPortUrlAQuickAppUrl = sender.url.startsWith(quickAppUrl);
-    return isPortUrlAQuickAppUrl;
+    const isPortUrlAQuickAppUrl = sender?.url?.startsWith(quickAppUrl);
+    if (isPortUrlAQuickAppUrl) {
+      return true;
+    }
+    return port?.name === "quickaccess";
+  }
+
+  /**
+   * Is signin port
+   * @param port
+   * @returns {Promise<boolean>}
+   */
+  async isSigninPort(port) {
+    const signinUrl = await browser.runtime.getURL("/webAccessibleResources/signin.html");
+    return port?.name === "signin" || Boolean(port?.sender?.url?.startsWith(signinUrl));
+  }
+
+  /**
+   * Is workspace port
+   * @param port
+   * @returns {Promise<boolean>}
+   */
+  async isWorkspacePort(port) {
+    const workspaceUrl = await browser.runtime.getURL("/webAccessibleResources/workspace.html");
+    const appUrl = await browser.runtime.getURL("/webAccessibleResources/passbolt-iframe-app.html");
+    return (
+      port?.name === "workspace" ||
+      Boolean(port?.sender?.url?.startsWith(workspaceUrl)) ||
+      Boolean(port?.sender?.url?.startsWith(appUrl))
+    );
   }
 
   /**

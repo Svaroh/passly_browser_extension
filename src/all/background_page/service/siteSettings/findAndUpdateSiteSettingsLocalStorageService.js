@@ -56,22 +56,42 @@ export default class FindAndUpdateSiteSettingsLocalStorageService {
         });
       }
 
-      const siteSettings = await this.findSiteSettingsService.findSiteSettings();
-
-      // Online authenticated sessions persist to SiteSettingsLocalStorage (the offline-mode store);
-      // Anonymous sessions only set the in-memory runtime cache below.
-      const activeSession = await this.getOrFindActiveSessionService.getOrFind();
-      if (activeSession.isSessionOnline && activeSession.isAuthenticated) {
-        await this.siteSettingsLocalStorage.set(siteSettings);
+      const activeSession = await this.getOrFindActiveSessionService.getOrFind().catch(() => null);
+      if (activeSession && (activeSession.isSessionOffline || activeSession.isServerReachable === false)) {
+        const stored = (await this.siteSettingsLocalStorage.get()) ?? SiteSettingsRuntimeCache.get();
+        if (stored) {
+          const entity = new SiteSettingsEntity(stored);
+          SiteSettingsRuntimeCache.set(entity);
+          return entity;
+        }
       }
-      /*
-       * PB-53134:
-       * Set a cache of site setting without account id as a key to get the cache in AppEmailValidatorService
-       * This is very sensitive as the AppEmailValidatorService valid the username of account entity.
-       */
-      SiteSettingsRuntimeCache.set(siteSettings);
 
-      return siteSettings;
+      try {
+        const siteSettings = await this.findSiteSettingsService.findSiteSettings();
+
+        // Online authenticated sessions persist to SiteSettingsLocalStorage (the offline-mode store);
+        // Anonymous sessions only set the in-memory runtime cache below.
+        if (activeSession?.isSessionOnline && activeSession?.isAuthenticated) {
+          await this.siteSettingsLocalStorage.set(siteSettings);
+        }
+        /*
+         * PB-53134:
+         * Set a cache of site setting without account id as a key to get the cache in AppEmailValidatorService
+         * This is very sensitive as the AppEmailValidatorService valid the username of account entity.
+         */
+        SiteSettingsRuntimeCache.set(siteSettings);
+
+        return siteSettings;
+      } catch (networkError) {
+        // Fallback to local storage replica when network request fails in offline / unreachable state
+        const stored = (await this.siteSettingsLocalStorage.get()) ?? SiteSettingsRuntimeCache.get();
+        if (stored) {
+          const entity = new SiteSettingsEntity(stored);
+          SiteSettingsRuntimeCache.set(entity);
+          return entity;
+        }
+        throw networkError;
+      }
     });
   }
 }

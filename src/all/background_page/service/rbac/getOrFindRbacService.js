@@ -55,6 +55,11 @@ export default class GetOrFindRbacService {
       const collectionDto = await this.rbacsLocalStorage.getData();
       return typeof collectionDto !== "undefined" ? new RbacsCollection(collectionDto) : new RbacsCollection([]);
     }
-    return this.findAndUpdateRbacLocalStorageService.findAndUpdateAll();
+    try {
+      return await this.findAndUpdateRbacLocalStorageService.findAndUpdateAll();
+    } catch (networkError) {
+      const collectionDto = await this.rbacsLocalStorage.getData().catch(() => []);
+      return typeof collectionDto !== "undefined" ? new RbacsCollection(collectionDto) : new RbacsCollection([]);
+    }
   }
 }

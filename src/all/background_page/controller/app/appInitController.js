@@ -43,8 +43,8 @@ class AppInitController {
     try {
       await user.settings.sync();
     } catch (error) {
-      console.error(error);
-      // @deprecated with v4. The /account/settings entry point exist since v3.0 in CE.
+      console.warn("Could not sync user settings with server, preserving existing local settings offline:", error);
+      // In offline mode or when network fails, do not reset configured theme or user settings.
       user.settings.setDefaults();
     }
   }

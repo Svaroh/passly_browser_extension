@@ -78,21 +78,36 @@ class AutofillController {
       const activeSession = await this.getOrFindActiveSessionService.getOrFind();
       // Get information from API if online
       if (activeSession.isSessionOnline) {
-        // Get the resource, decrypt the resources password and requests to fill the credentials
-        resourceEntity = await this.resourceModel.getById(resourceId);
-        const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(
-          resourceEntity.resourceTypeId,
-        );
-        if (this.isPasskeySecretSchema(secretSchema)) {
-          throw new Error("Passkeys cannot be used with password autofill.");
+        try {
+          // Get the resource, decrypt the resources password and requests to fill the credentials
+          resourceEntity = await this.resourceModel.getById(resourceId);
+          const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(
+            resourceEntity.resourceTypeId,
+          );
+          if (this.isPasskeySecretSchema(secretSchema)) {
+            throw new Error("Passkeys cannot be used with password autofill.");
+          }
+          const secret = await this.findSecretService.findByResourceId(resourceId);
+          const privateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
+          plaintextSecretEntity = await DecryptAndParseResourceSecretService.decryptAndParse(
+            secret,
+            secretSchema,
+            privateKey,
+          );
+        } catch (onlineError) {
+          // If server is unreachable or fails while session is nominally online, fallback to OPFS & local storage
+          resourceEntity = await ResourceLocalStorage.getResourceById(resourceId);
+          if (!resourceEntity) {
+            throw onlineError;
+          }
+          const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(
+            resourceEntity.resource_type_id || resourceEntity.resourceTypeId,
+          );
+          if (this.isPasskeySecretSchema(secretSchema)) {
+            throw new Error("Passkeys cannot be used with password autofill.");
+          }
+          plaintextSecretEntity = await this.findSecretOPFSService.findByResourceId(resourceId, passphrase);
         }
-        const secret = await this.findSecretService.findByResourceId(resourceId);
-        const privateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
-        plaintextSecretEntity = await DecryptAndParseResourceSecretService.decryptAndParse(
-          secret,
-          secretSchema,
-          privateKey,
-        );
       } else {
         // Get information from resource local storage
         resourceEntity = await ResourceLocalStorage.getResourceById(resourceId);

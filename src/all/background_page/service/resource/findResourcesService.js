@@ -250,9 +250,16 @@ export default class FindResourcesService {
     assertUuid(resourceId);
     this.assertContains(contains);
 
-    const resourcesDto = await this.resourceService.get(resourceId, contains);
-
-    return new ResourceEntity(resourcesDto);
+    try {
+      const resourcesDto = await this.resourceService.get(resourceId, contains);
+      return new ResourceEntity(resourcesDto);
+    } catch (networkError) {
+      const localResource = await ResourceLocalStorage.getResourceById(resourceId);
+      if (localResource) {
+        return new ResourceEntity(localResource);
+      }
+      throw networkError;
+    }
   }
 
   /**

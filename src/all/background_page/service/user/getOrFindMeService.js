@@ -69,12 +69,40 @@ class GetOrFindMeService {
       contains.missing_metadata_key_ids = true;
     }
 
-    const userDto = await this.userApiService.get(this.account.userId, contains);
-    const userEntity = new UserEntity(userDto, { ignoreInvalidEntity: true });
+    try {
+      const userDto = await this.userApiService.get(this.account.userId, contains);
+      const userEntity = new UserEntity(userDto, { ignoreInvalidEntity: true });
 
-    await this.userMeLocalStorageService.setData(userEntity);
+      await this.userMeLocalStorageService.setData(userEntity);
 
-    return userEntity;
+      return userEntity;
+    } catch (networkError) {
+      const userDto = await this.userMeLocalStorageService.getData();
+      if (typeof userDto !== "undefined") {
+        return new UserEntity(userDto);
+      }
+      if (this.account?.userId) {
+        try {
+          const firstName = this.account.firstName || this.account.profile?.first_name || "User";
+          const lastName = this.account.lastName || this.account.profile?.last_name || firstName;
+          return new UserEntity(
+            {
+              id: this.account.userId,
+              username: this.account.username || "",
+              profile: {
+                first_name: firstName,
+                last_name: lastName,
+              },
+              role: { name: this.account.role?.name || "user" },
+            },
+            { ignoreInvalidEntity: true },
+          );
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
   }
 }
 

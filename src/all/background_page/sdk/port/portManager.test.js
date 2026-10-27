@@ -68,6 +68,26 @@ describe("PortManager", () => {
       expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
     });
 
+    it("Should connect new port if quick access is opened in a tab or detached window", async () => {
+      expect.assertions(6);
+      const popupUrl =
+        "chrome-extension://extensionId/webAccessibleResources/quickaccess.html?passbolt=quickaccess&uiMode=detached";
+      const port = mockPort({ name: "quickaccess", url: popupUrl, tabId: 101 });
+      expect(port.sender.tab).toBeDefined();
+
+      jest.spyOn(GetLegacyAccountService, "get").mockImplementation(jest.fn());
+      jest.spyOn(browser.runtime, "getURL").mockImplementationOnce(() => popupUrl);
+      jest.spyOn(PagemodManager, "attachEventToPort");
+
+      await PortManager.onPortConnect(port);
+
+      expect(browser.runtime.getURL).toHaveBeenCalled();
+      expect(PortManager._ports[port.name]).toBeDefined();
+      expect(PortManager._ports[port.name]._port).toBe(port);
+      expect(PagemodManager.attachEventToPort).toHaveBeenCalledWith(PortManager._ports[port.name], "QuickAccess");
+      expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
+    });
+
     it("Should connect new port if it is the local mobile transfer entrypoint", async () => {
       expect.assertions(5);
       // data mocked
@@ -93,6 +113,40 @@ describe("PortManager", () => {
         PortManager._ports[port.name],
         "MobileTransferEntrypoint",
       );
+      expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
+    });
+
+    it("Should connect new port if it is the local signin page", async () => {
+      expect.assertions(5);
+      const signinUrl = "chrome-extension://extensionId/webAccessibleResources/signin.html?passbolt=signin";
+      const port = mockPort({ name: "signin", url: signinUrl, tabId: 102 });
+
+      jest.spyOn(browser.runtime, "getURL").mockImplementation((path) => `chrome-extension://extensionId${path}`);
+      jest.spyOn(PagemodManager, "attachEventToPort");
+
+      await PortManager.onPortConnect(port);
+
+      expect(browser.runtime.getURL).toHaveBeenCalled();
+      expect(PortManager._ports[port.name]).toBeDefined();
+      expect(PortManager._ports[port.name]._port).toBe(port);
+      expect(PagemodManager.attachEventToPort).toHaveBeenCalledWith(PortManager._ports[port.name], "Auth");
+      expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
+    });
+
+    it("Should connect new port if it is the extension workspace page", async () => {
+      expect.assertions(5);
+      const workspaceUrl = "chrome-extension://extensionId/webAccessibleResources/workspace.html?passbolt=workspace";
+      const port = mockPort({ name: "workspace", url: workspaceUrl, tabId: 103 });
+
+      jest.spyOn(browser.runtime, "getURL").mockImplementation((path) => `chrome-extension://extensionId${path}`);
+      jest.spyOn(PagemodManager, "attachEventToPort");
+
+      await PortManager.onPortConnect(port);
+
+      expect(browser.runtime.getURL).toHaveBeenCalled();
+      expect(PortManager._ports[port.name]).toBeDefined();
+      expect(PortManager._ports[port.name]._port).toBe(port);
+      expect(PagemodManager.attachEventToPort).toHaveBeenCalledWith(PortManager._ports[port.name], "App");
       expect(port.postMessage).toHaveBeenCalledWith(JSON.stringify(["passbolt.port.ready"]));
     });
 

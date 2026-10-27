@@ -41,10 +41,10 @@ describe("BiometricAuthRuntimeService", () => {
   };
 
   describe("::usePassboltPageOrigin", () => {
-    it("Should delegate WebAuthn from Chrome extension pages to the Passbolt HTTPS origin.", () => {
+    it("Should use Chrome extension pages directly without page delegation.", () => {
       mockLocation({ protocol: "chrome-extension:" });
 
-      expect(BiometricAuthRuntimeService.usePassboltPageOrigin()).toBe(true);
+      expect(BiometricAuthRuntimeService.usePassboltPageOrigin()).toBe(false);
     });
 
     it("Should delegate WebAuthn from Firefox extension pages to the Passbolt HTTPS origin.", () => {
@@ -131,8 +131,20 @@ describe("BiometricAuthRuntimeService", () => {
   });
 
   describe("::unlock", () => {
-    it("Should delegate unlock to the Passbolt page from extension pages.", async () => {
+    it("Should unlock locally from Chrome extension pages.", async () => {
       mockLocation({ protocol: "chrome-extension:" });
+      const port = {
+        request: jest.fn().mockResolvedValue("https://pass.66ton99.org.ua/"),
+      };
+      const configuration = { credential_id: "credential", rp_id: "pass.66ton99.org.ua" };
+      jest.spyOn(BiometricAuthClientService, "unlock").mockResolvedValue("passphrase");
+
+      await expect(BiometricAuthRuntimeService.unlock(port, configuration)).resolves.toBe("passphrase");
+      expect(BiometricAuthClientService.unlock).toHaveBeenCalledWith(configuration, "pass.66ton99.org.ua");
+    });
+
+    it("Should delegate unlock to the Passbolt page from Firefox extension pages.", async () => {
+      mockLocation({ protocol: "moz-extension:" });
       const port = {
         request: jest.fn((message) => {
           if (message === "passbolt.addon.get-domain") {

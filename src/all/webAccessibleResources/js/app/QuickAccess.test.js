@@ -71,12 +71,12 @@ describe("QuickAccess", () => {
       expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(true);
     });
 
-    it("Should require the HTTPS Passbolt page for Chrome extension pages.", () => {
+    it("Should unlock locally for Chrome extension pages without opening a remote page.", () => {
       expect.assertions(1);
       delete global.location;
       global.location = new URL("chrome-extension://extension-id/webAccessibleResources/quickaccess.html");
 
-      expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(true);
+      expect(shouldOpenPassboltPageForQuickAccessPasskey()).toBe(false);
     });
 
     it("Should not open a new page when already on the HTTPS Passbolt page.", () => {

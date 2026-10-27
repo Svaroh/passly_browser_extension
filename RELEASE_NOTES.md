@@ -1,3 +1,77 @@
+# v6.1.12
+Passly 6.1.12 fixes broken and reverted styling after offline reload, ensuring theme integrity (preventing unintended revert to white) and introduces a dedicated E2E style verification test.
+
+### Fixed
+- Prevented user settings and dark theme from resetting to default white on offline server sync failures in `AppInitController` and `UserSettings`.
+- Ensured robust absolute extension URL generation in `stylesheet.js` so theme CSS files load reliably in all offline contexts.
+- Eliminated whitespace gap in table view by expanding table width to 100% minimum container width.
+
+### Added
+- Dedicated E2E style and theme test suite (`npm run test:e2e:style`) testing CSS loading, OS dark mode emulation, computed style palette, and offline theme persistence on real Chrome via CDP.
+
+# v6.1.11
+Passly 6.1.11 resolves the issue where the vault turned white after loading or refreshing offline, ensuring seamless offline continuity on the trusted web domain.
+
+### Fixed
+- Fixed blank screen after offline load by keeping user authentication and RBAC context resilient against network failures.
+- Ensured `AppBootstrapPagemod` correctly attaches to the web vault when offline with a local replica, eliminating unwanted redirects to `/auth/login`.
+- Added resilient offline fallbacks in `GetOrFindRbacService` and `FindAndUpdateRbacLocalStorageService`.
+- Protected local storage data from being cleared by background session check alarms during offline operation.
+
+# v6.1.10
+Passly 6.1.10 incorporates full E2E test coverage across all core vault operations (GPGAuth, secret decryption, password generator, clipboard management, offline replica resilience) and adds BrowserStack Automate cloud integration for cross-platform cloud testing.
+
+### Fixed
+- Added seamless offline OPFS and local storage fallback in `AutofillController` to prevent `PassboltServiceUnavailableError` when filling credentials without active network connection.
+- Strengthened offline fallback across `FindSecretByResourceIdController`, `FindResourcesService`, and user session services.
+
+### Added
+- Comprehensive automated E2E test suite (`npm run test:e2e`) verifying DEV backend authentication, secret decryption, clipboard copy & flush, and offline resilience on real Chrome CDP.
+- BrowserStack Automate cloud verification suite (`npm run test:e2e:browserstack`) verifying remote DEV backend connectivity and healthcheck.
+
+# v6.1.9
+Passly 6.1.9 incorporates automated E2E verification of Service Worker offline resilience, eliminating `ERR_INTERNET_DISCONNECTED` under real Google Chrome headless execution.
+
+### Added
+- Added `test:e2e:offline` script validating real Chrome Service Worker registration, Cache Storage population, and offline navigation under `Network.emulateNetworkConditions({ offline: true })`.
+
+# v6.1.8
+Passly 6.1.8 enables native offline PWA operation via Service Worker on the trusted website domain without redirecting user tabs to extension URLs (`chrome-extension://.../workspace.html`).
+
+### Fixed
+- Native offline website operation: eliminated intrusive automatic tab redirects to extension-hosted workspace URLs, allowing the website's Service Worker to serve the App Shell from local cache.
+- Enable `AppBootstrapPagemod` to attach to the web vault on the trusted domain during offline sessions.
+- Seamlessly transition unauthenticated offline navigations on the web vault to `/auth/login` on the same domain, allowing users to unlock via Touch ID / biometrics.
+- Keep `OpenTrustedDomainTabService` opening the canonical domain rather than redirecting away to local extension files.
+
+# v6.1.7
+Passly 6.1.7 delivers an autonomous extension-hosted offline workspace and seamless offline routing. When accessing the Passly domain while offline, during network outages, or with broken DNS, the browser avoids the browser network error page and immediately opens the full-featured offline workspace.
+
+### Fixed
+- Autonomous extension-hosted workspace (`workspace.html`) and local sign-in (`signin.html`) allowing complete vault management, search, folder browsing, and credential copying offline.
+- Added `VaultNavigationFallbackService` to intercept offline navigation failures (`ERR_INTERNET_DISCONNECTED`, DNS errors, network down) on the trusted domain, routing seamlessly to the offline workspace.
+- Registered `workspace` and `signin` communication ports in `PortManager` to connect `App` and `Auth` pagemods without requiring remote server content scripts.
+- Added boot diagnostics and visual offline indicator badge (`Offline - showing the data held on this device`).
+- Ensured local sign-in automatically routes to the offline workspace upon successful biometric or passphrase unlock.
+
+# v6.1.6
+Passly 6.1.6 resolves the "worker id should be a valid uuid" runtime error for QuickAccess connections and restores direct website navigation without intrusive redirects.
+
+### Fixed
+- Fix TypeError: "The worker id should be a valid uuid" by recognizing QuickAccess port connections from tabs and detached windows in PortManager.
+- Remove navigation error redirects to quickaccess.html so the website domain loads and operates offline autonomously.
+- Restore direct trusted domain navigation in OpenTrustedDomainTabService.
+
+# v6.1.4
+Passly 6.1.4 enables direct Touch ID and fingerprint biometric unlock within Chrome extension popups without opening remote server tabs, and adds resilient offline vault login during server, network, or DNS outages.
+
+### Fixed
+- Enable native Touch ID / fingerprint biometric unlock directly inside Chrome extension popups and panels without opening external server tabs or closing the extension.
+- Add seamless offline session fallback in AuthLoginController when unlocking with biometrics or passphrase during server, network, or DNS unavailability.
+- Remove server connectivity blocks and manual passphrase prompts when fingerprint unlock is available.
+- Provide fallback WebAuthn credential retrieval in extension contexts when relying party domain restrictions apply.
+
+# v6.1.3
 Passly 6.1.3 fixes QuickAccess vault navigation and resource deletion actions.
 
 ### Fixed

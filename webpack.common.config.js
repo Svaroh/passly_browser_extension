@@ -62,6 +62,10 @@ const buildSharedExtraPlugins = () => [
         to: resolveSrc('./build/all/webAccessibleResources/js/themes'),
       },
       {
+        from: resolveSrc('./src/all/webAccessibleResources/js/diagnostics'),
+        to: resolveSrc('./build/all/webAccessibleResources/js/diagnostics'),
+      },
+      {
         from: '*.html',
         context: resolveSrc('./src/all/webAccessibleResources'),
         to: resolveSrc('./build/all/webAccessibleResources'),

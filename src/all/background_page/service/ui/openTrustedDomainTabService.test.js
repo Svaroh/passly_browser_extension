@@ -14,52 +14,65 @@
 import OpenTrustedDomainTabService from "./openTrustedDomainTabService";
 import BrowserTabService from "./browserTab.service";
 import User from "../../model/user";
+import ServerReachabilityService from "../auth/serverReachabilityService";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(ServerReachabilityService, "isReachable").mockImplementation(() => true);
 });
 
 describe("OpenTrustedDomainTabService", () => {
   describe("::openTab", () => {
     it("Should open a new tab with the trusted domain", async () => {
       expect.assertions(1);
-      // mock data
       const domain = "https://passbolt.local";
-      // mock functions
       jest.spyOn(User, "getInstance").mockImplementation(() => ({
         settings: {
           getDomain: () => domain,
         },
       }));
       jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
-      // process
+
       const service = new OpenTrustedDomainTabService();
       await service.openTab();
-      // expectations
+
       expect(BrowserTabService.openTab).toHaveBeenCalledWith(domain);
     });
 
     it("Should open a new tab with the trusted domain including port", async () => {
       expect.assertions(1);
-      // mock data
       const domain = "https://passbolt.local:4443";
-      // mock functions
       jest.spyOn(User, "getInstance").mockImplementation(() => ({
         settings: {
           getDomain: () => domain,
         },
       }));
       jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
-      // process
+
       const service = new OpenTrustedDomainTabService();
       await service.openTab();
-      // expectations
+
+      expect(BrowserTabService.openTab).toHaveBeenCalledWith(domain);
+    });
+
+    it("Should open the trusted domain even when the server is offline because service worker serves the app", async () => {
+      expect.assertions(1);
+      const domain = "https://passbolt.local";
+      jest.spyOn(User, "getInstance").mockImplementation(() => ({
+        settings: {
+          getDomain: () => domain,
+        },
+      }));
+      jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
+
+      const service = new OpenTrustedDomainTabService();
+      await service.openTab();
+
       expect(BrowserTabService.openTab).toHaveBeenCalledWith(domain);
     });
 
     it("Should propagate errors from User.getInstance", async () => {
       expect.assertions(1);
-      // mock functions
       jest.spyOn(User, "getInstance").mockImplementation(() => ({
         settings: {
           getDomain: () => {
@@ -67,9 +80,8 @@ describe("OpenTrustedDomainTabService", () => {
           },
         },
       }));
-      // process
+
       const service = new OpenTrustedDomainTabService();
-      // expectations
       await expect(service.openTab()).rejects.toThrow("Trusted domain is not set");
     });
   });
@@ -107,6 +119,24 @@ describe("OpenTrustedDomainTabService", () => {
       await service.openTabAtPath("/app/passwords/view/123");
 
       expect(BrowserTabService.openTab).toHaveBeenCalledWith("https://passbolt.local/app/passwords/view/123");
+    });
+
+    it("Should open a page of the vault on the domain even when the server cannot be reached", async () => {
+      expect.assertions(1);
+      const domain = "https://passbolt.local";
+      jest.spyOn(User, "getInstance").mockImplementation(() => ({
+        settings: {
+          getDomain: () => domain,
+        },
+      }));
+      jest.spyOn(BrowserTabService, "openTab").mockImplementation(() => {});
+
+      const service = new OpenTrustedDomainTabService();
+      await service.openTabAtPath("/app/passwords/view/id", "edit");
+
+      expect(BrowserTabService.openTab).toHaveBeenCalledWith(
+        "https://passbolt.local/app/passwords/view/id?action=edit",
+      );
     });
   });
 

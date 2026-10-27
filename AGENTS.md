@@ -69,6 +69,32 @@ The unit-test script runs `node scripts/rebrand-passly-styleguide.js` before
 Jest. Do not remove that step when debugging tests unless you are specifically
 testing the rebrand script itself.
 
+## Mandatory Version Bumping & Release Hygiene
+
+- **Every change requires a version bump:** Whenever you implement a bugfix,
+  feature, or behavior change, you MUST bump the extension version (patch version
+  by default, e.g. `6.1.4` -> `6.1.5`) BEFORE concluding your work and presenting
+  results. Never deliver code changes or bugfixes under an already existing or
+  previously built version.
+- **Update all version sources in lockstep:**
+  1. `package.json`
+  2. `package-lock.json`
+  3. All browser manifests:
+     - `src/chrome-mv3/manifest.json`
+     - `src/chrome/manifest.json`
+     - `src/firefox/manifest.json`
+     - `src/safari/manifest.json`
+  4. `CHANGELOG.md` — add a new section for the bumped version with clear bullet points.
+  5. `RELEASE_NOTES.md` — prepend the release summary for the new version.
+- **Rebuild distributable artifacts immediately after bumping:**
+  Always execute the full build and target Chromium MV3:
+  ```bash
+  npm run build && npm run build:chromium-mv3 && rsync -a --delete build/all/ build/chromium-mv3-unpacked/
+  ```
+  Ensure `build/chromium-mv3-unpacked/manifest.json` reflects the new version so
+  Chrome users can simply click "Reload" in `chrome://extensions/` and see the new version immediately.
+- **Report the new version in the user summary:** State the bumped version explicitly in your final response.
+
 ## Browser Extension Build Notes
 
 - Before any build that is meant to produce distributable browser artifacts,

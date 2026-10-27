@@ -147,5 +147,22 @@ describe("GetOrFindMeService", () => {
       expect(service.userApiService.get).not.toHaveBeenCalled();
       expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(new UserEntity(usersDto).toDto(storage.DEFAULT_CONTAIN));
     });
+
+    it("returns cached user from local storage when online API call fails due to network outage", async () => {
+      expect.assertions(2);
+      const usersDto = defaultUserDto();
+      await storage.setData(new UserEntity(usersDto));
+      mockActiveSession({
+        is_server_reachable: true,
+        is_session_online: true,
+        last_logged_in: "2025-08-04T18:58:11+00:00",
+      });
+      jest.spyOn(service.userApiService, "get").mockRejectedValue(new Error("Network connection dropped"));
+
+      const result = await service.getOrFindMe(true);
+
+      expect(service.userApiService.get).toHaveBeenCalled();
+      expect(result.toDto(storage.DEFAULT_CONTAIN)).toEqual(new UserEntity(usersDto).toDto(storage.DEFAULT_CONTAIN));
+    });
   });
 });

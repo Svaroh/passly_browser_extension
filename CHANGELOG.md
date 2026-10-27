@@ -3,6 +3,62 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.12] - 2026-10-27
+### Added
+- Dedicated E2E style and theme verification suite (`e2e/style-verification.e2e.js`) validating CSS loading, OS dark mode, computed style palette, and offline theme persistence
+### Fixed
+- Prevent user settings and dark theme from resetting to default white on offline server sync failures in `AppInitController` and `UserSettings`
+- Ensure robust absolute extension URL generation in `stylesheet.js` to guarantee theme CSS loads under all execution contexts
+- Prevent table clipping and blank white gap on wide screens by enforcing 100% min-width container expansion in styleguide
+
+## [6.1.11] - 2026-10-27
+### Fixed
+- Prevent page turning blank after loading or reloading offline on the trusted domain
+- Ensure `AppBootstrapPagemod` attaches to the web vault when offline with a local replica, eliminating unwanted redirects to `/auth/login`
+- Add resilient offline fallbacks in `GetOrFindRbacService` and `FindAndUpdateRbacLocalStorageService` so RBAC failures never crash context or reset logged-in user
+- Guard against session flushing during server outages in `StartLoopAuthSessionCheckService`
+
+## [6.1.10] - 2026-10-25
+### Added
+- Comprehensive E2E test suite covering all core vault operations (GPGAuth, resource listing, secret decryption, password generator, clipboard buffer flush, offline replica resilience)
+- BrowserStack Automate cloud runner integration testing DEV backend and healthcheck on remote macOS Chrome
+### Fixed
+- Add offline OPFS and local storage fallback in `AutofillController` to prevent `PassboltServiceUnavailableError` when filling credentials offline
+- Add defensive null-safety and offline fallback across `FindSecretByResourceIdController`, `FindResourcesService`, and user services
+
+## [6.1.9] - 2026-10-25
+### Added
+- Add `test:e2e:offline` script verifying Service Worker offline navigation in real Google Chrome via CDP
+- Eliminate `ERR_INTERNET_DISCONNECTED` completely across all web vault routes
+
+## [6.1.8] - 2026-10-25
+### Fixed
+- Allow website to operate natively offline with Service Worker without redirecting tabs to `chrome-extension://.../workspace.html`
+- Enable `AppBootstrapPagemod` to attach to the web vault on the trusted domain during offline sessions
+- Seamlessly transition unauthenticated offline navigations on the web vault to the cached `/auth/login` page for Touch ID / biometric unlock
+- Ensure `OpenTrustedDomainTabService` directs users straight to the trusted domain where Service Worker serves the App Shell
+
+## [6.1.7] - 2026-10-25
+### Fixed
+- Implement autonomous extension-hosted workspace (`workspace.html`) and local sign-in (`signin.html`) so the vault works fully offline during network, server, or DNS outages
+- Add `VaultNavigationFallbackService` on `tabs.onUpdated` and `webNavigation.onErrorOccurred` to intercept `ERR_INTERNET_DISCONNECTED`, DNS failures, and unreachable server responses on the trusted domain, routing seamlessly to the offline workspace
+- Register `workspace` and `signin` ports in `PortManager` to attach `App` and `Auth` pagemods without requiring remote server content scripts
+- Bundle boot diagnostics and subtle offline status indicator (`Offline - showing the data held on this device`)
+- Ensure local sign-in redirects to the offline workspace when completed without network connectivity
+
+## [6.1.6] - 2026-10-25
+### Fixed
+- Fix TypeError: "The worker id should be a valid uuid" in PortManager.isQuickAccessPort by supporting QuickAccess connections from detached windows and tabs
+- Remove unwanted navigation error redirects to quickaccess.html so the website loads directly and operates offline as expected
+- Restore direct trusted domain navigation in OpenTrustedDomainTabService
+
+## [6.1.4] - 2026-10-25
+### Fixed
+- Enable native Touch ID / fingerprint biometric unlock directly inside Chrome extension popups and panels without opening external server tabs or closing the extension
+- Add resilient offline fallback when unlocking with fingerprint or passphrase during server, network, or DNS outages
+- Remove unnecessary server connectivity requirements and manual passphrase fallback prompts when biometrics are configured
+- Provide fallback WebAuthn credential retrieval in extension contexts when relying party domain restrictions apply
+
 ## [6.1.3] - 2026-10-25
 ### Fixed
 - Fix QuickAccess "View in the vault" and "Edit in the vault" actions by implementing openVaultPage background tab controller and event listener

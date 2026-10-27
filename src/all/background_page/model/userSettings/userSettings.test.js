@@ -155,5 +155,14 @@ describe("User settings validation security token", () => {
         expect(() => service.validateDomain(validUrls[i])).not.toThrow();
       }
     });
+
+    it("preserves previously configured theme when setDefaults is called", () => {
+      const service = new UserSettings();
+      service.setTheme("midgar");
+      expect(service.getTheme()).toBe("midgar");
+
+      service.setDefaults();
+      expect(service.getTheme()).toBe("midgar");
+    });
   });
 });

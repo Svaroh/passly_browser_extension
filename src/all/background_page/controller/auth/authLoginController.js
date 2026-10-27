@@ -19,10 +19,13 @@ import UserRememberMeLatestChoiceLocalStorage from "../../service/local_storage/
 import UserRememberMeLatestChoiceEntity from "../../model/entity/rememberMe/userRememberMeLatestChoiceEntity";
 import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
 import PostLoginService from "../../service/auth/postLoginService";
+import PostLoginOfflineService from "../../service/auth/postLoginOfflineService";
 import AuthVerifyLoginChallengeService from "../../service/auth/authVerifyLoginChallengeService";
 import KeepSessionAliveService from "../../service/session_storage/keepSessionAliveService";
 import GetOrFindActiveSessionService from "../../service/activeSession/getOrFindActiveSessionService";
 import ActiveSessionLocalStorage from "../../service/local_storage/activeSessionLocalStorage";
+import PassboltServiceUnavailableError from "../../error/passboltServiceUnavailableError";
+import OfflineSessionService from "../../service/auth/offlineSessionService";
 
 class AuthLoginController {
   /**
@@ -98,6 +101,7 @@ class AuthLoginController {
       console.error(e);
     }
 
+    let isOfflineFallback = false;
     try {
       await this.authVerifyLoginChallengeService.verifyAndValidateLoginChallenge(
         this.account.userKeyFingerprint,
@@ -110,27 +114,94 @@ class AuthLoginController {
        */
       await this.rememberPassphrase(passphrase, rememberMe);
       await PostLoginService.exec(this.account, this.apiClientOptions);
+      await OfflineSessionService.open();
       await this.registerRememberMeOption(rememberMe);
     } catch (error) {
-      if (!(error instanceof UserAlreadyLoggedInError)) {
+      if (error instanceof UserAlreadyLoggedInError) {
+        await this.rememberPassphrase(passphrase, rememberMe);
+        await OfflineSessionService.open();
+        await this.registerRememberMeOption(rememberMe);
+      } else if (this.isNetworkOrServerUnreachableError(error)) {
+        isOfflineFallback = true;
+        const postLoginOfflineService = new PostLoginOfflineService(this.account, this.apiClientOptions);
+        const sessionDuration = rememberMe ? -1 : 300;
+        await postLoginOfflineService.exec(passphrase, sessionDuration);
+        await OfflineSessionService.open();
+        await this.registerRememberMeOption(rememberMe);
+      } else {
         throw error;
       }
-      await this.rememberPassphrase(passphrase, rememberMe);
-      await this.registerRememberMeOption(rememberMe);
     }
 
-    if (shouldRefreshCurrentTab) {
-      await this.redirectToApp();
+    if (this.isSigninPageTab()) {
+      await this.redirectToApp(isOfflineFallback);
+    } else if (shouldRefreshCurrentTab && !isOfflineFallback) {
+      await this.redirectToApp(false);
     }
   }
 
   /**
+   * Check if current worker tab is the extension signin page.
+   * @returns {boolean}
+   */
+  isSigninPageTab() {
+    const url = this.worker?.tab?.url || this.worker?.port?.sender?.url;
+    return Boolean(url && url.includes("/webAccessibleResources/signin.html"));
+  }
+
+  /**
+   * Check if error indicates that the server is unreachable or network is offline.
+   * @param {Error|object} error
+   * @returns {boolean}
+   */
+  isNetworkOrServerUnreachableError(error) {
+    if (!error) {
+      return false;
+    }
+    if (
+      error instanceof PassboltServiceUnavailableError ||
+      error.name === "PassboltServiceUnavailableError" ||
+      error.name === "TypeError" ||
+      error.name === "TimeoutError" ||
+      /reach the server/i.test(error.message) ||
+      /failed to fetch/i.test(error.message) ||
+      /network/i.test(error.message) ||
+      /certificate/i.test(error.message) ||
+      /dns/i.test(error.message)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Redirect the user to the application
+   * @param {boolean} isOfflineFallback whether to redirect to local offline workspace
    * @returns {Promise<void>}
    */
-  async redirectToApp() {
-    const url = this.account.domain;
-    browser.tabs.update(this.worker.tab.id, { url });
+  async redirectToApp(isOfflineFallback = false) {
+    let url;
+    if (isOfflineFallback) {
+      const tabUrl = this.worker?.tab?.url || this.worker?.port?.sender?.url;
+      let pathname = null;
+      let action = null;
+      if (tabUrl) {
+        try {
+          const parsed = new URL(tabUrl);
+          pathname = parsed.searchParams.get("pathname");
+          action = parsed.searchParams.get("action");
+        } catch {
+          // Ignore URL parse error
+        }
+      }
+      url = OfflineSessionService.getWorkspaceUrl(pathname, action);
+    } else {
+      url = this.account.domain;
+    }
+    const tabId = this.worker?.tab?.id || this.worker?.port?.sender?.tab?.id;
+    if (tabId) {
+      await browser.tabs.update(tabId, { url });
+    }
   }
 
   /**

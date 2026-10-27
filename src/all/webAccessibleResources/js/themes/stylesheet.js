@@ -52,8 +52,14 @@
       }
 
       const cssFile = cssInfoTag.dataset.file;
+      const theme = this.theme || "default";
+      const relativePath = `/webAccessibleResources/css/themes/${theme}/${cssFile}`;
+      const href =
+        typeof chrome !== "undefined" && chrome.runtime?.getURL
+          ? chrome.runtime.getURL(`webAccessibleResources/css/themes/${theme}/${cssFile}`)
+          : relativePath;
 
-      this.getLinkTag().setAttribute("href", `/webAccessibleResources/css/themes/${this.theme}/${cssFile}`);
+      this.getLinkTag().setAttribute("href", href);
     }
 
     /**
