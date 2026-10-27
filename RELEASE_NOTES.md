@@ -1,3 +1,10 @@
+# v6.1.14
+Passly 6.1.14 resolves all GitHub Code Quality warnings in the E2E test suite.
+
+### Fixed
+- Cleaned up unused imports and variables (`https`, `CREDS_DIR`, `SERVER_INFRA_DIR`) in `e2e/style-verification.e2e.js`.
+- Bound `PROD_DOMAIN` constant to production navigation calls in the dedicated E2E style verification suite.
+
 # v6.1.13
 Passly 6.1.13 resolves unused variables in offline exception catch blocks and adheres to strict linting rules.
 

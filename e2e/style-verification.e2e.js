@@ -14,7 +14,6 @@
 
 const { spawn } = require('child_process');
 const http = require('http');
-const https = require('https');
 const path = require('path');
 const fs = require('fs');
 const WebSocket = require('../node_modules/ws');
@@ -23,8 +22,6 @@ const DEV_DOMAIN = 'https://passly.svaroh.co';
 const PROD_DOMAIN = 'https://pass.66ton99.org.ua';
 const EXT_DIR = path.resolve(__dirname, '..');
 const EXTENSION_PATH = path.resolve(EXT_DIR, 'build/all');
-const SERVER_INFRA_DIR = path.resolve(EXT_DIR, '../server-infra');
-const CREDS_DIR = path.resolve(SERVER_INFRA_DIR, 'e2e/credentials/chrome');
 
 const CHROME_PORT = 9456;
 const CHROME_PATH = process.env.CHROME_BIN ||
@@ -377,7 +374,7 @@ async function run() {
     }
 
     // STEP 4: Production Domain Offline Verification (https://pass.66ton99.org.ua)
-    console.log('\n--- Step 4: Testing Production Domain (https://pass.66ton99.org.ua) Style Integrity ---');
+    console.log(`\n--- Step 4: Testing Production Domain (${PROD_DOMAIN}) Style Integrity ---`);
     await client.send('Network.emulateNetworkConditions', {
       offline: false,
       latency: 0,
@@ -385,8 +382,8 @@ async function run() {
       uploadThroughput: -1,
     });
 
-    console.log('Navigating to production domain https://pass.66ton99.org.ua/auth/login...');
-    await client.send('Page.navigate', { url: 'https://pass.66ton99.org.ua/auth/login' });
+    console.log(`Navigating to production domain ${PROD_DOMAIN}/auth/login...`);
+    await client.send('Page.navigate', { url: `${PROD_DOMAIN}/auth/login` });
     await sleep(3500);
 
     const prodOnlineStyles = await client.eval(`
@@ -419,7 +416,7 @@ async function run() {
     console.log('Reloading production domain while offline...');
     let prodNavError = null;
     try {
-      const res = await client.send('Page.navigate', { url: 'https://pass.66ton99.org.ua/' });
+      const res = await client.send('Page.navigate', { url: `${PROD_DOMAIN}/` });
       if (res.errorText) prodNavError = res.errorText;
     } catch (e) {
       prodNavError = e.message;
