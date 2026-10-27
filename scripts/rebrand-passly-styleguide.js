@@ -4180,7 +4180,7 @@ function patchExtQuickAccessContext(contextFile) {
     "// quickaccess-addon-check-handled-in-root\n      "
   );
 
-  const methodBlockPattern = /async initialize\(\)\s*\{[\s\S]*?(?=\s+bindCallbacks\(\)\s*\{)/;
+  const methodBlockPattern = /async initialize\(\)\s*\{[\s\S]*?\n\s*(?=bindCallbacks\(\)\s*\{)/;
   const newMethodBlock = `async initialize() {
     try {
       const userSettingsPromise = this.getUserSettings();
@@ -4313,7 +4313,8 @@ function patchExtQuickAccessContext(contextFile) {
       // ignore background sync errors
     }
   }
-`;
+
+  `;
 
   content = content.replace(methodBlockPattern, newMethodBlock);
 
