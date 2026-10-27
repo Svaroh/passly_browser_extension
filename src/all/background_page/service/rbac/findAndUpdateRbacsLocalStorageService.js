@@ -55,7 +55,7 @@ export default class FindAndUpdateRbacLocalStorageService {
         const rbacsCollection = await this.findRbacService.findMe();
         await this.rbacLocalStorage.setData(rbacsCollection);
         return rbacsCollection;
-      } catch (networkError) {
+      } catch {
         const cached = await this.rbacLocalStorage.getData().catch(() => []);
         if (cached && cached.length > 0) {
           return new RbacsCollection(cached);

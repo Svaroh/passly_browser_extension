@@ -57,7 +57,7 @@ export default class GetOrFindRbacService {
     }
     try {
       return await this.findAndUpdateRbacLocalStorageService.findAndUpdateAll();
-    } catch (networkError) {
+    } catch {
       const collectionDto = await this.rbacsLocalStorage.getData().catch(() => []);
       return typeof collectionDto !== "undefined" ? new RbacsCollection(collectionDto) : new RbacsCollection([]);
     }

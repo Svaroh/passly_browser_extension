@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.13] - 2026-10-27
+### Fixed
+- Remove unused variables in offline catch handlers across `FindSecretByResourceIdController`, `FindAndUpdateRbacsLocalStorageService`, `GetOrFindRbacService`, and `GetOrFindMeService`
+- Ensure zero lint errors and zero warnings under strict ESLint rules
+
 ## [6.1.12] - 2026-10-27
 ### Added
 - Dedicated E2E style and theme verification suite (`e2e/style-verification.e2e.js`) validating CSS loading, OS dark mode, computed style palette, and offline theme persistence
