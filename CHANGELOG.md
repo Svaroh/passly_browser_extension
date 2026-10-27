@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.14] - 2026-10-27
+### Fixed
+- Clean up unused variables and imports in `e2e/style-verification.e2e.js` addressing GitHub Code Quality review
+- Utilize `PROD_DOMAIN` constant for production domain offline resilience verification
+
 ## [6.1.13] - 2026-10-27
 ### Fixed
 - Remove unused variables in offline catch handlers across `FindSecretByResourceIdController`, `FindAndUpdateRbacsLocalStorageService`, `GetOrFindRbacService`, and `GetOrFindMeService`
