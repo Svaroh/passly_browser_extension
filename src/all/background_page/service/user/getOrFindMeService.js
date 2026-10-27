@@ -76,7 +76,7 @@ class GetOrFindMeService {
       await this.userMeLocalStorageService.setData(userEntity);
 
       return userEntity;
-    } catch (networkError) {
+    } catch {
       const userDto = await this.userMeLocalStorageService.getData();
       if (typeof userDto !== "undefined") {
         return new UserEntity(userDto);

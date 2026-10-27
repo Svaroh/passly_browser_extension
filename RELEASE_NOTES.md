@@ -1,3 +1,10 @@
+# v6.1.13
+Passly 6.1.13 resolves unused variables in offline exception catch blocks and adheres to strict linting rules.
+
+### Fixed
+- Fixed unused variable warnings in exception handlers across `FindSecretByResourceIdController`, `FindAndUpdateRbacsLocalStorageService`, `GetOrFindRbacService`, and `GetOrFindMeService`.
+- Cleaned up lint rules to ensure zero warnings under `--max-warnings 0`.
+
 # v6.1.12
 Passly 6.1.12 fixes broken and reverted styling after offline reload, ensuring theme integrity (preventing unintended revert to white) and introduces a dedicated E2E style verification test.
 

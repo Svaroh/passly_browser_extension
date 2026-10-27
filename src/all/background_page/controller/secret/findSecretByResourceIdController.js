@@ -79,7 +79,7 @@ class FindSecretByResourceIdController {
       try {
         const opfsService = new FindSecretOPFSService(this.account, this.apiClientOptions);
         return await opfsService.findByResourceId(resourceId, passphrase);
-      } catch (opfsError) {
+      } catch {
         throw apiError;
       }
     }

@@ -425,21 +425,6 @@ function patchStyleguideRuntimeLogs() {
     ],
   ]) ? 1 : 0;
 
-  changed += replaceIfExists(logger, [
-    [
-      `
-    // Avoid an additional accident.
-    try {
-      // If the provided value is an Error, output additional properties not shown by the console API.
-      if (error instanceof Error && typeof error.toJSON === "function") {
-        ${consoleLog}(\`Error: \${error.message}\\nError structure: \${JSON.stringify(Logger.serializeError(error))}\`);
-      }
-    } catch (error) {
-      ${consoleError}("The logger was unable to extract additional error information", error);
-    }`,
-      "",
-    ],
-  ]) ? 1 : 0;
 
   changed += replaceIfExists(customFieldsCollection, [
     [
@@ -3856,7 +3841,7 @@ class SecretDataV5PasskeyEntity extends SecretDataEntity {
         credential_id: {
           type: "string",
           maxLength: 8192,
-          pattern: /^[A-Za-z0-9_-]+$/,
+          pattern: /^[\\w-]+$/,
         },
         rp_id: {
           type: "string",
@@ -3870,7 +3855,7 @@ class SecretDataV5PasskeyEntity extends SecretDataEntity {
         user_handle: {
           type: "string",
           maxLength: 8192,
-          pattern: /^[A-Za-z0-9_-]+$/,
+          pattern: /^[\\w-]+$/,
         },
         user_name: {
           type: "string",
@@ -3888,12 +3873,12 @@ class SecretDataV5PasskeyEntity extends SecretDataEntity {
         public_key_cose: {
           type: "string",
           maxLength: 8192,
-          pattern: /^[A-Za-z0-9_-]+$/,
+          pattern: /^[\\w-]+$/,
         },
         private_key_pkcs8: {
           type: "string",
           maxLength: 8192,
-          pattern: /^[A-Za-z0-9_-]+$/,
+          pattern: /^[\\w-]+$/,
         },
         aaguid: {
           type: "string",
@@ -4720,20 +4705,6 @@ function patchOfflineSettingsEntity() {
       `  get maximumRetentionPeriod() {
     return typeof this._props.data_retention_period === "number" ? this._props.data_retention_period : null;
   }`,
-    ],
-    [
-      `  get modifiedBy() {
-    return this._props.modified_by || null;
-  }
-}`,
-      `  get modifiedBy() {
-    return this._props.modified_by || null;
-  }
-
-  get maxItems() {
-    return typeof this._props.max_items === "number" ? this._props.max_items : 0;
-  }
-}`,
     ],
   ]) ? 1 : 0;
 
