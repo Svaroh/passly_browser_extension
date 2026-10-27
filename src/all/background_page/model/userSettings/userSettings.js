@@ -351,7 +351,28 @@ class UserSettings {
    * @return void
    */
   setDefaults() {
-    this.setTheme("default");
+    let currentTheme;
+    try {
+      currentTheme = this.getTheme();
+    } catch {
+      // not set
+    }
+    if (!currentTheme) {
+      this.setTheme("default");
+    }
+  }
+
+  /**
+   * Check whether user theme is configured
+   * @returns {boolean}
+   */
+  hasTheme() {
+    try {
+      const theme = Config.read("user.settings.theme");
+      return typeof theme !== "undefined" && Boolean(theme);
+    } catch {
+      return false;
+    }
   }
 
   /**

@@ -266,6 +266,51 @@ describe("AutofillController", () => {
       expect(portWrapper.emit).toHaveBeenCalledWith("passbolt.in-form-menu.close");
     });
 
+    it("Should fallback to offline OPFS autofill when online API fails due to network error.", async () => {
+      expect.assertions(6);
+
+      const requestId = uuidv4();
+      const worker = readWorker({ name: QuickAccessPagemod.appName });
+      // Session is nominally online
+      jest
+        .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      const controller = new AutofillController(worker, requestId, defaultApiClientOptions(), account);
+      const port = mockPort({ name: worker.id, tabId: worker.tabId, frameId: worker.frameId, url: "https://url.com" });
+      const portWrapper = new Port(port);
+      const tab = { url: "https://url.com" };
+
+      jest.spyOn(WorkerService, "get").mockResolvedValueOnce({ port: portWrapper });
+      jest.spyOn(portWrapper, "emit");
+      jest.spyOn(portWrapper, "request");
+      jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue(pgpKeys.ada.passphrase);
+      // Online API call fails with network/service unavailable error
+      jest.spyOn(controller.resourceModel, "getById").mockRejectedValue(new Error("Unable to reach the server"));
+      jest.spyOn(ResourceLocalStorage, "getResourceById").mockResolvedValue(resource);
+      jest.spyOn(controller.getSecretSchemaResourceTypeService, "getByResourceTypeId").mockResolvedValue(schema);
+      jest
+        .spyOn(controller.findSecretOPFSService, "findByResourceId")
+        .mockResolvedValue(new PlaintextEntity(plaintextSecretDto, { schema }));
+
+      await controller.exec(resource.id, worker.tabId);
+
+      expect(controller.resourceModel.getById).toHaveBeenCalledTimes(1);
+      expect(ResourceLocalStorage.getResourceById).toHaveBeenCalledWith(resource.id);
+      expect(controller.findSecretOPFSService.findByResourceId).toHaveBeenCalledWith(
+        resource.id,
+        pgpKeys.ada.passphrase,
+      );
+      expect(portWrapper.request).toHaveBeenCalledTimes(1);
+      expect(portWrapper.request).toHaveBeenCalledWith(
+        "passbolt.quickaccess.fill-form",
+        resource.metadata.username,
+        plaintextSecretDto.password,
+        plaintextSecretDto.totp,
+        tab.url,
+      );
+      expect(portWrapper.emit).not.toHaveBeenCalledWith("passbolt.in-form-menu.close");
+    });
+
     it("Should not autofill from a worker that is not inform menu or quickaccess.", async () => {
       expect.assertions(12);
 

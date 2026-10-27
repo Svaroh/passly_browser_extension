@@ -30,6 +30,7 @@ import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSess
 import PassboltBadResponseError from "../error/passboltBadResponseError";
 import AuthenticationStatusService from "../service/authenticationStatusService";
 import ServerStatusApiService from "../service/api/status/serverStatusApiService";
+import OfflineSessionService from "../service/auth/offlineSessionService";
 
 const spyAddWorker = jest.spyOn(WorkersSessionStorage, "addWorker");
 jest.spyOn(ScriptExecution.prototype, "injectPortname").mockImplementation(jest.fn());
@@ -122,7 +123,7 @@ describe("AppBootstrap", () => {
       expect(constraint).toBeFalsy();
     });
 
-    it("Should not be able to attach a pagemod if the user is authenticated offline", async () => {
+    it("Should not be able to attach a pagemod if the user is offline and not authenticated", async () => {
       expect.assertions(1);
       // mock functions
       jest.spyOn(GetActiveAccountService, "get").mockImplementation(() => {});
@@ -136,6 +137,59 @@ describe("AppBootstrap", () => {
       const constraint = await AppBootstrap.canBeAttachedTo({ frameId: 0 });
       // expectations
       expect(constraint).toBeFalsy();
+    });
+
+    it("Should be able to attach a pagemod if the user is authenticated in an offline session", async () => {
+      expect.assertions(1);
+      const getAccountSpy = jest
+        .spyOn(GetActiveAccountService, "get")
+        .mockImplementation(() => new AccountEntity(defaultAccountDto()));
+      const findAuthStatusSpy = jest
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(offlineUserActiveSessionDto({ is_authenticated: true })),
+        );
+      const getDomainSpy = jest
+        .spyOn(UserSettings.prototype, "getDomain")
+        .mockImplementation(() => "https://passbolt.dev");
+      const result = await AppBootstrap.canBeAttachedTo({
+        frameId: Pagemod.TOP_FRAME_ID,
+        url: "https://passbolt.dev/app",
+      });
+      expect(result).toBeTruthy();
+      getAccountSpy.mockRestore();
+      findAuthStatusSpy.mockRestore();
+      getDomainSpy.mockRestore();
+    });
+
+    it("Should be able to attach a pagemod when offline and local replica exists even if unauthenticated", async () => {
+      expect.assertions(1);
+      const getAccountSpy = jest
+        .spyOn(GetActiveAccountService, "get")
+        .mockImplementation(() => new AccountEntity(defaultAccountDto()));
+      const findAuthStatusSpy = jest
+        .spyOn(FindAndUpdateActiveSessionLocalStorageService.prototype, "findAndUpdateAuthenticationStatus")
+        .mockImplementation(
+          async () => new UserActiveSessionEntity(offlineUserActiveSessionDto({ is_authenticated: false })),
+        );
+      const replicaSpy = jest.spyOn(OfflineSessionService, "hasLocalReplica").mockResolvedValue(true);
+      const getDomainSpy = jest
+        .spyOn(UserSettings.prototype, "getDomain")
+        .mockImplementation(() => "https://passbolt.dev");
+      const originalOnLine = navigator.onLine;
+      Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
+
+      const result = await AppBootstrap.canBeAttachedTo({
+        frameId: Pagemod.TOP_FRAME_ID,
+        url: "https://passbolt.dev/app",
+      });
+      expect(result).toBeTruthy();
+
+      Object.defineProperty(navigator, "onLine", { value: originalOnLine, configurable: true });
+      getAccountSpy.mockRestore();
+      findAuthStatusSpy.mockRestore();
+      replicaSpy.mockRestore();
+      getDomainSpy.mockRestore();
     });
 
     it("Should not be able to attach a pagemod if the authentication status threw an error", async () => {

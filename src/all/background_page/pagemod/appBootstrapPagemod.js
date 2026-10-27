@@ -18,6 +18,7 @@ import GetActiveAccountService from "../service/account/getActiveAccountService"
 import BuildApiClientOptionsService from "../service/account/buildApiClientOptionsService";
 import FindAndUpdateActiveSessionLocalStorageService from "../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
 import isMissingAccountError from "../service/account/isMissingAccountError";
+import OfflineSessionService from "../service/auth/offlineSessionService";
 
 class AppBootstrap extends Pagemod {
   /**
@@ -60,11 +61,34 @@ class AppBootstrap extends Pagemod {
    * @inheritDoc
    */
   async canBeAttachedTo(frameDetails) {
-    return (
-      this.assertTopFrameAttachConstraint(frameDetails) &&
-      (await this.assertUrlAttachConstraint(frameDetails)) &&
-      (await this.assertUserAuthenticated())
-    );
+    if (!this.assertTopFrameAttachConstraint(frameDetails)) {
+      return false;
+    }
+    if (!(await this.assertUrlAttachConstraint(frameDetails))) {
+      return false;
+    }
+    const isAuthenticated = await this.assertUserAuthenticated();
+    if (!isAuthenticated) {
+      const hasReplica = await OfflineSessionService.hasLocalReplica().catch(() => false);
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline && hasReplica) {
+        return true;
+      }
+      try {
+        const account = await GetActiveAccountService.get();
+        if (account?.domain && frameDetails.tabId) {
+          const loginUrl = `${account.domain.replace(/\/*$/, "")}/auth/login`;
+          if (frameDetails.url !== loginUrl && !frameDetails.url.startsWith(loginUrl)) {
+            console.debug(`Unauthenticated session in vault route, redirecting to ${loginUrl}`);
+            await browser.tabs.update(frameDetails.tabId, { url: loginUrl });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -106,7 +130,11 @@ class AppBootstrap extends Pagemod {
       apiClientOptions,
     );
     const activeSessionEntity = await findAndUpdateActiveSessionLocalStorageService.findAndUpdateAuthenticationStatus();
-    return activeSessionEntity.isSessionOnline && activeSessionEntity.isAuthenticated;
+    const isOfflineSessionOpen = await OfflineSessionService.isOpen();
+    return (
+      (activeSessionEntity.isAuthenticated || isOfflineSessionOpen) &&
+      (activeSessionEntity.isSessionOnline || activeSessionEntity.isSessionOffline || isOfflineSessionOpen)
+    );
   }
 }
 

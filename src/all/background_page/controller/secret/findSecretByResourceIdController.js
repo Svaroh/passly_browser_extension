@@ -20,6 +20,7 @@ import ProgressService from "../../service/progress/progressService";
 import DecryptAndParseResourceSecretService from "../../service/secret/decryptAndParseResourceSecretService";
 import FindSecretService from "../../service/secret/findSecretService";
 import GetSecretSchemaResourceTypeService from "../../service/resourceType/getSecretSchemaResourceTypeService";
+import FindSecretOPFSService from "../../service/secret/findSecretOPFSService";
 
 class FindSecretByResourceIdController {
   /**
@@ -33,6 +34,8 @@ class FindSecretByResourceIdController {
   constructor(worker, requestId, apiClientOptions, account) {
     this.worker = worker;
     this.requestId = requestId;
+    this.account = account;
+    this.apiClientOptions = apiClientOptions;
     this.resourceModel = new ResourceModel(apiClientOptions, account);
     this.findSecretService = new FindSecretService(account, apiClientOptions);
     this.getSecretSchemaResourceTypeService = new GetSecretSchemaResourceTypeService(account, apiClientOptions);
@@ -63,13 +66,23 @@ class FindSecretByResourceIdController {
     assertUuid(resourceId);
 
     const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
-    const resourcePromise = this.resourceModel.getById(resourceId);
-    const secret = await this.findSecretService.findByResourceId(resourceId);
-    const decryptedPrivateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
-    const resource = await resourcePromise;
-    const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(resource.resourceTypeId);
+    try {
+      const resourcePromise = this.resourceModel.getById(resourceId);
+      const secret = await this.findSecretService.findByResourceId(resourceId);
+      const decryptedPrivateKey = await GetDecryptedUserPrivateKeyService.getKey(passphrase);
+      const resource = await resourcePromise;
+      const secretSchema = await this.getSecretSchemaResourceTypeService.getByResourceTypeId(resource.resourceTypeId);
 
-    return DecryptAndParseResourceSecretService.decryptAndParse(secret, secretSchema, decryptedPrivateKey);
+      return DecryptAndParseResourceSecretService.decryptAndParse(secret, secretSchema, decryptedPrivateKey);
+    } catch (apiError) {
+      // In offline mode or when server is unreachable, fallback to OPFS store
+      try {
+        const opfsService = new FindSecretOPFSService(this.account, this.apiClientOptions);
+        return await opfsService.findByResourceId(resourceId, passphrase);
+      } catch (opfsError) {
+        throw apiError;
+      }
+    }
   }
 }
 

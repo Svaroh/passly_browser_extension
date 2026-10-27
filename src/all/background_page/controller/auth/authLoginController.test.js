@@ -27,10 +27,12 @@ import { mockApiResponse } from "../../../../../test/mocks/mockApiResponse";
 import { defaultEmptySettings, withAzureSsoSettings } from "../sso/getCurrentSsoSettingsController.test.data";
 import { clientSsoKit } from "../../model/entity/sso/ssoKitClientPart.test.data";
 import PostLoginService from "../../service/auth/postLoginService";
+import PostLoginOfflineService from "../../service/auth/postLoginOfflineService";
 import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
 import AccountTemporarySessionStorageService from "../../service/sessionStorage/accountTemporarySessionStorageService";
 import KeepSessionAliveService from "../../service/session_storage/keepSessionAliveService";
 import UserAlreadyLoggedInError from "../../error/userAlreadyLoggedInError";
+import PassboltServiceUnavailableError from "../../error/passboltServiceUnavailableError";
 
 beforeEach(async () => {
   enableFetchMocks();
@@ -235,6 +237,47 @@ describe("AuthLoginController", () => {
 
       await controller.exec(passphrase, true);
       expect(SsoDataStorage.flush).toHaveBeenCalledTimes(1);
+    });
+
+    it("Should fallback to offline authentication when the server challenge fails due to an unreachable server.", async () => {
+      expect.assertions(3);
+      mockOrganisationSettings(false);
+      jest.spyOn(PostLoginOfflineService.prototype, "exec").mockResolvedValue();
+
+      const account = new AccountEntity(defaultAccountDto());
+      const controller = new AuthLoginController({ tab: { id: 1 } }, null, defaultApiClientOptions(), account);
+      jest
+        .spyOn(controller.authVerifyLoginChallengeService, "verifyAndValidateLoginChallenge")
+        .mockRejectedValue(
+          new PassboltServiceUnavailableError("Unable to reach the server, an unexpected error occurred"),
+        );
+      jest.spyOn(browser.tabs, "update");
+
+      await controller.exec(passphrase, true, true);
+      expect(PostLoginOfflineService.prototype.exec).toHaveBeenCalledWith(passphrase, -1);
+      expect(browser.tabs.update).not.toHaveBeenCalled();
+      const latestChoice = await controller.userRememberMeLatestChoiceLocalStorage.get();
+      expect(latestChoice.duration).toBe(-1);
+    });
+
+    it("Should redirect to local workspace when login happens in signin.html tab", async () => {
+      expect.assertions(2);
+      mockOrganisationSettings(false);
+      jest.spyOn(PostLoginOfflineService.prototype, "exec").mockResolvedValue();
+
+      const account = new AccountEntity(defaultAccountDto());
+      const signinTab = { id: 7, url: "chrome-extension://id/webAccessibleResources/signin.html?passbolt=signin" };
+      const controller = new AuthLoginController({ tab: signinTab }, null, defaultApiClientOptions(), account);
+      jest
+        .spyOn(controller.authVerifyLoginChallengeService, "verifyAndValidateLoginChallenge")
+        .mockRejectedValue(new TypeError("Failed to fetch"));
+      jest.spyOn(browser.tabs, "update");
+
+      await controller.exec(passphrase, true, false);
+      expect(PostLoginOfflineService.prototype.exec).toHaveBeenCalledWith(passphrase, -1);
+      expect(browser.tabs.update).toHaveBeenCalledWith(7, {
+        url: expect.stringContaining("/webAccessibleResources/workspace.html"),
+      });
     });
   });
 });

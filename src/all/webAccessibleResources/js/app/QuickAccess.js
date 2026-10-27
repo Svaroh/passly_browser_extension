@@ -39,7 +39,7 @@ export async function ensureQuickAccessConfigured(port, { detached = false, clos
 }
 
 export function shouldOpenPassboltPageForQuickAccessPasskey() {
-  return ["chrome-extension:", "moz-extension:"].includes(globalThis.location?.protocol);
+  return globalThis.location?.protocol === "moz-extension:";
 }
 
 export async function openPassboltLoginPageForPasskey(port, { closeWindow = () => window.close() } = {}) {
@@ -196,7 +196,7 @@ function BiometricQuickAccessActions({ port, options, detached }) {
     setError("");
     setIsUnlocking(true);
     try {
-      if (shouldOpenPassboltPageForQuickAccessPasskey()) {
+      if (portal?.type !== "passphrase-dialog" && shouldOpenPassboltPageForQuickAccessPasskey()) {
         await openPassboltLoginPageForPasskey(port, {
           closeWindow: detached ? () => {} : () => window.close(),
         });
@@ -210,7 +210,8 @@ function BiometricQuickAccessActions({ port, options, detached }) {
       }
     } catch (error) {
       console.error(error);
-      setError("Не вдалося виконати вхід по відбитку пальця.");
+      const isUk = (await port.request("passbolt.locale.get").catch(() => ({})))?.locale?.startsWith("uk");
+      setError(isUk ? "Не вдалося виконати вхід по відбитку пальця." : "Failed to sign in with fingerprint.");
       setIsUnlocking(false);
     }
   };

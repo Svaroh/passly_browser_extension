@@ -153,6 +153,20 @@ describe("FindAndUpdateSiteSettingsLocalStorageService", () => {
   });
 
   describe("::findAndUpdateAll — error propagation", () => {
+    it("falls back to local storage replica if API error occurs and local storage is populated", async () => {
+      const dto = defaultProSiteSettings();
+      await service.siteSettingsLocalStorage.set(new SiteSettingsEntity(dto));
+
+      jest
+        .spyOn(service.getOrFindActiveSessionService, "getOrFind")
+        .mockResolvedValue(new UserActiveSessionEntity(defaultUserActiveSessionDto({ is_authenticated: true })));
+
+      jest.spyOn(service.findSiteSettingsService, "findSiteSettings").mockRejectedValue(new Error("Network offline"));
+
+      const res = await service.findAndUpdateAll();
+      expect(res?.toDto()).toEqual(dto);
+    });
+
     it("propagates API errors and leaves both caches untouched", async () => {
       expect.assertions(4);
       jest

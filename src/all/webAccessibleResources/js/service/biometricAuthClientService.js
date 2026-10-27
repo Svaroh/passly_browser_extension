@@ -110,14 +110,34 @@ class BiometricAuthClientService {
 
     const credentialId = this.base64UrlToArrayBuffer(configuration.credential_id);
     const salt = this.base64UrlToArrayBuffer(configuration.salt);
-    const credential = await navigator.credentials.get({
-      publicKey: this.buildCredentialRequestOptions(
-        credentialId,
-        salt,
-        rpId,
-        configuration.key_storage !== BIOMETRIC_AUTH_KEY_STORAGE_INDEXEDDB,
-      ),
-    });
+    let credential;
+    try {
+      credential = await navigator.credentials.get({
+        publicKey: this.buildCredentialRequestOptions(
+          credentialId,
+          salt,
+          rpId,
+          configuration.key_storage !== BIOMETRIC_AUTH_KEY_STORAGE_INDEXEDDB,
+        ),
+      });
+    } catch (error) {
+      if (rpId && (error?.name === "SecurityError" || error?.name === "NotAllowedError")) {
+        try {
+          credential = await navigator.credentials.get({
+            publicKey: this.buildCredentialRequestOptions(
+              credentialId,
+              salt,
+              null,
+              configuration.key_storage !== BIOMETRIC_AUTH_KEY_STORAGE_INDEXEDDB,
+            ),
+          });
+        } catch {
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    }
 
     if (this.arrayBufferToBase64Url(this.getCredentialId(credential)) !== configuration.credential_id) {
       throw new Error("The biometric credential does not match the configured account.");
@@ -146,6 +166,9 @@ class BiometricAuthClientService {
         publicKey: this.buildCredentialCreationOptions(salt, rpId),
       });
     } catch (error) {
+      if (rpId && (error?.name === "SecurityError" || error?.name === "NotAllowedError")) {
+        return this.createCredential(salt, null);
+      }
       if (!this.isPrfUnsupportedError(error)) {
         throw error;
       }

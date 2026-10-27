@@ -23,7 +23,7 @@ class BiometricAuthRuntimeService {
    * @returns {boolean}
    */
   static usePassboltPageOrigin() {
-    return ["chrome-extension:", "moz-extension:"].includes(globalThis.location?.protocol);
+    return globalThis.location?.protocol === "moz-extension:";
   }
 
   /**
@@ -32,11 +32,8 @@ class BiometricAuthRuntimeService {
    * @returns {Promise<string|null>}
    */
   static async getRpId(port) {
-    if (!this.usePassboltPageOrigin()) {
-      if (["http:", "https:"].includes(globalThis.location?.protocol)) {
-        return BiometricAuthClientService.normalizeRpId(globalThis.location?.hostname, null);
-      }
-      return null;
+    if (["http:", "https:"].includes(globalThis.location?.protocol)) {
+      return BiometricAuthClientService.normalizeRpId(globalThis.location?.hostname, null);
     }
 
     try {
@@ -94,9 +91,24 @@ class BiometricAuthRuntimeService {
     return this.withPasskeyProviderSuspended(async () => {
       const rpId = await this.getRpId(port);
       if (this.usePassboltPageOrigin()) {
-        return port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
+        try {
+          return await port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
+        } catch {
+          return BiometricAuthClientService.unlock(configuration, rpId);
+        }
       }
-      return BiometricAuthClientService.unlock(configuration, rpId);
+      try {
+        return await BiometricAuthClientService.unlock(configuration, rpId);
+      } catch (error) {
+        if (this.isUnavailableError(error)) {
+          try {
+            return await port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
+          } catch {
+            throw error;
+          }
+        }
+        throw error;
+      }
     });
   }
 
@@ -117,7 +129,11 @@ class BiometricAuthRuntimeService {
       return configuration.rp_id ? null : configuration;
     }
 
-    if (configuration.rp_id !== rpId) {
+    if (["http:", "https:"].includes(globalThis.location?.protocol) && !configuration.rp_id) {
+      return null;
+    }
+
+    if (configuration.rp_id && configuration.rp_id !== rpId) {
       return null;
     }
 

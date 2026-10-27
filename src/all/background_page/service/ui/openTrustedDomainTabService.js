@@ -17,14 +17,18 @@ import User from "../../model/user";
 
 export default class OpenTrustedDomainTabService {
   /**
-   * Opens the trusted domain in a new tab
+   * Opens the vault in a new tab.
+   *
+   * The workspace is normally a page of the API, and that is where this leads while the server answers. When it does
+   * not, that address is a browser error page - the vault would look gone on a device that holds all of it - so the
+   * copy carried by the extension is opened instead.
    * @returns {Promise<void>}
    */
   async openTab() {
     const user = User.getInstance();
     const domain = user.settings.getDomain();
 
-    await BrowserTabService.openTab(domain);
+    await BrowserTabService.openTab(await this.buildUrl(domain));
   }
 
   /**

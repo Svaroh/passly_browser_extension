@@ -51,10 +51,17 @@ export default class FindAndUpdateRbacLocalStorageService {
       }
 
       // Lock is granted, retrieve the current user's Rbac and update the local storage.
-      const rbacsCollection = await this.findRbacService.findMe();
-
-      await this.rbacLocalStorage.setData(rbacsCollection);
-      return rbacsCollection;
+      try {
+        const rbacsCollection = await this.findRbacService.findMe();
+        await this.rbacLocalStorage.setData(rbacsCollection);
+        return rbacsCollection;
+      } catch (networkError) {
+        const cached = await this.rbacLocalStorage.getData().catch(() => []);
+        if (cached && cached.length > 0) {
+          return new RbacsCollection(cached);
+        }
+        return new RbacsCollection([]);
+      }
     });
   }
 }
