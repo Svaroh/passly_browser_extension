@@ -1,3 +1,21 @@
+# v6.1.15
+Passly 6.1.15 delivers the client-side incremental delta synchronization engine (`sync/1` wire protocol) and establishes the strict data absence refresh policy.
+
+### Added
+- Complete client-side implementation of the `sync/1` protocol consuming `/sync/changes.json`, `/sync/bootstrap.json`, `/sync/manifest.json`, and `/sync/meta.json`.
+- `SyncApiService`: dedicated API layer for protocol metadata, delta pagination, pinned snapshot bootstrap, and compact manifest queries.
+- `SyncStateLocalStorage`: persistent monotonic cursor (`seq`), server database epoch tracking, failure counters, and reconciliation timestamps.
+- `ChangesApplier`: applying upserts and deletions across resources, secrets, folders, users, groups, and resource types with metadata decryption and OPFS synchronization.
+- `DeltaSyncStrategy`: fast paginated incremental delta synchronization with transparent `410 Gone` recovery without local data loss.
+- `BootstrapStrategy`: full snapshot bootstrap with pinned cursor consistency for cold-start initialization.
+- `ManifestReconciler`: compact access revocation and deleted resource pruning against server manifest.
+- `SyncEngine`: central orchestrator providing concurrency locking via `Lock`, offline skipping (`navigator.onLine`), and retry telemetry.
+- Exposed `passbolt.sync.sync-now` and `passbolt.sync.get-status` port listeners via `SyncNowController`.
+
+### Fixed
+- **Strict Data Absence Refresh Policy:** Full synchronization is executed strictly only when local replica data is completely absent (first install / empty store).
+- When local replica data is present, the extension performs fast incremental delta synchronization (`SyncEngine.sync(SyncTrigger.AUTO)`), eliminating prolonged UI blocking progress spinners and unnecessary multi-page full data re-downloads in `FindAndUpdateResourcesLocalStorage`.
+
 # v6.1.14
 Passly 6.1.14 resolves all GitHub Code Quality warnings in the E2E test suite.
 

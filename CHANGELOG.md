@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.15] - 2026-11-04
+### Added
+- Implement client-side incremental delta synchronization engine (`sync/1` wire protocol):
+  - `SyncApiService`: consuming `/sync/changes.json`, `/sync/bootstrap.json`, `/sync/manifest.json`, and `/sync/meta.json`
+  - `SyncStateLocalStorage`: persistent monotonic cursor, epoch, failure counters, and reconciliation timestamps
+  - `ChangesApplier`: applying upserts and deletions across resources, secrets, folders, users, groups, and resource types
+  - `DeltaSyncStrategy`: fast paginated incremental delta synchronization with transparent `410 Gone` recovery
+  - `BootstrapStrategy`: full snapshot bootstrap with pinned cursor consistency
+  - `ManifestReconciler`: compact access revocation and deleted resource pruning against server manifest
+  - `SyncEngine`: central orchestrator with concurrency locking, connectivity checking, and retry telemetry
+  - Controller and port listeners: `SyncNowController` listening for `passbolt.sync.sync-now` and `passbolt.sync.get-status`
+### Fixed
+- Enforce strict offline data absence policy: full synchronization is executed strictly only when local replica data is completely absent
+- When local replica data is present, execute lightweight incremental delta synchronization (`SyncEngine.sync(SyncTrigger.AUTO)`), eliminating prolonged UI blocking spinners and multi-page full resource re-downloads in `FindAndUpdateResourcesLocalStorage`
+
 ## [6.1.14] - 2026-10-27
 ### Fixed
 - Clean up unused variables and imports in `e2e/style-verification.e2e.js` addressing GitHub Code Quality review

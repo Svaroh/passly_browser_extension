@@ -23,6 +23,7 @@ import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage"
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
+import SyncEngine, { SyncTrigger } from "../sync/syncEngine";
 import Log from "../../model/log";
 
 const RESOURCES_UPDATE_ALL_LS_LOCK_PREFIX = "RESOURCES_UPDATE_LS_LOCK_";
@@ -51,6 +52,7 @@ class FindAndUpdateResourcesLocalStorage {
     this.canUseOfflineStorageService = new CanUseOfflineStorageService(account, apiClientOptions);
     this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
     this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
+    this.syncEngine = new SyncEngine(account, apiClientOptions);
   }
 
   /**
@@ -93,7 +95,23 @@ class FindAndUpdateResourcesLocalStorage {
         );
       }
 
-      // Lock is granted, retrieve all resources and update the local storage.
+      // Lock is granted.
+      // Strict Policy: Full synchronization is ONLY executed when local replica data is completely absent.
+      if (localStorageResourceCollection && localStorageResourceCollection.length > 0) {
+        try {
+          await this.syncEngine.sync(SyncTrigger.AUTO, passphrase);
+        } catch (error) {
+          Log.write({
+            level: "warn",
+            message: `Incremental delta sync encountered an error: ${error?.message}`,
+          });
+        }
+        FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
+        const freshData = (await ResourceLocalStorage.get()) || [];
+        return new ResourcesCollection(freshData, { validate: false });
+      }
+
+      // No local data: perform full initial bootstrap / data refresh.
       const localResourcesCollection = new ResourcesCollection(localStorageResourceCollection || [], {
         validate: isRuntimeCacheInitialized,
       });
@@ -140,6 +158,16 @@ class FindAndUpdateResourcesLocalStorage {
       updatedResourcesCollection.filterOutMetadataEncrypted();
 
       await ResourceLocalStorage.set(updatedResourcesCollection);
+
+      // Establish baseline sync state after initial full refresh
+      try {
+        await this.syncEngine.sync(SyncTrigger.MANUAL, passphrase);
+      } catch (error) {
+        Log.write({
+          level: "warn",
+          message: `Post-bootstrap baseline sync encountered an error: ${error?.message}`,
+        });
+      }
 
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 
