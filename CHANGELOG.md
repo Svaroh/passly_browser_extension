@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [6.1.16] - 2026-11-05
+### Added
+- Add dedicated End-to-End (E2E) test suite for incremental delta synchronization (`sync/1` wire protocol):
+  - `e2e/delta-sync.e2e.js` verifying live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`)
+  - Verification of strict data absence synchronization policy in Chromium runtime via CDP
+  - End-to-end verification of `ChangesApplier` atomic upserts, in-place updates, and cascading deletions
+  - End-to-end verification of transparent `410 Gone` cursor recovery and fallback to pinned bootstrap
+  - End-to-end verification of `ManifestReconciler` access revocation and local resource pruning
+  - End-to-end verification of complete network disconnection (offline mode resilience) without unhandled exceptions
+- Add `test:e2e:sync` and `test:e2e:all` npm scripts for running all extension E2E test suites together
+
 ## [6.1.15] - 2026-11-04
 ### Added
 - Implement client-side incremental delta synchronization engine (`sync/1` wire protocol):

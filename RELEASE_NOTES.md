@@ -1,3 +1,16 @@
+# v6.1.16
+Passly 6.1.16 delivers dedicated End-to-End (E2E) testing coverage for the client-side delta synchronization engine and the strict data absence refresh policy.
+
+### Added
+- Dedicated Chromium E2E test suite `e2e/delta-sync.e2e.js`:
+  - Validates live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`).
+  - Verifies strict data absence synchronization policy in Chromium runtime via CDP: cold-start initiates bootstrap when cache is empty; warm cache strictly executes incremental delta sync without full re-fetching.
+  - Verifies `ChangesApplier` atomic batch mutations, in-place updates, and cascading pruning.
+  - Verifies transparent recovery upon `410 Gone` cursor expiration and fallback to pinned bootstrap.
+  - Verifies `ManifestReconciler` access revocation pruning revoked records from local store.
+  - Verifies complete network disconnection (offline mode resilience) without unhandled exceptions or UI lockups.
+- Added `test:e2e:sync` and `test:e2e:all` npm scripts for automated continuous integration.
+
 # v6.1.15
 Passly 6.1.15 delivers the client-side incremental delta synchronization engine (`sync/1` wire protocol) and establishes the strict data absence refresh policy.
 
