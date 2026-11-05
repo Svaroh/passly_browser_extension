@@ -1,8 +1,8 @@
 /**
  * Passly Browser Extension E2E Test Suite - Incremental Delta Synchronization (sync/1)
  *
- * Dedicated End-to-End Verification of Client-Side Delta Sync & Data Absence Policy:
- * 1. DEV Backend Connectivity & Live sync/1 Protocol Verification:
+ * Dedicated End-to-End Verification of Backend sync/1 Protocol Contracts & CDP Client Environment:
+ * 1. DEV Backend Connectivity & Live sync/1 Wire Protocol Verification:
  *    - Validates /sync/meta.json (protocol: sync/1, epoch, retention_days, max_page_size)
  *    - Validates /sync/changes.json (cursor, has_more, upserts, deletions)
  *    - Validates /sync/manifest.json (type=resources compact identifier list)
@@ -10,22 +10,12 @@
  * 2. Real Headless Chromium Execution with Extension Loaded via CDP:
  *    - Spawns real Chrome with unpacked extension (MV3)
  *    - Connects to Chrome DevTools Protocol (CDP) WebSocket on active vault page
- * 3. Client SyncState & Persistent State Tracking:
- *    - Verifies SyncStateLocalStorage state tracking in browser environment
- *    - Verifies monotonic cursor progression, epoch tracking, and error counter
- * 4. Data Absence Synchronization Policy Verification:
- *    - Cold-start condition (local storage replica empty): triggers full bootstrap / initial sync
- *    - Warm condition (local storage contains cached resources): strictly bypasses full refresh, executes lightweight incremental delta sync
- * 5. Atomic Changes Application & Cascading Pruning:
- *    - Tests atomic upserts of resources and secret payload records
- *    - Tests cascading deletion pruning local cache and secret storage
- * 6. Transparent Recovery on 410 Gone (Purged Cursor):
- *    - Tests automatic fallback to BootstrapStrategy when cursor exceeds retention window or server epoch rotates
- * 7. Manifest Reconciliation (Access Revocation Drift Detection):
- *    - Tests pruning of locally cached entries whose access has been revoked on server
- * 8. Offline Mode Network Disconnection Resilience:
+ * 3. Client Environment State Tracking & Invariant Verification:
+ *    - Verifies monotonic cursor progression, epoch tracking, and error counter contracts
+ *    - Verifies data absence policy decision matrix in browser runtime
+ * 4. Offline Mode Network Disconnection Resilience:
  *    - Emulates complete network cut (Network.emulateNetworkConditions: offline = true)
- *    - Verifies non-blocking execution, graceful skip without unhandled exceptions or UI lockups
+ *    - Verifies non-blocking execution and graceful skip without unhandled exceptions
  */
 
 const { spawn } = require('child_process');

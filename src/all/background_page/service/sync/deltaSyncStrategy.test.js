@@ -85,9 +85,13 @@ describe("DeltaSyncStrategy", () => {
       expect(result.totalUpserts).toBe(2);
     });
 
-    it("should catch 410 Gone and return isGone: true for recovery", async () => {
-      const goneError = new Error("Cursor expired");
-      goneError.code = 410;
+    it("should catch 410 Gone with error.data.code (ApiClient format) and return isGone: true for recovery", async () => {
+      const goneError = new Error("The synchronisation cursor is older than the retained change journal.");
+      goneError.data = {
+        code: 410,
+        header: { status: "error" },
+        body: null,
+      };
 
       syncApiService.getChanges.mockRejectedValue(goneError);
 
@@ -98,6 +102,40 @@ describe("DeltaSyncStrategy", () => {
         isGone: true,
       });
       expect(changesApplier.apply).not.toHaveBeenCalled();
+    });
+
+    it("should halt paging loop if cursor does not advance despite has_more=true", async () => {
+      syncApiService.getChanges.mockResolvedValue({
+        body: {
+          cursor: 100, // unchanged cursor
+          has_more: true,
+          upserts: { resources: [{ id: "res-stalled" }] },
+        },
+      });
+
+      const result = await strategy.sync();
+
+      expect(syncApiService.getChanges).toHaveBeenCalledTimes(1);
+      expect(result.cursor).toBe(100);
+      expect(result.totalUpserts).toBe(1);
+    });
+
+    it("should respect maxPages limit to avoid infinite loops", async () => {
+      let page = 0;
+      syncApiService.getChanges.mockImplementation((cursor) =>
+        Promise.resolve({
+          body: {
+            cursor: cursor + 1,
+            has_more: true,
+            upserts: { resources: [{ id: `res-${page++}` }] },
+          },
+        }),
+      );
+
+      const result = await strategy.sync(null, { maxPages: 3 });
+
+      expect(syncApiService.getChanges).toHaveBeenCalledTimes(3);
+      expect(result.totalUpserts).toBe(3);
     });
 
     it("should re-throw non-410 errors", async () => {

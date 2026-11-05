@@ -29,6 +29,7 @@ export default class DeltaSyncStrategy {
    * @param {string|null} [passphrase=null]
    * @param {Object} [options={}]
    * @param {number} [options.limit=500]
+   * @param {number} [options.maxPages=500]
    * @returns {Promise<{success: boolean, isGone?: boolean, cursor?: number, totalUpserts?: number, totalDeletions?: number}>}
    */
   async sync(passphrase = null, options = {}) {
@@ -38,6 +39,8 @@ export default class DeltaSyncStrategy {
     let hasMore = true;
     let totalUpserts = 0;
     let totalDeletions = 0;
+    let pageCount = 0;
+    const maxPages = options.maxPages || 500;
 
     Log.write({
       level: "debug",
@@ -45,14 +48,27 @@ export default class DeltaSyncStrategy {
     });
 
     while (hasMore) {
+      if (pageCount >= maxPages) {
+        Log.write({
+          level: "warn",
+          message: `Delta sync reached maximum page cap (${maxPages}). Breaking pagination loop.`,
+        });
+        break;
+      }
+      pageCount++;
+
       let changesResponse;
       try {
         changesResponse = await this.syncApiService.getChanges(currentCursor, options.limit || 500);
       } catch (error) {
+        const statusCode = error?.data?.code ?? error?.code;
         const isGone =
-          error?.code === 410 ||
-          (error?.header?.status === "error" && error?.code === 410) ||
-          (typeof error?.message === "string" && error.message.includes("410"));
+          statusCode === 410 ||
+          error?.data?.header?.status === 410 ||
+          (error?.header?.status === "error" && statusCode === 410) ||
+          (typeof error?.message === "string" &&
+            (error.message.includes("410") ||
+              error.message.toLowerCase().includes("older than the retained change journal")));
 
         if (isGone) {
           Log.write({
@@ -65,8 +81,21 @@ export default class DeltaSyncStrategy {
       }
 
       const body = changesResponse.body || {};
-      const newCursor = body.cursor !== undefined ? body.cursor : currentCursor;
+      const newCursor = body.cursor !== undefined && body.cursor !== null ? body.cursor : currentCursor;
       hasMore = Boolean(body.has_more);
+
+      // Guard: if server claims has_more: true but cursor did not strictly advance, break out to prevent infinite loop
+      if (hasMore && Number(newCursor) <= Number(currentCursor)) {
+        Log.write({
+          level: "warn",
+          message: `Delta sync cursor did not advance (${currentCursor} -> ${newCursor}) while has_more=true. Halting to avoid loop.`,
+        });
+        await this.changesApplier.apply(body, passphrase, currentEpoch);
+        currentCursor = newCursor;
+        totalUpserts += body.upserts?.resources?.length || 0;
+        totalDeletions += body.deletions?.resources?.length || 0;
+        break;
+      }
 
       await this.changesApplier.apply(body, passphrase, currentEpoch);
 

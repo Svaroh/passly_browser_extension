@@ -17,12 +17,16 @@ import ChangesApplier from "./changesApplier";
 import ResourceLocalStorage from "../local_storage/resourceLocalStorage";
 import FolderLocalStorage from "../local_storage/folderLocalStorage";
 import UserLocalStorage from "../local_storage/userLocalStorage";
+import ResourceTypeLocalStorage from "../local_storage/resourceTypeLocalStorage";
 import SyncStateLocalStorage from "../local_storage/syncStateLocalStorage";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
 import { resourceTypesCollectionDto } from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection.test.data";
 import { defaultUserDto } from "passbolt-styleguide/src/shared/models/entity/user/userEntity.test.data";
+import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
+import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data";
+import { defaultPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
 
 describe("ChangesApplier", () => {
   let account;
@@ -113,6 +117,69 @@ describe("ChangesApplier", () => {
 
       expect(UserLocalStorage.delete).toHaveBeenCalledWith("83205316-2da1-4475-9c6a-6056f7ef5eb8");
       expect(UserLocalStorage.addUser).toHaveBeenCalledTimes(1);
+    });
+
+    it("should safely apply resource_types upserts and deletions via getData/setData", async () => {
+      const getDataSpy = jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockResolvedValue(
+        new ResourceTypesCollection([
+          { id: "rt-1", name: "Type 1" },
+          { id: "rt-2", name: "Type 2" },
+        ]),
+      );
+      const setDataSpy = jest.spyOn(ResourceTypeLocalStorage.prototype, "setData").mockResolvedValue();
+
+      const pageData = {
+        cursor: 150,
+        upserts: {
+          resource_types: [{ id: "rt-3", name: "Type 3" }],
+        },
+        deletions: {
+          resource_types: ["rt-1"],
+        },
+      };
+
+      await applier.apply(pageData);
+
+      expect(getDataSpy).toHaveBeenCalled();
+      expect(setDataSpy).toHaveBeenCalled();
+      getDataSpy.mockRestore();
+      setDataSpy.mockRestore();
+    });
+
+    it("should record undecryptable resource IDs into syncStateLocalStorage pending list", async () => {
+      jest.spyOn(ResourceLocalStorage, "addOrReplaceResourcesCollection").mockResolvedValue();
+      jest.spyOn(syncStateLocalStorage, "recordPendingResourceIds").mockResolvedValue();
+
+      const resourceTypes = await applier.getOrFindResourceTypesService.getOrFindAll();
+      const validTypeId = resourceTypes.extract("id")[0];
+
+      // Mock decrypt to leave a resource undecrypted
+      jest.spyOn(applier.decryptMetadataService, "decryptAllFromForeignModels").mockImplementation((collection) => {
+        const item = Array.from(collection)[0];
+        if (item) {
+          item.isMetadataDecrypted = () => false;
+        }
+        return Promise.resolve();
+      });
+
+      const resourceId = "73205316-2da1-4475-9c6a-6056f7ef5eb1";
+      const pageData = {
+        cursor: 160,
+        upserts: {
+          resources: [
+            defaultResourceDto({
+              id: resourceId,
+              resource_type_id: validTypeId,
+              metadata: defaultResourceMetadataDto({ resource_type_id: validTypeId }),
+              permission: defaultPermissionDto({ type: 15, aco_foreign_key: resourceId }),
+            }),
+          ],
+        },
+      };
+
+      await applier.apply(pageData);
+
+      expect(syncStateLocalStorage.recordPendingResourceIds).toHaveBeenCalledWith([resourceId]);
     });
   });
 });

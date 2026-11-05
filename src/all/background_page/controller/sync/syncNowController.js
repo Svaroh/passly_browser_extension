@@ -11,9 +11,8 @@
  * @link          https://passly.svaroh.net Passly
  */
 import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
-import SyncEngine, { SyncTrigger } from "../../service/sync/syncEngine";
+import SyncEngine, { SyncTrigger, SyncResult } from "../../service/sync/syncEngine";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
-import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
 
 export default class SyncNowController {
   /**
@@ -48,22 +47,31 @@ export default class SyncNowController {
    * @returns {Promise<Object>}
    */
   async exec() {
+    let result;
     try {
-      return await this.syncEngine.sync(SyncTrigger.MANUAL);
+      result = await this.syncEngine.sync(SyncTrigger.MANUAL);
     } catch (error) {
+      result = { status: SyncResult.FAILURE, error, reason: error?.message };
+    }
+
+    if (result?.status === SyncResult.FAILURE) {
+      const error = result.error;
       const isPassphraseRequired =
         error instanceof UserPassphraseRequiredError ||
         error?.name === "UserPassphraseRequiredError" ||
         error?.cause instanceof UserPassphraseRequiredError ||
         error?.cause?.name === "UserPassphraseRequiredError" ||
-        (typeof error?.message === "string" && error.message.includes("passphrase is required"));
+        (typeof error?.message === "string" && error.message.includes("passphrase is required")) ||
+        (typeof result?.reason === "string" && result.reason.includes("passphrase is required"));
 
-      if (!isPassphraseRequired) {
-        throw error;
+      if (isPassphraseRequired) {
+        const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
+        result = await this.syncEngine.sync(SyncTrigger.MANUAL, passphrase);
+      } else if (result.error) {
+        throw result.error;
       }
-      const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
-      await PassphraseStorageService.set(passphrase, 60);
-      return await this.syncEngine.sync(SyncTrigger.MANUAL, passphrase);
     }
+
+    return result;
   }
 }

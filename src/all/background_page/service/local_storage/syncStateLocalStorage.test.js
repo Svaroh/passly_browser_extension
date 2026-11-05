@@ -45,6 +45,8 @@ describe("SyncStateLocalStorage", () => {
         lastSyncTimestamp: 1700000000,
         lastReconcileTimestamp: 1699990000,
         failureCount: 2,
+        lastFailureTimestamp: null,
+        pendingResourceIds: [],
       };
 
       await service.set(customState);
@@ -63,11 +65,41 @@ describe("SyncStateLocalStorage", () => {
       expect(updated.cursor).toBe(999);
       expect(updated.epoch).toBe("new-epoch");
       expect(updated.failureCount).toBe(0);
+      expect(updated.lastFailureTimestamp).toBeNull();
       expect(updated.lastSyncTimestamp).toBeGreaterThanOrEqual(beforeTime);
 
       const fromStorage = await service.get();
       expect(fromStorage.cursor).toBe(999);
       expect(fromStorage.failureCount).toBe(0);
+    });
+
+    it("should enforce monotonic cursor advancement and not regress", async () => {
+      await service.updateCursor(500, "epoch-1");
+      const regressed = await service.updateCursor(300, "epoch-1");
+      expect(regressed.cursor).toBe(500);
+
+      const fromStorage = await service.get();
+      expect(fromStorage.cursor).toBe(500);
+    });
+  });
+
+  describe("::recordPendingResourceIds and ::removePendingResourceIds", () => {
+    it("should add and remove pending resource IDs uniquely", async () => {
+      await service.recordPendingResourceIds(["res-1", "res-2"]);
+      let state = await service.get();
+      expect(state.pendingResourceIds).toEqual(["res-1", "res-2"]);
+
+      await service.recordPendingResourceIds(["res-2", "res-3"]);
+      state = await service.get();
+      expect(state.pendingResourceIds).toEqual(["res-1", "res-2", "res-3"]);
+
+      await service.removePendingResourceIds(["res-2"]);
+      state = await service.get();
+      expect(state.pendingResourceIds).toEqual(["res-1", "res-3"]);
+
+      await service.removePendingResourceIds();
+      state = await service.get();
+      expect(state.pendingResourceIds).toEqual([]);
     });
   });
 

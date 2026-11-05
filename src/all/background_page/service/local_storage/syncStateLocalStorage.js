@@ -22,6 +22,8 @@ export const DEFAULT_SYNC_STATE = {
   lastSyncTimestamp: null,
   lastReconcileTimestamp: null,
   failureCount: 0,
+  lastFailureTimestamp: null,
+  pendingResourceIds: [],
 };
 
 export default class SyncStateLocalStorage {
@@ -88,6 +90,7 @@ export default class SyncStateLocalStorage {
   /**
    * Update the cursor and epoch upon successful sync page commit.
    * Resets failureCount and records lastSyncTimestamp.
+   * Enforces monotonicity: cursor cannot regress.
    * @param {number|string} cursor
    * @param {string|null} [epoch=null]
    * @returns {Promise<Object>} The updated state
@@ -96,12 +99,14 @@ export default class SyncStateLocalStorage {
     await lock.acquire();
     try {
       const current = await this.get();
+      const newCursor = Math.max(Number(current.cursor ?? 0), Number(cursor));
       const updated = {
         ...current,
-        cursor: Number(cursor),
+        cursor: newCursor,
         epoch: epoch !== null && epoch !== undefined ? String(epoch) : current.epoch,
         lastSyncTimestamp: Date.now(),
         failureCount: 0,
+        lastFailureTimestamp: null,
       };
       await browser.storage.local.set({ [this.storageKey]: updated });
       SyncStateLocalStorage._runtimeCachedState[this.account.id] = updated;
@@ -132,7 +137,7 @@ export default class SyncStateLocalStorage {
   }
 
   /**
-   * Increment failure count on sync failure.
+   * Increment failure count and record failure timestamp.
    * @returns {Promise<number>} Updated failure count
    */
   async incrementFailureCount() {
@@ -142,6 +147,7 @@ export default class SyncStateLocalStorage {
       const updated = {
         ...current,
         failureCount: (current.failureCount || 0) + 1,
+        lastFailureTimestamp: Date.now(),
       };
       await browser.storage.local.set({ [this.storageKey]: updated });
       SyncStateLocalStorage._runtimeCachedState[this.account.id] = updated;
@@ -152,7 +158,7 @@ export default class SyncStateLocalStorage {
   }
 
   /**
-   * Reset failure count to 0.
+   * Reset failure count to 0 and clear failure timestamp.
    * @returns {Promise<void>}
    */
   async resetFailureCount() {
@@ -162,9 +168,62 @@ export default class SyncStateLocalStorage {
       const updated = {
         ...current,
         failureCount: 0,
+        lastFailureTimestamp: null,
       };
       await browser.storage.local.set({ [this.storageKey]: updated });
       SyncStateLocalStorage._runtimeCachedState[this.account.id] = updated;
+    } finally {
+      lock.release();
+    }
+  }
+
+  /**
+   * Record undecryptable/pending resource IDs for deferred reconciliation.
+   * @param {Array<string>} resourceIds
+   * @returns {Promise<Array<string>>}
+   */
+  async recordPendingResourceIds(resourceIds) {
+    if (!Array.isArray(resourceIds) || resourceIds.length === 0) {
+      return (await this.get()).pendingResourceIds || [];
+    }
+    await lock.acquire();
+    try {
+      const current = await this.get();
+      const existing = new Set(current.pendingResourceIds || []);
+      resourceIds.forEach((id) => existing.add(id));
+      const updated = {
+        ...current,
+        pendingResourceIds: Array.from(existing),
+      };
+      await browser.storage.local.set({ [this.storageKey]: updated });
+      SyncStateLocalStorage._runtimeCachedState[this.account.id] = updated;
+      return updated.pendingResourceIds;
+    } finally {
+      lock.release();
+    }
+  }
+
+  /**
+   * Remove specified pending resource IDs after successful processing.
+   * @param {Array<string>} [resourceIds=null] If null, clears all pending IDs
+   * @returns {Promise<Array<string>>}
+   */
+  async removePendingResourceIds(resourceIds = null) {
+    await lock.acquire();
+    try {
+      const current = await this.get();
+      let updatedIds = [];
+      if (Array.isArray(resourceIds)) {
+        const toRemove = new Set(resourceIds);
+        updatedIds = (current.pendingResourceIds || []).filter((id) => !toRemove.has(id));
+      }
+      const updated = {
+        ...current,
+        pendingResourceIds: updatedIds,
+      };
+      await browser.storage.local.set({ [this.storageKey]: updated });
+      SyncStateLocalStorage._runtimeCachedState[this.account.id] = updated;
+      return updated.pendingResourceIds;
     } finally {
       lock.release();
     }

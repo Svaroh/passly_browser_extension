@@ -1,6 +1,6 @@
 {
   "name": "passly-browser-extension",
-  "version": "6.1.16",
+  "version": "6.1.17",
   "license": "AGPL-3.0",
   "copyright": "Copyright 2025 Passbolt SA",
   "description": "Passly web extension for the open source password manager for teams",
@@ -112,7 +112,7 @@
     "test:e2e:style": "node e2e/style-verification.e2e.js",
     "test:e2e:biometric": "node scripts/test-biometric-e2e.js",
     "test:e2e:offline": "node ../server-infra/e2e/scripts/test-offline-service-worker.js",
-    "test:e2e:all": "node e2e/offline-vault.e2e.js && node e2e/style-verification.e2e.js && node e2e/delta-sync.e2e.js",
+    "test:e2e:all": "node e2e/offline-vault.e2e.js && node e2e/style-verification.e2e.js && node e2e/delta-sync.e2e.js && npm run test:e2e:biometric && npm run test:e2e:offline",
     "test:e2e:browserstack": "node ../server-infra/e2e/browserstack/run-browserstack-web.js"
   }
 }

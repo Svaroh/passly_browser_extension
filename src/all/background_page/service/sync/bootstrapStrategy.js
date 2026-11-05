@@ -62,15 +62,20 @@ export default class BootstrapStrategy {
       }
       hasMore = Boolean(body.has_more);
 
-      // Apply incoming entities and persist the pinned cursor
-      const pageDataWithCursor = {
+      // Apply incoming entities: pass cursor=null for intermediate pages to ensure atomicity
+      const pageDataForApplier = {
         ...body,
-        cursor: pinnedCursor,
+        cursor: hasMore ? null : pinnedCursor,
       };
 
-      await this.changesApplier.apply(pageDataWithCursor, passphrase, epoch);
+      await this.changesApplier.apply(pageDataForApplier, passphrase, epoch);
 
       page++;
+    }
+
+    // Explicitly commit the final pinned cursor after all pages are completely processed
+    if (pinnedCursor !== null && pinnedCursor !== undefined) {
+      await this.syncStateLocalStorage.updateCursor(pinnedCursor, epoch);
     }
 
     Log.write({

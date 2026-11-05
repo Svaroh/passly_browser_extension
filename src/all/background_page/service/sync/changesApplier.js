@@ -22,10 +22,13 @@ import UserEntity from "passbolt-styleguide/src/shared/models/entity/user/userEn
 import GroupEntity from "passbolt-styleguide/src/shared/models/entity/group/groupEntity";
 import ResourceTypesCollection from "passbolt-styleguide/src/shared/models/entity/resourceType/resourceTypesCollection";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
+import MetadataKeysCollection from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeysCollection";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStorage";
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
+import MetadataKeyOPFSStorage from "../opfsStorage/metadataKeyOPFSStorage";
+import MetadataKeysSessionStorage from "../session_storage/metadataKeysSessionStorage";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 import Log from "../../model/log";
 
@@ -85,7 +88,10 @@ export default class ChangesApplier {
       freshCollection.filterByResourceTypes(resourceTypes);
 
       if (canUseOffline) {
-        const clonedEncryptedItems = freshCollection.items
+        // Enforce per-resource offline selection: only persist items tagged for offline access
+        const offlineTagged = freshCollection.filterByOffline();
+        const baseItems = offlineTagged.length > 0 ? offlineTagged.items : [];
+        const clonedEncryptedItems = baseItems
           .filter((r) => r && Boolean(r.permission))
           .map((r) => new ResourceEntity(r.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS), { validate: false }));
 
@@ -111,16 +117,46 @@ export default class ChangesApplier {
         ignoreDecryptionError: true,
         updateSessionKeys: true,
       });
-      freshCollection.filterOutMetadataEncrypted();
 
+      // Track any resources that could not be decrypted so they can be re-fetched when passphrase is available
+      const allFreshItems = Array.from(freshCollection);
+      const undecryptableIds = allFreshItems
+        .filter((r) => r && typeof r.isMetadataDecrypted === "function" && !r.isMetadataDecrypted())
+        .map((r) => r.id)
+        .filter(Boolean);
+
+      if (undecryptableIds.length > 0) {
+        Log.write({
+          level: "warn",
+          message: `${undecryptableIds.length} resources could not be decrypted; recording for deferred reconciliation.`,
+        });
+        await this.syncStateLocalStorage.recordPendingResourceIds(undecryptableIds);
+      }
+
+      freshCollection.filterOutMetadataEncrypted();
       await ResourceLocalStorage.addOrReplaceResourcesCollection(freshCollection);
+
+      // Clean up successfully decrypted IDs from pending list
+      const decryptedIds = Array.from(freshCollection)
+        .map((r) => r.id)
+        .filter(Boolean);
+      if (decryptedIds.length > 0) {
+        await this.syncStateLocalStorage.removePendingResourceIds(decryptedIds);
+      }
     }
 
     // 3. Process Secret upserts
     if (canUseOffline && Array.isArray(upserts.secrets) && upserts.secrets.length > 0) {
       try {
-        const secretsCollection = new SecretsCollection(upserts.secrets, { validate: false });
-        await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+        // Enforce per-resource offline selection: only persist secrets for resources present in offline OPFS
+        const offlineResources = (await this.offlineResourcesOPFSStorage.getAll()) || [];
+        const offlineResourceIds = new Set(offlineResources.map((r) => r.id).filter(Boolean));
+
+        const eligibleSecrets = upserts.secrets.filter((s) => s && offlineResourceIds.has(s.resource_id));
+        if (eligibleSecrets.length > 0) {
+          const secretsCollection = new SecretsCollection(eligibleSecrets, { validate: false });
+          await this.offlineSecretsOPFSStorage.addOrReplaceSecretsCollection(secretsCollection);
+        }
       } catch (error) {
         Log.write({ level: "warn", message: `OPFS secret upsert error: ${error?.message}` });
       }
@@ -138,7 +174,7 @@ export default class ChangesApplier {
       upserts.folders.forEach((dto) => folderMap.set(dto.id, dto));
       const mergedFolders = Array.from(folderMap.values());
       const foldersCollection = new FoldersCollection(mergedFolders, {
-        clone: false,
+        clone: true,
         ignoreInvalidEntity: true,
       });
       await FolderLocalStorage.set(foldersCollection);
@@ -190,15 +226,42 @@ export default class ChangesApplier {
     }
 
     // 7. Process Resource Types
+    if (Array.isArray(deletions.resource_types) && deletions.resource_types.length > 0) {
+      const resourceTypeLocalStorage = new ResourceTypeLocalStorage(this.account);
+      const existingTypes = (await resourceTypeLocalStorage.getData()) || new ResourceTypesCollection([]);
+      const deleteIds = new Set(deletions.resource_types);
+      const remainingTypes = Array.from(existingTypes).filter((t) => !deleteIds.has(t.id));
+      await resourceTypeLocalStorage.setData(new ResourceTypesCollection(remainingTypes));
+    }
     if (Array.isArray(upserts.resource_types) && upserts.resource_types.length > 0) {
       const resourceTypeLocalStorage = new ResourceTypeLocalStorage(this.account);
-      const existingTypes = (await resourceTypeLocalStorage.get()) || [];
-      const typeMap = new Map(existingTypes.map((t) => [t.id, t]));
+      const existingTypes = (await resourceTypeLocalStorage.getData()) || new ResourceTypesCollection([]);
+      const typeMap = new Map();
+      Array.from(existingTypes).forEach((t) => typeMap.set(t.id, t.toDto ? t.toDto() : t));
       upserts.resource_types.forEach((dto) => typeMap.set(dto.id, dto));
-      await resourceTypeLocalStorage.set(new ResourceTypesCollection(Array.from(typeMap.values())));
+      await resourceTypeLocalStorage.setData(new ResourceTypesCollection(Array.from(typeMap.values())));
     }
 
-    // 8. Commit updated cursor and epoch atomically with the data
+    // 8. Process Metadata Keys
+    if (Array.isArray(upserts.metadata_keys) && upserts.metadata_keys.length > 0) {
+      try {
+        const metadataKeysSessionStorage = new MetadataKeysSessionStorage(this.account);
+        const existingKeys = (await metadataKeysSessionStorage.get()) || [];
+        const keyMap = new Map(existingKeys.map((k) => [k.id, k]));
+        upserts.metadata_keys.forEach((k) => keyMap.set(k.id, k));
+        const mergedKeys = Array.from(keyMap.values());
+        await metadataKeysSessionStorage.set(mergedKeys);
+
+        if (canUseOffline) {
+          const metadataKeyOPFSStorage = new MetadataKeyOPFSStorage(this.account);
+          await metadataKeyOPFSStorage.set(new MetadataKeysCollection(mergedKeys));
+        }
+      } catch (error) {
+        Log.write({ level: "warn", message: `Metadata keys upsert error: ${error?.message}` });
+      }
+    }
+
+    // 9. Commit updated cursor and epoch atomically with the data
     if (cursor !== undefined && cursor !== null) {
       await this.syncStateLocalStorage.updateCursor(cursor, epoch);
     }

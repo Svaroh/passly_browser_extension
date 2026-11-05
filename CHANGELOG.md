@@ -3,7 +3,25 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
-## [6.1.16] - 2026-11-05
+
+## [6.1.17] - 2026-11-05
+### Fixed
+- Resolve code review blockers and harden delta synchronization fault tolerance:
+  - **HTTP 410 Gone Detection:** Check `error?.data?.code === 410`, `error?.data?.header?.status === 410`, and API error message strings in `DeltaSyncStrategy` to ensure reliable recovery and fallback to bootstrap on cursor expiration without loop failure.
+  - **Graceful Fallback to Full Refresh on Delta Sync Failure:** Restore transparent legacy full refresh fallback in `FindAndUpdateResourcesLocalStorageService` when `SyncEngine.sync()` returns `status !== SUCCESS` (such as HTTP 404 or transient network errors during delta sync).
+  - **Baseline Seeding Watermark Probe:** Fix full baseline re-import replay by querying current watermark via lightweight probe `getBootstrap(1, 1)` to initialize cursor monotonically without replaying the entire historical change log.
+  - **ResourceTypeLocalStorage API Alignment:** Replace non-existent `.get()` / `.set()` with proper `.getData()` / `.setData()` methods on `ResourceTypeLocalStorage` in `ChangesApplier`.
+  - **Atomic Bootstrap Pinned Cursor Persistence:** Pass `cursor: null` across intermediate pagination batches in `BootstrapStrategy` and atomically persist the `pinnedCursor` only upon completing the full bootstrap sequence.
+  - **Pending Undecrypted Resources Tracking:** Register undecrypted v5 resource IDs (`!resource.isMetadataDecrypted()`) into `SyncStateLocalStorage.pendingResourceIds` for lazy recovery and deferred re-decryption once the master secret is available.
+  - **Server Database Epoch Invalidation:** Detect server epoch changes (`serverEpoch !== syncState.epoch`) via `getMeta()` in `SyncEngine`, immediately triggering recovery bootstrap and resetting local sync state.
+  - **Passphrase Prompt & Invalidation Workflow:** Handle `UserPassphraseRequiredError` in `SyncNowController` by explicitly prompting the user via `GetPassphraseService` and triggering a re-authenticated manual sync. Remove unauthorized 60-second in-memory passphrase caching from `PassphraseStorageService`.
+  - **Strict OPFS Offline Access Filtering:** Enforce `filterByOffline()` and `hasOfflineAccess()` checks on resources prior to OPFS persistence in `ChangesApplier`, strictly encrypting and storing secrets only for designated offline resources.
+  - **Multi-Account Concurrency Lock per Account ID:** Switch `SyncEngine` from instance-level lock to shared static mutex Map (`SyncEngine.locks`) keyed by `accountId`, preventing race conditions across concurrent sync triggers for the same user profile.
+  - **Full Missing and Divergent Resource Reconciliation:** Enhance `ManifestReconciler` to compare server manifest items against local store: actively detect missing resources and divergent modification timestamps (`serverItem.modified !== local.modified`), fetching missing records in batches via `findAllByIdsForLocalStorage` and updating local cache.
+  - **Delta Sync Pagination Loop Guard:** Add `newCursor <= currentCursor` guard and cap pagination at `maxPages = 500` in `DeltaSyncStrategy` to eliminate infinite loops caused by non-advancing server cursors.
+  - **Elimination of Redundant Reconciliation on Baseline:** Prevent duplicate manifest reconciliation calls during initial baseline run using the `didReconcile` execution flag in `SyncEngine`.
+  - **Exponential Backoff Schedule:** Implement Spec §6 standard exponential backoff delays (`[30s, 1m, 5m, 15m, 1h, 6h]`) in `SyncEngine` on consecutive sync failures, recording `lastFailureTimestamp` and bypassing backoff for explicit user-triggered manual syncs.
+  - **Protocol Entities & Hygiene:** Handle `deletions.resource_types` and `upserts.metadata_keys` in `ChangesApplier`, add `clone: true` to `FoldersCollection` instantiation, ensure cursor monotonicity via `Math.max()` in `SyncStateLocalStorage`, support `FORCE_BOOTSTRAP` and `RECONCILE` triggers, and update `test:e2e:all` script in `package.json`.
 ### Added
 - Add dedicated End-to-End (E2E) test suite for incremental delta synchronization (`sync/1` wire protocol):
   - `e2e/delta-sync.e2e.js` verifying live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`)

@@ -84,7 +84,7 @@ describe("BootstrapStrategy", () => {
 
       expect(changesApplier.apply).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ cursor: 7777 }),
+        expect.objectContaining({ cursor: null }),
         null,
         "test-epoch-uuid",
       );
@@ -95,6 +95,7 @@ describe("BootstrapStrategy", () => {
         "test-epoch-uuid",
       );
 
+      expect(syncStateLocalStorage.updateCursor).toHaveBeenCalledWith(7777, "test-epoch-uuid");
       expect(result.cursor).toBe(7777);
     });
   });

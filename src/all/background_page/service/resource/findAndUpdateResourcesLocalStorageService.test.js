@@ -161,6 +161,25 @@ describe("UpdateResourcesLocalStorage", () => {
       expect(resourcesCollection).toEqual(new ResourcesCollection(resourcesLSDto));
     });
 
+    it("falls back to legacy full refresh if incremental delta sync fails (status !== SUCCESS).", async () => {
+      expect.assertions(4);
+      const resourcesDto = multipleResourceDtos();
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
+      jest.spyOn(FindResourcesService.prototype, "findAllForLocalStorage");
+      await ResourceLocalStorage.set(new ResourcesCollection(singleResourceDtos()));
+
+      // Mock delta sync failure (e.g. 404 on server without Sync plugin)
+      jest.spyOn(SyncEngine.prototype, "sync").mockResolvedValue({ status: "FAILURE", reason: "404 Not Found" });
+
+      const resourcesCollection = await service.findAndUpdateAll();
+
+      expect(SyncEngine.prototype.sync).toHaveBeenCalledWith(SyncTrigger.AUTO, null);
+      expect(FindResourcesService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(1);
+      const resourcesLSDto = await ResourceLocalStorage.get();
+      expect(resourcesLSDto).toHaveLength(4);
+      expect(resourcesCollection).toEqual(new ResourcesCollection(resourcesDto));
+    });
+
     it("does not update the local storage if the update period threshold given in parameter is not overdue.", async () => {
       expect.assertions(4);
       jest.spyOn(FindResourcesService.prototype, "findAllForLocalStorage");

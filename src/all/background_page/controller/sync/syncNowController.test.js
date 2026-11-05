@@ -13,6 +13,7 @@
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
 import AccountEntity from "../../model/entity/account/accountEntity";
+import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 import SyncNowController from "./syncNowController";
 import SyncEngine, { SyncTrigger, SyncResult } from "../../service/sync/syncEngine";
 
@@ -24,6 +25,7 @@ describe("SyncNowController", () => {
   let controller;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     worker = {
       port: {
         emit: jest.fn(),
@@ -44,6 +46,22 @@ describe("SyncNowController", () => {
 
       expect(SyncEngine.prototype.sync).toHaveBeenCalledWith(SyncTrigger.MANUAL);
       expect(result).toEqual({ status: SyncResult.SUCCESS });
+    });
+
+    it("should prompt user for passphrase and retry sync when UserPassphraseRequiredError is returned", async () => {
+      const passphraseError = new UserPassphraseRequiredError("Passphrase required");
+      SyncEngine.prototype.sync
+        .mockResolvedValueOnce({ status: SyncResult.FAILURE, error: passphraseError })
+        .mockResolvedValueOnce({ status: SyncResult.SUCCESS, details: { reDecrypted: true } });
+
+      jest.spyOn(controller.getPassphraseService, "getPassphrase").mockResolvedValue("user-entered-passphrase");
+
+      const result = await controller.exec();
+
+      expect(controller.getPassphraseService.getPassphrase).toHaveBeenCalledWith(worker);
+      expect(SyncEngine.prototype.sync).toHaveBeenNthCalledWith(1, SyncTrigger.MANUAL);
+      expect(SyncEngine.prototype.sync).toHaveBeenNthCalledWith(2, SyncTrigger.MANUAL, "user-entered-passphrase");
+      expect(result.status).toBe(SyncResult.SUCCESS);
     });
   });
 

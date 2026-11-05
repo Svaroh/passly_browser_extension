@@ -32,7 +32,9 @@ describe("ManifestReconciler", () => {
       getManifest: jest.fn(),
     };
     syncStateLocalStorage = {
+      get: jest.fn().mockResolvedValue({ pendingResourceIds: [] }),
       recordReconciliation: jest.fn().mockResolvedValue(),
+      removePendingResourceIds: jest.fn().mockResolvedValue(),
     };
 
     jest.spyOn(CanUseOfflineStorageService.prototype, "canUseOfflineStorage").mockResolvedValue(false);
@@ -67,6 +69,8 @@ describe("ManifestReconciler", () => {
         success: true,
         revokedCount: 1,
         revokedIds: ["res-revoked-2"],
+        repairedCount: 0,
+        repairedIds: [],
       });
     });
 
@@ -82,6 +86,46 @@ describe("ManifestReconciler", () => {
 
       expect(ResourceLocalStorage.deleteResources).not.toHaveBeenCalled();
       expect(result.revokedCount).toBe(0);
+      expect(result.repairedCount).toBe(0);
+    });
+
+    it("should detect missing and divergent resources and repair them via findAllByIdsForLocalStorage", async () => {
+      jest.spyOn(ResourceLocalStorage, "get").mockResolvedValue([
+        { id: "res-kept-1", modified: "2026-10-01" }, // divergent date
+      ]);
+      jest.spyOn(ResourceLocalStorage, "deleteResources").mockResolvedValue();
+      jest.spyOn(ResourceLocalStorage, "addOrReplaceResourcesCollection").mockResolvedValue();
+
+      const repairedCollection = [
+        { id: "res-kept-1", modified: "2026-11-05", isMetadataDecrypted: () => true },
+        { id: "res-missing-2", modified: "2026-11-05", isMetadataDecrypted: () => true },
+      ];
+      repairedCollection.filterOutMetadataEncrypted = jest.fn();
+
+      reconciler.findResourcesService.findAllByIdsForLocalStorage = jest.fn().mockResolvedValue(repairedCollection);
+      reconciler.decryptMetadataService.decryptAllFromForeignModels = jest.fn().mockResolvedValue();
+
+      syncApiService.getManifest.mockResolvedValue({
+        body: [
+          { id: "res-kept-1", modified: "2026-11-05" },
+          { id: "res-missing-2", modified: "2026-11-05" },
+        ],
+      });
+
+      const result = await reconciler.reconcile("passphrase-xyz");
+
+      expect(reconciler.findResourcesService.findAllByIdsForLocalStorage).toHaveBeenCalledWith([
+        "res-kept-1",
+        "res-missing-2",
+      ]);
+      expect(reconciler.decryptMetadataService.decryptAllFromForeignModels).toHaveBeenCalledWith(
+        repairedCollection,
+        "passphrase-xyz",
+        expect.any(Object),
+      );
+      expect(ResourceLocalStorage.addOrReplaceResourcesCollection).toHaveBeenCalledWith(repairedCollection);
+      expect(result.repairedCount).toBe(2);
+      expect(result.repairedIds).toEqual(["res-kept-1", "res-missing-2"]);
     });
   });
 });
