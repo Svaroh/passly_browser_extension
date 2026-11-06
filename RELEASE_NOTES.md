@@ -1,3 +1,16 @@
+# v6.1.18
+Passly 6.1.18 hardens delta synchronization fault tolerance, resolves all PR #54 second-round review blockers, and fixes offline resource replication and metadata key decryption.
+
+### Fixed
+- **OPFS Secret Persistence:** Fixed `TypeError` on non-existent `getAll()` by invoking `offlineResourcesOPFSStorage.get()` to accurately identify cached offline resources before persisting incoming secret upserts.
+- **Metadata Keys Decryption & Persistence Pipeline:** Decrypted incoming `metadata_keys` before resource upserts via `DecryptMetadataPrivateKeysService`, persisting decrypted keys into `MetadataKeysSessionStorage` and encrypted keys into `MetadataKeyOPFSStorage`.
+- **Epoch Change Cursor Recovery & Monotonicity:** Allowed stored cursor to reset and lower monotonically upon server database epoch changes or explicit reset flags, preventing stale cursor persistence after database restore. Added non-finite value protection (`Number.isFinite`).
+- **Offline Policy Consistency:** Mirrored legacy offline tagging default: when no resources are explicitly tagged for offline use, the full vault is retained offline rather than an empty set.
+- **Distinguish SKIPPED from FAILURE in Fallback Policy:** Returned cached local collections on `SyncResult.SKIPPED` (active backoff, offline network, or concurrent lock) without triggering costly full refresh fallbacks.
+- **Manifest Reconciliation Integrity:** Added `filterByResourceTypes` to prevent unsupported resource types from being written locally, and returned accurate `repairedIds` matching `repairedCount`.
+- **Bootstrap Pagination Guard:** Enforced `maxPages = 500` pagination ceiling in `BootstrapStrategy` symmetric with `DeltaSyncStrategy`.
+- **SyncEngine Encapsulation & Meta Caching:** Added `SyncEngine.seedBaselineCursor()` and cached `getMeta()` responses for the reconciliation interval (1 hour) to eliminate redundant round trips.
+
 # v6.1.17
 Passly 6.1.17 hardens delta synchronization fault tolerance, addresses all PR #54 code review blockers, and ensures strict adherence to offline resource security and backoff policies.
 
@@ -24,11 +37,7 @@ Passly 6.1.16 delivers dedicated End-to-End (E2E) testing coverage for the clien
 ### Added
 - Dedicated Chromium E2E test suite `e2e/delta-sync.e2e.js`:
   - Validates live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`).
-  - Verifies strict data absence synchronization policy in Chromium runtime via CDP: cold-start initiates bootstrap when cache is empty; warm cache strictly executes incremental delta sync without full re-fetching.
-  - Verifies `ChangesApplier` atomic batch mutations, in-place updates, and cascading pruning.
-  - Verifies transparent recovery upon `410 Gone` cursor expiration and fallback to pinned bootstrap.
-  - Verifies `ManifestReconciler` access revocation pruning revoked records from local store.
-  - Verifies complete network disconnection (offline mode resilience) without unhandled exceptions or UI lockups.
+  - Headless Chromium execution with unpacked extension loaded via CDP.
 - Added `test:e2e:sync` and `test:e2e:all` npm scripts for automated continuous integration.
 
 # v6.1.15

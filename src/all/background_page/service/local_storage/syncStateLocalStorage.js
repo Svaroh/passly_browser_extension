@@ -90,20 +90,33 @@ export default class SyncStateLocalStorage {
   /**
    * Update the cursor and epoch upon successful sync page commit.
    * Resets failureCount and records lastSyncTimestamp.
-   * Enforces monotonicity: cursor cannot regress.
+   * Enforces monotonicity within the same epoch unless force is specified or epoch changed.
    * @param {number|string} cursor
    * @param {string|null} [epoch=null]
+   * @param {Object} [options={}]
+   * @param {boolean} [options.force=false] Force setting cursor even if lower than current
    * @returns {Promise<Object>} The updated state
    */
-  async updateCursor(cursor, epoch = null) {
+  async updateCursor(cursor, epoch = null, options = {}) {
+    const numericCursor = Number(cursor);
+    if (!Number.isFinite(numericCursor)) {
+      throw new TypeError(`Invalid non-finite cursor: ${cursor}`);
+    }
+
     await lock.acquire();
     try {
       const current = await this.get();
-      const newCursor = Math.max(Number(current.cursor ?? 0), Number(cursor));
+      const stringEpoch = epoch !== null && epoch !== undefined ? String(epoch) : null;
+      const isEpochChanged = stringEpoch !== null && current.epoch && stringEpoch !== String(current.epoch);
+      const isUnset = current.cursor === null || current.cursor === undefined;
+      const shouldForce = Boolean(options?.force) || isEpochChanged || isUnset;
+
+      const newCursor = shouldForce ? numericCursor : Math.max(Number(current.cursor), numericCursor);
+
       const updated = {
         ...current,
         cursor: newCursor,
-        epoch: epoch !== null && epoch !== undefined ? String(epoch) : current.epoch,
+        epoch: stringEpoch !== null ? stringEpoch : current.epoch,
         lastSyncTimestamp: Date.now(),
         failureCount: 0,
         lastFailureTimestamp: null,

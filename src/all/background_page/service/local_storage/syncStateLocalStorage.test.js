@@ -81,6 +81,31 @@ describe("SyncStateLocalStorage", () => {
       const fromStorage = await service.get();
       expect(fromStorage.cursor).toBe(500);
     });
+
+    it("should allow a lower cursor when server epoch changes", async () => {
+      await service.updateCursor(500, "epoch-old");
+      const epochRecovered = await service.updateCursor(10, "epoch-new");
+      expect(epochRecovered.cursor).toBe(10);
+      expect(epochRecovered.epoch).toBe("epoch-new");
+
+      const fromStorage = await service.get();
+      expect(fromStorage.cursor).toBe(10);
+      expect(fromStorage.epoch).toBe("epoch-new");
+    });
+
+    it("should allow a lower cursor when options.force is true", async () => {
+      await service.updateCursor(500, "epoch-1");
+      const forced = await service.updateCursor(25, "epoch-1", { force: true });
+      expect(forced.cursor).toBe(25);
+
+      const fromStorage = await service.get();
+      expect(fromStorage.cursor).toBe(25);
+    });
+
+    it("should reject non-finite cursor values to prevent poisoning stored state", async () => {
+      await expect(service.updateCursor("invalid-nan")).rejects.toThrow(TypeError);
+      await expect(service.updateCursor(NaN)).rejects.toThrow(TypeError);
+    });
   });
 
   describe("::recordPendingResourceIds and ::removePendingResourceIds", () => {

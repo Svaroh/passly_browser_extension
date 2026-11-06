@@ -67,6 +67,12 @@ export default class SyncEngine {
   static locks = new Map();
 
   /**
+   * Cached meta response per account to avoid redundant round trips on every delta sync.
+   * @type {Map<string, {epoch: string|null, timestamp: number}>}
+   */
+  static metaCache = new Map();
+
+  /**
    * Get or create a shared lock for the specified account ID.
    * @param {string} accountId
    * @returns {Lock}
@@ -101,6 +107,27 @@ export default class SyncEngine {
     this.manifestReconciler =
       dependencies.manifestReconciler ||
       new ManifestReconciler(account, apiClientOptions, this.syncApiService, this.syncStateLocalStorage);
+  }
+
+  /**
+   * Seed baseline sync state (cursor and epoch) from a lightweight bootstrap probe.
+   * Encapsulates baseline seeding without exposing inner services to callers.
+   * @returns {Promise<{cursor: number, epoch: string|null}|null>}
+   */
+  async seedBaselineCursor() {
+    try {
+      const bootstrapProbe = await this.syncApiService.getBootstrap(1, 1);
+      const baselineCursor = bootstrapProbe.body?.cursor ?? 0;
+      const epoch = bootstrapProbe.body?.epoch ?? null;
+      await this.syncStateLocalStorage.updateCursor(baselineCursor, epoch);
+      return { cursor: baselineCursor, epoch };
+    } catch (error) {
+      Log.write({
+        level: "warn",
+        message: `Baseline sync state seeding encountered an error: ${error?.message}`,
+      });
+      return null;
+    }
   }
 
   /**
@@ -178,21 +205,39 @@ export default class SyncEngine {
 
       // 5. Server epoch change check (Spec §2 & §5)
       let serverEpoch = null;
-      try {
-        const metaResponse = await this.syncApiService.getMeta();
-        serverEpoch = metaResponse.body?.epoch ?? null;
-      } catch (error) {
-        Log.write({
-          level: "warn",
-          message: `Failed to fetch sync meta for epoch validation: ${error?.message}`,
-        });
+      const accountKey = this.account?.id || "default";
+      const cachedMeta = SyncEngine.metaCache.get(accountKey);
+      const isCacheValid =
+        cachedMeta &&
+        Date.now() - cachedMeta.timestamp < RECONCILIATION_INTERVAL_MS &&
+        trigger !== SyncTrigger.MANUAL &&
+        trigger !== SyncTrigger.RECONCILE &&
+        trigger !== SyncTrigger.FORCE_BOOTSTRAP;
+
+      if (isCacheValid) {
+        serverEpoch = cachedMeta.epoch;
+      } else {
+        try {
+          const metaResponse = await this.syncApiService.getMeta();
+          serverEpoch = metaResponse.body?.epoch ?? null;
+          SyncEngine.metaCache.set(accountKey, {
+            epoch: serverEpoch,
+            timestamp: Date.now(),
+          });
+        } catch (error) {
+          Log.write({
+            level: "warn",
+            message: `Failed to fetch sync meta for epoch validation: ${error?.message}`,
+          });
+        }
       }
 
       if (serverEpoch && syncState.epoch && serverEpoch !== syncState.epoch) {
         Log.write({
           level: "warn",
-          message: `Server epoch changed (${syncState.epoch} -> ${serverEpoch}). Forcing recovery bootstrap.`,
+          message: `Server epoch changed (${syncState.epoch} -> ${serverEpoch}). Resetting sync state and forcing recovery bootstrap.`,
         });
+        await this.syncStateLocalStorage.set({ cursor: null, epoch: serverEpoch, failureCount: 0 });
         const recoveryResult = await this.bootstrapStrategy.bootstrap(passphrase, options);
         await this.syncStateLocalStorage.resetFailureCount();
         return {

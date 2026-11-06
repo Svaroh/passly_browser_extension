@@ -53,7 +53,9 @@ export default class BootstrapStrategy {
       message: `Bootstrap starting with epoch=${epoch}`,
     });
 
-    while (hasMore) {
+    const maxPages = options.maxPages || 500;
+
+    while (hasMore && page <= maxPages) {
       const bootstrapResponse = await this.syncApiService.getBootstrap(page, options.limit || 500, pinnedCursor);
       const body = bootstrapResponse.body || {};
 
@@ -71,6 +73,13 @@ export default class BootstrapStrategy {
       await this.changesApplier.apply(pageDataForApplier, passphrase, epoch);
 
       page++;
+    }
+
+    if (hasMore) {
+      Log.write({
+        level: "warn",
+        message: `Bootstrap reached maximum pagination cap (${maxPages} pages) while more pages remained.`,
+      });
     }
 
     // Explicitly commit the final pinned cursor after all pages are completely processed

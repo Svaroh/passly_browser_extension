@@ -98,5 +98,21 @@ describe("BootstrapStrategy", () => {
       expect(syncStateLocalStorage.updateCursor).toHaveBeenCalledWith(7777, "test-epoch-uuid");
       expect(result.cursor).toBe(7777);
     });
+
+    it("should respect maxPages cap and halt pagination when limit is reached", async () => {
+      syncApiService.getBootstrap.mockResolvedValue({
+        body: {
+          cursor: 9999,
+          has_more: true,
+          upserts: { resources: [{ id: "res-inf" }] },
+        },
+      });
+
+      const result = await strategy.bootstrap(null, { maxPages: 3 });
+
+      expect(syncApiService.getBootstrap).toHaveBeenCalledTimes(3);
+      expect(result.success).toBe(true);
+      expect(result.cursor).toBe(9999);
+    });
   });
 });

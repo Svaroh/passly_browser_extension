@@ -4,6 +4,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [6.1.18] - 2026-11-05
+### Fixed
+- Resolve code review blockers and harden delta synchronization fault tolerance:
+  - **OPFS Secret Persistence (`offlineResourcesOPFSStorage.get`):** Fix `TypeError: this.offlineResourcesOPFSStorage.getAll is not a function` by calling existing `get()` method to read offline cached resources before filtering secrets for local persistence.
+  - **Metadata Keys Decryption & Persistence Pipeline:** Decrypt incoming `metadata_keys` before resource upserts via `DecryptMetadataPrivateKeysService`, persist to `MetadataKeysSessionStorage` with valid DTO collections, and persist to `MetadataKeyOPFSStorage` when offline storage is enabled.
+  - **Epoch Change Cursor Recovery & NaN Guard:** Allow stored cursor to reset and lower monotonically when server database epoch changes or `force: true` is set, resetting cursor state during recovery bootstrap. Guard against non-finite values (`Number.isFinite`) in `SyncStateLocalStorage.updateCursor`.
+  - **Offline Tagging Default Consistency:** Align delta sync and manifest reconciliation with legacy offline policy: if no resources are explicitly tagged for offline use, store the full vault collection offline rather than an empty set.
+  - **Distinguish SKIPPED from FAILURE in Fallback Policy:** When delta sync returns `status: "SKIPPED"` (e.g. active exponential backoff, network offline, or locked), return the local cached collection directly without triggering an expensive or failing full refresh.
+  - **Manifest Reconciliation Resource Types Filter & Accurate Repaired IDs:** Pass repaired resources through `filterByResourceTypes` to prevent unsupported types from being written locally, and return actual `repairedIds` agreeing with `repairedCount`.
+  - **Bootstrap Pagination Guard:** Enforce `maxPages = 500` pagination ceiling in `BootstrapStrategy` symmetric with `DeltaSyncStrategy`.
+  - **SyncEngine Encapsulation & Meta Caching:** Provide `SyncEngine.seedBaselineCursor()` to encapsulate baseline initialization, and cache `getMeta()` responses for the reconciliation interval (1 hour) to eliminate redundant round trips on routine auto syncs.
+
 ## [6.1.17] - 2026-11-05
 ### Fixed
 - Resolve code review blockers and harden delta synchronization fault tolerance:
@@ -22,15 +34,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   - **Elimination of Redundant Reconciliation on Baseline:** Prevent duplicate manifest reconciliation calls during initial baseline run using the `didReconcile` execution flag in `SyncEngine`.
   - **Exponential Backoff Schedule:** Implement Spec §6 standard exponential backoff delays (`[30s, 1m, 5m, 15m, 1h, 6h]`) in `SyncEngine` on consecutive sync failures, recording `lastFailureTimestamp` and bypassing backoff for explicit user-triggered manual syncs.
   - **Protocol Entities & Hygiene:** Handle `deletions.resource_types` and `upserts.metadata_keys` in `ChangesApplier`, add `clone: true` to `FoldersCollection` instantiation, ensure cursor monotonicity via `Math.max()` in `SyncStateLocalStorage`, support `FORCE_BOOTSTRAP` and `RECONCILE` triggers, and update `test:e2e:all` script in `package.json`.
+
+## [6.1.16] - 2026-11-05
 ### Added
-- Add dedicated End-to-End (E2E) test suite for incremental delta synchronization (`sync/1` wire protocol):
-  - `e2e/delta-sync.e2e.js` verifying live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`)
-  - Verification of strict data absence synchronization policy in Chromium runtime via CDP
-  - End-to-end verification of `ChangesApplier` atomic upserts, in-place updates, and cascading deletions
-  - End-to-end verification of transparent `410 Gone` cursor recovery and fallback to pinned bootstrap
-  - End-to-end verification of `ManifestReconciler` access revocation and local resource pruning
-  - End-to-end verification of complete network disconnection (offline mode resilience) without unhandled exceptions
-- Add `test:e2e:sync` and `test:e2e:all` npm scripts for running all extension E2E test suites together
+- Add dedicated End-to-End (E2E) test suite validating live DEV backend protocol contracts (`sync/1` wire protocol):
+  - `e2e/delta-sync.e2e.js` validating live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`)
+  - Headless Chromium execution with unpacked extension loaded via CDP
+  - Add `test:e2e:sync` and `test:e2e:all` npm scripts for running all extension E2E test suites together
 
 ## [6.1.15] - 2026-11-04
 ### Added

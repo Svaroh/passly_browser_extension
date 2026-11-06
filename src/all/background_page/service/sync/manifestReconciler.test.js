@@ -100,8 +100,10 @@ describe("ManifestReconciler", () => {
         { id: "res-kept-1", modified: "2026-11-05", isMetadataDecrypted: () => true },
         { id: "res-missing-2", modified: "2026-11-05", isMetadataDecrypted: () => true },
       ];
+      repairedCollection.filterByResourceTypes = jest.fn();
       repairedCollection.filterOutMetadataEncrypted = jest.fn();
 
+      reconciler.getOrFindResourceTypesService.getOrFindAll = jest.fn().mockResolvedValue([]);
       reconciler.findResourcesService.findAllByIdsForLocalStorage = jest.fn().mockResolvedValue(repairedCollection);
       reconciler.decryptMetadataService.decryptAllFromForeignModels = jest.fn().mockResolvedValue();
 

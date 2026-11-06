@@ -98,10 +98,9 @@ class FindAndUpdateResourcesLocalStorage {
       // Lock is granted.
       // Strict Policy: When local data exists, fast incremental delta sync is attempted first.
       if (localStorageResourceCollection && localStorageResourceCollection.length > 0) {
-        let isSyncSuccess = false;
+        let syncResult = null;
         try {
-          const syncResult = await this.syncEngine.sync(SyncTrigger.AUTO, passphrase);
-          isSyncSuccess = syncResult?.status === SyncResult.SUCCESS;
+          syncResult = await this.syncEngine.sync(SyncTrigger.AUTO, passphrase);
         } catch (error) {
           Log.write({
             level: "warn",
@@ -109,15 +108,25 @@ class FindAndUpdateResourcesLocalStorage {
           });
         }
 
-        if (isSyncSuccess) {
+        if (syncResult?.status === SyncResult.SUCCESS) {
           FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
           const freshData = (await ResourceLocalStorage.get()) || [];
           return new ResourcesCollection(freshData, { validate: false });
         }
 
+        if (syncResult?.status === SyncResult.SKIPPED) {
+          // Sync was skipped (e.g. backoff active, no network, or locked).
+          // Return the local cached collection without triggering an expensive full refresh.
+          Log.write({
+            level: "debug",
+            message: `Incremental delta sync skipped (${syncResult?.reason}); returning cached local resources without full refresh.`,
+          });
+          return new ResourcesCollection(localStorageResourceCollection, { validate: false });
+        }
+
         Log.write({
           level: "warn",
-          message: "Incremental delta sync did not succeed; falling back to legacy full refresh.",
+          message: "Incremental delta sync failed; falling back to legacy full refresh.",
         });
       }
 
@@ -170,17 +179,7 @@ class FindAndUpdateResourcesLocalStorage {
       await ResourceLocalStorage.set(updatedResourcesCollection);
 
       // Establish baseline sync state after initial full refresh without full re-fetch
-      try {
-        const bootstrapProbe = await this.syncEngine.syncApiService.getBootstrap(1, 1);
-        const baselineCursor = bootstrapProbe.body?.cursor ?? 0;
-        const epoch = bootstrapProbe.body?.epoch ?? null;
-        await this.syncEngine.syncStateLocalStorage.updateCursor(baselineCursor, epoch);
-      } catch (error) {
-        Log.write({
-          level: "warn",
-          message: `Post-bootstrap baseline sync state seeding encountered an error: ${error?.message}`,
-        });
-      }
+      await this.syncEngine.seedBaselineCursor();
 
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 

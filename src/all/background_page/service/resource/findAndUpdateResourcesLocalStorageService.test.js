@@ -101,6 +101,23 @@ describe("UpdateResourcesLocalStorage", () => {
       ).rejects.toThrow("Parameter updatePeriodThreshold should be a number.");
     });
 
+    it("should return cached local collection without full refresh when delta sync returns SKIPPED", async () => {
+      const existingResource = singleResourceDtos()[0];
+      await ResourceLocalStorage.set(new ResourcesCollection([existingResource]));
+
+      jest.spyOn(SyncEngine.prototype, "sync").mockResolvedValue({
+        status: SyncResult.SKIPPED,
+        reason: "BACKOFF",
+      });
+      const fullRefreshSpy = jest.spyOn(service.findResourcesServices, "findAllForLocalStorage");
+
+      const result = await service.findAndUpdateAll();
+
+      expect(fullRefreshSpy).not.toHaveBeenCalled();
+      expect(result.items.length).toBe(1);
+      expect(result.items[0].id).toBe(existingResource.id);
+    });
+
     it("updates local storage when no resources are returned by the API.", async () => {
       expect.assertions(3);
       jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse([]));

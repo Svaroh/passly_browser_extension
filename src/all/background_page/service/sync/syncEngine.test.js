@@ -26,6 +26,7 @@ describe("SyncEngine", () => {
   let engine;
 
   beforeEach(() => {
+    SyncEngine.metaCache.clear();
     account = { id: "test-user-id" };
     apiClientOptions = defaultApiClientOptions();
 
@@ -35,6 +36,7 @@ describe("SyncEngine", () => {
     };
     syncStateLocalStorage = {
       get: jest.fn().mockResolvedValue({ cursor: 50, epoch: "epoch-1", lastReconcileTimestamp: Date.now() }),
+      set: jest.fn().mockResolvedValue(),
       updateCursor: jest.fn().mockResolvedValue(),
       incrementFailureCount: jest.fn().mockResolvedValue(),
       resetFailureCount: jest.fn().mockResolvedValue(),
@@ -199,10 +201,43 @@ describe("SyncEngine", () => {
 
       const result = await engine.sync(SyncTrigger.AUTO);
 
+      expect(syncStateLocalStorage.set).toHaveBeenCalledWith({
+        cursor: null,
+        epoch: "epoch-NEW-RESTORED",
+        failureCount: 0,
+      });
       expect(bootstrapStrategy.bootstrap).toHaveBeenCalledTimes(1);
       expect(deltaSyncStrategy.sync).not.toHaveBeenCalled();
       expect(result.status).toBe(SyncResult.SUCCESS);
       expect(result.details.type).toBe("EPOCH_RECOVERY_BOOTSTRAP");
+    });
+  });
+
+  describe("::seedBaselineCursor", () => {
+    it("should query bootstrap watermark and update cursor in syncStateLocalStorage", async () => {
+      syncApiService.getBootstrap.mockResolvedValue({ body: { cursor: 4321, epoch: "epoch-base" } });
+
+      const result = await engine.seedBaselineCursor();
+
+      expect(syncApiService.getBootstrap).toHaveBeenCalledWith(1, 1);
+      expect(syncStateLocalStorage.updateCursor).toHaveBeenCalledWith(4321, "epoch-base");
+      expect(result).toEqual({ cursor: 4321, epoch: "epoch-base" });
+    });
+  });
+
+  describe("::sync meta caching", () => {
+    it("should cache getMeta() response and not repeat round trip on subsequent auto syncs", async () => {
+      jest.spyOn(ResourceLocalStorage, "get").mockResolvedValue([{ id: "res-1" }]);
+      syncStateLocalStorage.get.mockResolvedValue({
+        cursor: 50,
+        epoch: "epoch-1",
+        lastReconcileTimestamp: Date.now(),
+      });
+
+      await engine.sync(SyncTrigger.AUTO);
+      await engine.sync(SyncTrigger.AUTO);
+
+      expect(syncApiService.getMeta).toHaveBeenCalledTimes(1);
     });
   });
 

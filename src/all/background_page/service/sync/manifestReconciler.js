@@ -16,6 +16,7 @@ import OfflineResourcesOPFSStorage from "../opfsStorage/offlineResourcesOPFSStor
 import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage";
 import FindResourcesService from "../resource/findResourcesService";
 import DecryptMetadataService from "../metadata/decryptMetadataService";
+import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
 import ResourceEntity from "../../model/entity/resource/resourceEntity";
 import ResourcesCollection from "../../model/entity/resource/resourcesCollection";
 import Log from "../../model/log";
@@ -42,6 +43,8 @@ export default class ManifestReconciler {
       dependencies.findResourcesService || new FindResourcesService(account, apiClientOptions);
     this.decryptMetadataService =
       dependencies.decryptMetadataService || new DecryptMetadataService(apiClientOptions, account);
+    this.getOrFindResourceTypesService =
+      dependencies.getOrFindResourceTypesService || new GetOrFindResourceTypesService(account, apiClientOptions);
   }
 
   /**
@@ -106,6 +109,7 @@ export default class ManifestReconciler {
     }
 
     let repairedCount = 0;
+    let repairedIds = [];
     if (missingOrDivergentIds.length > 0) {
       Log.write({
         level: "info",
@@ -116,17 +120,23 @@ export default class ManifestReconciler {
         const repairedCollection = await this.findResourcesService.findAllByIdsForLocalStorage(missingOrDivergentIds);
 
         if (repairedCollection && repairedCollection.length > 0) {
+          // Filter out unsupported resource types before writing to local or offline storage
+          const resourceTypes = await this.getOrFindResourceTypesService.getOrFindAll();
+          if (typeof repairedCollection.filterByResourceTypes === "function") {
+            repairedCollection.filterByResourceTypes(resourceTypes);
+          }
+
           // Decrypt if passphrase available
           await this.decryptMetadataService.decryptAllFromForeignModels(repairedCollection, passphrase, {
             ignoreDecryptionError: true,
             updateSessionKeys: true,
           });
 
-          // If offline enabled, save encrypted offline copies
+          // If offline enabled, save encrypted offline copies matching legacy offline policy
           const canUseOffline = await this.canUseOfflineStorageService.canUseOfflineStorage();
           if (canUseOffline) {
             const offlineTagged = repairedCollection.filterByOffline();
-            const baseItems = offlineTagged.length > 0 ? offlineTagged.items : [];
+            const baseItems = offlineTagged.length > 0 ? offlineTagged.items : repairedCollection.items;
             const clonedEncryptedItems = baseItems
               .filter((r) => r && Boolean(r.permission))
               .map((r) => new ResourceEntity(r.toDto(ResourceEntity.ALL_CONTAIN_OPTIONS), { validate: false }));
@@ -141,7 +151,7 @@ export default class ManifestReconciler {
           repairedCollection.filterOutMetadataEncrypted();
           await ResourceLocalStorage.addOrReplaceResourcesCollection(repairedCollection);
 
-          const repairedIds = Array.from(repairedCollection)
+          repairedIds = Array.from(repairedCollection)
             .map((r) => r.id)
             .filter(Boolean);
           repairedCount = repairedIds.length;
@@ -164,7 +174,7 @@ export default class ManifestReconciler {
       revokedCount: revokedIds.length,
       revokedIds,
       repairedCount,
-      repairedIds: missingOrDivergentIds,
+      repairedIds,
     };
   }
 }

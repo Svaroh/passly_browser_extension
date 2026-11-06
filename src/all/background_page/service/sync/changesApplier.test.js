@@ -27,6 +27,7 @@ import { defaultUserDto } from "passbolt-styleguide/src/shared/models/entity/use
 import { defaultResourceDto } from "passbolt-styleguide/src/shared/models/entity/resource/resourceEntity.test.data";
 import { defaultResourceMetadataDto } from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity.test.data";
 import { defaultPermissionDto } from "passbolt-styleguide/src/shared/models/entity/permission/permissionEntity.test.data";
+import { defaultMetadataKeyDto } from "passbolt-styleguide/src/shared/models/entity/metadata/metadataKeyEntity.test.data";
 
 describe("ChangesApplier", () => {
   let account;
@@ -119,22 +120,19 @@ describe("ChangesApplier", () => {
       expect(UserLocalStorage.addUser).toHaveBeenCalledTimes(1);
     });
 
-    it("should safely apply resource_types upserts and deletions via getData/setData", async () => {
-      const getDataSpy = jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockResolvedValue(
-        new ResourceTypesCollection([
-          { id: "rt-1", name: "Type 1" },
-          { id: "rt-2", name: "Type 2" },
-        ]),
-      );
+    it("should safely apply resource_types upserts and deletions when getData returns a plain DTO array", async () => {
+      const allDtos = resourceTypesCollectionDto();
+      const existingPlainDtos = [allDtos[0], allDtos[1]];
+      const getDataSpy = jest.spyOn(ResourceTypeLocalStorage.prototype, "getData").mockResolvedValue(existingPlainDtos);
       const setDataSpy = jest.spyOn(ResourceTypeLocalStorage.prototype, "setData").mockResolvedValue();
 
       const pageData = {
         cursor: 150,
         upserts: {
-          resource_types: [{ id: "rt-3", name: "Type 3" }],
+          resource_types: [allDtos[2]],
         },
         deletions: {
-          resource_types: ["rt-1"],
+          resource_types: [allDtos[0].id],
         },
       };
 
@@ -142,8 +140,74 @@ describe("ChangesApplier", () => {
 
       expect(getDataSpy).toHaveBeenCalled();
       expect(setDataSpy).toHaveBeenCalled();
+      const lastSavedCollection = setDataSpy.mock.calls[setDataSpy.mock.calls.length - 1][0];
+      const savedIds = Array.from(lastSavedCollection).map((t) => t.id);
+      expect(savedIds).toContain(allDtos[1].id);
+      expect(savedIds).toContain(allDtos[2].id);
+      expect(savedIds).not.toContain(allDtos[0].id);
+
       getDataSpy.mockRestore();
       setDataSpy.mockRestore();
+    });
+
+    it("should apply secrets upserts when offline storage is enabled and resource exists in OPFS get()", async () => {
+      jest.spyOn(applier.canUseOfflineStorageService, "canUseOfflineStorage").mockResolvedValue(true);
+      const getOfflineSpy = jest
+        .spyOn(applier.offlineResourcesOPFSStorage, "get")
+        .mockResolvedValue([{ id: "res-offline-1", name: "Offline Resource" }]);
+      const addSecretsSpy = jest
+        .spyOn(applier.offlineSecretsOPFSStorage, "addOrReplaceSecretsCollection")
+        .mockResolvedValue();
+
+      const pageData = {
+        cursor: 155,
+        upserts: {
+          secrets: [
+            { resource_id: "res-offline-1", data: "enc-secret-data" },
+            { resource_id: "res-online-only", data: "should-not-persist" },
+          ],
+        },
+      };
+
+      await applier.apply(pageData);
+
+      expect(getOfflineSpy).toHaveBeenCalled();
+      expect(addSecretsSpy).toHaveBeenCalledTimes(1);
+      const savedSecretsCollection = addSecretsSpy.mock.calls[0][0];
+      expect(savedSecretsCollection.items.length).toBe(1);
+      expect(savedSecretsCollection.items[0].resourceId || savedSecretsCollection.items[0].resource_id).toBe(
+        "res-offline-1",
+      );
+    });
+
+    it("should decrypt and persist metadata_keys into session storage before resource handling", async () => {
+      const decryptSpy = jest
+        .spyOn(applier.decryptMetadataPrivateKeysService, "decryptAllFromMetadataKeysCollection")
+        .mockImplementation((collection) => {
+          collection.hasEncryptedKeys = () => false;
+          return Promise.resolve();
+        });
+      const getSessionSpy = jest
+        .spyOn(applier.metadataKeysSessionStorage, "get")
+        .mockResolvedValue([defaultMetadataKeyDto({ id: "mk-existing" }, { withMetadataPrivateKeys: true })]);
+      const setSessionSpy = jest.spyOn(applier.metadataKeysSessionStorage, "set").mockResolvedValue();
+
+      const pageData = {
+        cursor: 158,
+        upserts: {
+          metadata_keys: [defaultMetadataKeyDto({ id: "mk-new" }, { withMetadataPrivateKeys: true })],
+        },
+      };
+
+      await applier.apply(pageData, "test-passphrase");
+
+      expect(decryptSpy).toHaveBeenCalled();
+      expect(getSessionSpy).toHaveBeenCalled();
+      expect(setSessionSpy).toHaveBeenCalledTimes(1);
+      const savedKeys = setSessionSpy.mock.calls[0][0];
+      const savedIds = Array.from(savedKeys).map((k) => k.id);
+      expect(savedIds).toContain("mk-existing");
+      expect(savedIds).toContain("mk-new");
     });
 
     it("should record undecryptable resource IDs into syncStateLocalStorage pending list", async () => {
