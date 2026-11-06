@@ -34,10 +34,12 @@ const IS_HEADLESS = process.env.CHROME_HEADLESS !== 'false';
 const PASSLY_URL = 'https://pass.66ton99.org.ua/auth/login';
 
 const CANDIDATE_CHROME_PATHS = [
+  process.env.CHROME_BIN,
+  process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : null,
   path.join(process.env.HOME || '/home/ton', '.cache/chrome-for-testing/chrome/linux-155.0.8059.39/chrome-linux64/chrome'),
   '/tmp/chrome-for-testing/chrome/linux-155.0.8059.39/chrome-linux64/chrome',
   'google-chrome',
-];
+].filter(Boolean);
 
 function resolveChromeBinary() {
   for (const bin of CANDIDATE_CHROME_PATHS) {
@@ -281,9 +283,11 @@ async function runE2ETests() {
     for (let i = 0; i < 30; i++) {
       allTargets = await fetchJson(`http://127.0.0.1:${CHROME_PORT}/json`);
       passlyTarget = allTargets.find((t) =>
+        t.url.includes('service_worker.js') ||
         t.url.includes('serviceWorker/serviceWorker.js') ||
         t.url.includes('offscreens/offscreen.html') ||
-        t.url.includes('webAccessibleResources/quickaccess.html')
+        t.url.includes('webAccessibleResources/quickaccess.html') ||
+        (t.url.startsWith('chrome-extension://') && t.type === 'service_worker')
       );
       if (passlyTarget) break;
       await sleep(250);

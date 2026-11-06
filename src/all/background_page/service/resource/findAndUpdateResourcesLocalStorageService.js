@@ -23,6 +23,7 @@ import OfflineSecretsOPFSStorage from "../opfsStorage/offlineSecretsOPFSStorage"
 import CanUseOfflineStorageService from "../offline/canUseOfflineStorageService";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
 import GetOrFindResourceTypesService from "../resourceType/getOrFindResourceTypesService";
+import SyncEngine, { SyncTrigger, SyncResult } from "../sync/syncEngine";
 import Log from "../../model/log";
 
 const RESOURCES_UPDATE_ALL_LS_LOCK_PREFIX = "RESOURCES_UPDATE_LS_LOCK_";
@@ -51,6 +52,7 @@ class FindAndUpdateResourcesLocalStorage {
     this.canUseOfflineStorageService = new CanUseOfflineStorageService(account, apiClientOptions);
     this.offlineResourcesOPFSStorage = new OfflineResourcesOPFSStorage(account);
     this.offlineSecretsOPFSStorage = new OfflineSecretsOPFSStorage(account);
+    this.syncEngine = new SyncEngine(account, apiClientOptions);
   }
 
   /**
@@ -93,7 +95,42 @@ class FindAndUpdateResourcesLocalStorage {
         );
       }
 
-      // Lock is granted, retrieve all resources and update the local storage.
+      // Lock is granted.
+      // Strict Policy: When local data exists, fast incremental delta sync is attempted first.
+      if (localStorageResourceCollection && localStorageResourceCollection.length > 0) {
+        let syncResult = null;
+        try {
+          syncResult = await this.syncEngine.sync(SyncTrigger.AUTO, passphrase);
+        } catch (error) {
+          Log.write({
+            level: "warn",
+            message: `Incremental delta sync encountered an error: ${error?.message}`,
+          });
+        }
+
+        if (syncResult?.status === SyncResult.SUCCESS) {
+          FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
+          const freshData = (await ResourceLocalStorage.get()) || [];
+          return new ResourcesCollection(freshData, { validate: false });
+        }
+
+        if (syncResult?.status === SyncResult.SKIPPED) {
+          // Sync was skipped (e.g. backoff active, no network, or locked).
+          // Return the local cached collection without triggering an expensive full refresh.
+          Log.write({
+            level: "debug",
+            message: `Incremental delta sync skipped (${syncResult?.reason}); returning cached local resources without full refresh.`,
+          });
+          return new ResourcesCollection(localStorageResourceCollection, { validate: false });
+        }
+
+        Log.write({
+          level: "warn",
+          message: "Incremental delta sync failed; falling back to legacy full refresh.",
+        });
+      }
+
+      // No local data or delta sync failed: perform full initial bootstrap / fallback data refresh.
       const localResourcesCollection = new ResourcesCollection(localStorageResourceCollection || [], {
         validate: isRuntimeCacheInitialized,
       });
@@ -140,6 +177,9 @@ class FindAndUpdateResourcesLocalStorage {
       updatedResourcesCollection.filterOutMetadataEncrypted();
 
       await ResourceLocalStorage.set(updatedResourcesCollection);
+
+      // Establish baseline sync state after initial full refresh without full re-fetch
+      await this.syncEngine.seedBaselineCursor();
 
       FindAndUpdateResourcesLocalStorage.lastUpdateAllTimes[this.account.id] = Date.now();
 

@@ -1,3 +1,63 @@
+# v6.1.18
+Passly 6.1.18 hardens delta synchronization fault tolerance, resolves all PR #54 second-round review blockers, and fixes offline resource replication and metadata key decryption.
+
+### Fixed
+- **OPFS Secret Persistence:** Fixed `TypeError` on non-existent `getAll()` by invoking `offlineResourcesOPFSStorage.get()` to accurately identify cached offline resources before persisting incoming secret upserts.
+- **Metadata Keys Decryption & Persistence Pipeline:** Decrypted incoming `metadata_keys` before resource upserts via `DecryptMetadataPrivateKeysService`, persisting decrypted keys into `MetadataKeysSessionStorage` and encrypted keys into `MetadataKeyOPFSStorage`.
+- **Epoch Change Cursor Recovery & Monotonicity:** Allowed stored cursor to reset and lower monotonically upon server database epoch changes or explicit reset flags, preventing stale cursor persistence after database restore. Added non-finite value protection (`Number.isFinite`).
+- **Offline Policy Consistency:** Mirrored legacy offline tagging default: when no resources are explicitly tagged for offline use, the full vault is retained offline rather than an empty set.
+- **Distinguish SKIPPED from FAILURE in Fallback Policy:** Returned cached local collections on `SyncResult.SKIPPED` (active backoff, offline network, or concurrent lock) without triggering costly full refresh fallbacks.
+- **Manifest Reconciliation Integrity:** Added `filterByResourceTypes` to prevent unsupported resource types from being written locally, and returned accurate `repairedIds` matching `repairedCount`.
+- **Bootstrap Pagination Guard:** Enforced `maxPages = 500` pagination ceiling in `BootstrapStrategy` symmetric with `DeltaSyncStrategy`.
+- **SyncEngine Encapsulation & Meta Caching:** Added `SyncEngine.seedBaselineCursor()` and cached `getMeta()` responses for the reconciliation interval (1 hour) to eliminate redundant round trips.
+
+# v6.1.17
+Passly 6.1.17 hardens delta synchronization fault tolerance, addresses all PR #54 code review blockers, and ensures strict adherence to offline resource security and backoff policies.
+
+### Fixed
+- **HTTP 410 Gone Detection:** Robust `410 Gone` error detection checking `error?.data?.code === 410`, `error?.data?.header?.status === 410`, and API error message strings in `DeltaSyncStrategy`, ensuring reliable recovery and fallback to bootstrap on cursor expiration without loop failure.
+- **Graceful Fallback to Full Refresh on Delta Sync Failure:** Restored transparent legacy full refresh fallback in `FindAndUpdateResourcesLocalStorageService` when `SyncEngine.sync()` returns `status !== SUCCESS` (such as HTTP 404 or transient network errors during delta sync).
+- **Baseline Seeding Watermark Probe:** Fixed full baseline re-import replay by querying current watermark via lightweight probe `getBootstrap(1, 1)` to initialize cursor monotonically without replaying the entire historical change log.
+- **ResourceTypeLocalStorage API Alignment:** Replaced non-existent `.get()` / `.set()` with proper `.getData()` / `.setData()` methods on `ResourceTypeLocalStorage` in `ChangesApplier`.
+- **Atomic Bootstrap Pinned Cursor Persistence:** Passed `cursor: null` across intermediate pagination batches in `BootstrapStrategy` and atomically persist the `pinnedCursor` only upon completing the full bootstrap sequence.
+- **Pending Undecrypted Resources Tracking:** Registered undecrypted v5 resource IDs (`!resource.isMetadataDecrypted()`) into `SyncStateLocalStorage.pendingResourceIds` for lazy recovery and deferred re-decryption once the master secret is available.
+- **Server Database Epoch Invalidation:** Detected server epoch changes (`serverEpoch !== syncState.epoch`) via `getMeta()` in `SyncEngine`, immediately triggering recovery bootstrap and resetting local sync state.
+- **Passphrase Prompt & Invalidation Workflow:** Handled `UserPassphraseRequiredError` in `SyncNowController` by explicitly prompting the user via `GetPassphraseService` and triggering a re-authenticated manual sync. Removed unauthorized 60-second in-memory passphrase caching from `PassphraseStorageService`.
+- **Strict OPFS Offline Access Filtering:** Enforced `filterByOffline()` and `hasOfflineAccess()` checks on resources prior to OPFS persistence in `ChangesApplier`, strictly encrypting and storing secrets only for designated offline resources.
+- **Multi-Account Concurrency Lock per Account ID:** Switched `SyncEngine` from instance-level lock to shared static mutex Map (`SyncEngine.locks`) keyed by `accountId`, preventing race conditions across concurrent sync triggers for the same user profile.
+- **Full Missing and Divergent Resource Reconciliation:** Enhanced `ManifestReconciler` to compare server manifest items against local store: actively detects missing resources and divergent modification timestamps (`serverItem.modified !== local.modified`), fetching missing records in batches via `findAllByIdsForLocalStorage` and updating local cache.
+- **Delta Sync Pagination Loop Guard:** Added `newCursor <= currentCursor` guard and capped pagination at `maxPages = 500` in `DeltaSyncStrategy` to eliminate infinite loops caused by non-advancing server cursors.
+- **Elimination of Redundant Reconciliation on Baseline:** Prevented duplicate manifest reconciliation calls during initial baseline run using the `didReconcile` execution flag in `SyncEngine`.
+- **Exponential Backoff Schedule:** Implemented Spec §6 standard exponential backoff delays (`[30s, 1m, 5m, 15m, 1h, 6h]`) in `SyncEngine` on consecutive sync failures, recording `lastFailureTimestamp` and bypassing backoff for explicit user-triggered manual syncs.
+- **Protocol Entities & Hygiene:** Handled `deletions.resource_types` and `upserts.metadata_keys` in `ChangesApplier`, added `clone: true` to `FoldersCollection` instantiation, ensured cursor monotonicity via `Math.max()` in `SyncStateLocalStorage`, supported `FORCE_BOOTSTRAP` and `RECONCILE` triggers, and updated `test:e2e:all` script in `package.json`.
+
+# v6.1.16
+Passly 6.1.16 delivers dedicated End-to-End (E2E) testing coverage for the client-side delta synchronization engine and the strict data absence refresh policy.
+
+### Added
+- Dedicated Chromium E2E test suite `e2e/delta-sync.e2e.js`:
+  - Validates live DEV backend protocol contracts (`/sync/meta.json`, `/sync/changes.json`, `/sync/manifest.json`, `/sync/bootstrap.json`).
+  - Headless Chromium execution with unpacked extension loaded via CDP.
+- Added `test:e2e:sync` and `test:e2e:all` npm scripts for automated continuous integration.
+
+# v6.1.15
+Passly 6.1.15 delivers the client-side incremental delta synchronization engine (`sync/1` wire protocol) and establishes the strict data absence refresh policy.
+
+### Added
+- Complete client-side implementation of the `sync/1` protocol consuming `/sync/changes.json`, `/sync/bootstrap.json`, `/sync/manifest.json`, and `/sync/meta.json`.
+- `SyncApiService`: dedicated API layer for protocol metadata, delta pagination, pinned snapshot bootstrap, and compact manifest queries.
+- `SyncStateLocalStorage`: persistent monotonic cursor (`seq`), server database epoch tracking, failure counters, and reconciliation timestamps.
+- `ChangesApplier`: applying upserts and deletions across resources, secrets, folders, users, groups, and resource types with metadata decryption and OPFS synchronization.
+- `DeltaSyncStrategy`: fast paginated incremental delta synchronization with transparent `410 Gone` recovery without local data loss.
+- `BootstrapStrategy`: full snapshot bootstrap with pinned cursor consistency for cold-start initialization.
+- `ManifestReconciler`: compact access revocation and deleted resource pruning against server manifest.
+- `SyncEngine`: central orchestrator providing concurrency locking via `Lock`, offline skipping (`navigator.onLine`), and retry telemetry.
+- Exposed `passbolt.sync.sync-now` and `passbolt.sync.get-status` port listeners via `SyncNowController`.
+
+### Fixed
+- **Strict Data Absence Refresh Policy:** Full synchronization is executed strictly only when local replica data is completely absent (first install / empty store).
+- When local replica data is present, the extension performs fast incremental delta synchronization (`SyncEngine.sync(SyncTrigger.AUTO)`), eliminating prolonged UI blocking progress spinners and unnecessary multi-page full data re-downloads in `FindAndUpdateResourcesLocalStorage`.
+
 # v6.1.14
 Passly 6.1.14 resolves all GitHub Code Quality warnings in the E2E test suite.
 

@@ -18,6 +18,8 @@ import UpdateResourceLocalStorageByFolderParentIdController from "../controller/
 import ResourceDeleteController from "../controller/resource/resourceDeleteController";
 import ResourceRestoreController from "../controller/resource/resourceRestoreController";
 import FindDeletedResourcesController from "../controller/resource/findDeletedResourcesController";
+import SyncNowController from "../controller/sync/syncNowController";
+import SyncStateLocalStorage from "../service/local_storage/syncStateLocalStorage";
 
 const listen = function (worker, apiClientOptions, account) {
   /*
@@ -195,6 +197,29 @@ const listen = function (worker, apiClientOptions, account) {
       account,
     );
     await controller._exec(parentFolderId);
+  });
+
+  /**
+   * Trigger immediate manual synchronization across delta engine.
+   * @listens passbolt.sync.sync-now
+   */
+  worker.port.on("passbolt.sync.sync-now", async (requestId) => {
+    const controller = new SyncNowController(worker, requestId, apiClientOptions, account);
+    await controller._exec();
+  });
+
+  /**
+   * Get current synchronization state and telemetry.
+   * @listens passbolt.sync.get-status
+   */
+  worker.port.on("passbolt.sync.get-status", async (requestId) => {
+    try {
+      const syncStateStorage = new SyncStateLocalStorage(account);
+      const state = await syncStateStorage.get();
+      worker.port.emit(requestId, "SUCCESS", state);
+    } catch (error) {
+      worker.port.emit(requestId, "ERROR", error);
+    }
   });
 };
 

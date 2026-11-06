@@ -52,6 +52,7 @@ import { defaultUserActiveSessionDto } from "passbolt-styleguide/src/shared/mode
 import GetOrFindActiveSessionService from "../activeSession/getOrFindActiveSessionService";
 import { defaultOfflineItemDto } from "passbolt-styleguide/src/shared/models/entity/offline/offlineItemEntity.test.data";
 import SecretsCollection from "passbolt-styleguide/src/shared/models/entity/secret/secretsCollection";
+import SyncEngine, { SyncTrigger, SyncResult } from "../sync/syncEngine";
 
 jest.useFakeTimers();
 
@@ -88,6 +89,7 @@ describe("UpdateResourcesLocalStorage", () => {
       jest
         .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
         .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      jest.spyOn(SyncEngine.prototype, "sync").mockResolvedValue({ status: SyncResult.SUCCESS });
     });
 
     it("asserts updatePeriodThreshold parameter", async () => {
@@ -97,6 +99,23 @@ describe("UpdateResourcesLocalStorage", () => {
       expect(() =>
         resourceLocalStorageUpdateService.findAndUpdateAll({ updatePeriodThreshold: false }),
       ).rejects.toThrow("Parameter updatePeriodThreshold should be a number.");
+    });
+
+    it("should return cached local collection without full refresh when delta sync returns SKIPPED", async () => {
+      const existingResource = singleResourceDtos()[0];
+      await ResourceLocalStorage.set(new ResourcesCollection([existingResource]));
+
+      jest.spyOn(SyncEngine.prototype, "sync").mockResolvedValue({
+        status: SyncResult.SKIPPED,
+        reason: "BACKOFF",
+      });
+      const fullRefreshSpy = jest.spyOn(service.findResourcesServices, "findAllForLocalStorage");
+
+      const result = await service.findAndUpdateAll();
+
+      expect(fullRefreshSpy).not.toHaveBeenCalled();
+      expect(result.items.length).toBe(1);
+      expect(result.items[0].id).toBe(existingResource.id);
     });
 
     it("updates local storage when no resources are returned by the API.", async () => {
@@ -144,10 +163,8 @@ describe("UpdateResourcesLocalStorage", () => {
       expect(resourcesCollection).toEqual(new ResourcesCollection(resourcesDto));
     });
 
-    it("overrides local storage with a second update call.", async () => {
+    it("performs fast incremental delta sync instead of full fetch when local storage already has data.", async () => {
       expect.assertions(5);
-      const resourcesDto = singleResourceDtos();
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
       jest.spyOn(FindResourcesService.prototype, "findAllForLocalStorage");
       await ResourceLocalStorage.set(new ResourcesCollection(multipleResourceDtos()));
 
@@ -155,55 +172,58 @@ describe("UpdateResourcesLocalStorage", () => {
       const resourcesCollection = await service.findAndUpdateAll();
 
       const resourcesLSDto = await ResourceLocalStorage.get();
+      expect(FindResourcesService.prototype.findAllForLocalStorage).not.toHaveBeenCalled();
+      expect(SyncEngine.prototype.sync).toHaveBeenCalledWith(SyncTrigger.AUTO, null);
+      expect(resourcesLSDto).toHaveLength(4);
+      expect(resourcesCollection).toEqual(new ResourcesCollection(resourcesLSDto));
+    });
+
+    it("falls back to legacy full refresh if incremental delta sync fails (status !== SUCCESS).", async () => {
+      expect.assertions(4);
+      const resourcesDto = multipleResourceDtos();
+      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
+      jest.spyOn(FindResourcesService.prototype, "findAllForLocalStorage");
+      await ResourceLocalStorage.set(new ResourcesCollection(singleResourceDtos()));
+
+      // Mock delta sync failure (e.g. 404 on server without Sync plugin)
+      jest.spyOn(SyncEngine.prototype, "sync").mockResolvedValue({ status: "FAILURE", reason: "404 Not Found" });
+
+      const resourcesCollection = await service.findAndUpdateAll();
+
+      expect(SyncEngine.prototype.sync).toHaveBeenCalledWith(SyncTrigger.AUTO, null);
       expect(FindResourcesService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(1);
-      expect(resourcesLSDto).toHaveLength(1);
-      expect(new ResourcesCollection(resourcesLSDto)).toEqual(new ResourcesCollection(resourcesDto));
+      const resourcesLSDto = await ResourceLocalStorage.get();
+      expect(resourcesLSDto).toHaveLength(4);
       expect(resourcesCollection).toEqual(new ResourcesCollection(resourcesDto));
     });
 
     it("does not update the local storage if the update period threshold given in parameter is not overdue.", async () => {
-      expect.assertions(6);
-      const resourcesDto = singleResourceDtos();
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
+      expect.assertions(4);
       jest.spyOn(FindResourcesService.prototype, "findAllForLocalStorage");
-      jest.spyOn(ResourceLocalStorage, "get");
       await ResourceLocalStorage.set(new ResourcesCollection(multipleResourceDtos()));
 
       const resourcesCollection = await service.findAndUpdateAll();
-      const unexpectedDto = multipleResourceDtos();
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(unexpectedDto));
       const resourcesCollectionWithThreshold = await service.findAndUpdateAll({ updatePeriodThreshold: 1000 });
 
       const resourcesLSDto = await ResourceLocalStorage.get();
-      expect(FindResourcesService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(1);
-      expect(ResourceLocalStorage.get).toHaveBeenCalledTimes(3);
-      expect(resourcesLSDto).toHaveLength(1);
-      expect(new ResourcesCollection(resourcesLSDto)).toEqual(new ResourcesCollection(resourcesDto));
-      expect(resourcesCollection).toEqual(new ResourcesCollection(resourcesDto));
-      expect(resourcesCollectionWithThreshold).not.toEqual(new ResourcesCollection(unexpectedDto));
+      expect(FindResourcesService.prototype.findAllForLocalStorage).not.toHaveBeenCalled();
+      expect(SyncEngine.prototype.sync).toHaveBeenCalledTimes(1);
+      expect(resourcesLSDto).toHaveLength(4);
+      expect(resourcesCollectionWithThreshold).toEqual(resourcesCollection);
     });
 
-    it("updates the local storage if the update period threshold given in parameter is overdue.", async () => {
-      expect.assertions(5);
-      const singleResourceDto = singleResourceDtos();
-      jest
-        .spyOn(ResourceService.prototype, "findAll")
-        .mockImplementation(() => mockPassboltResponse(singleResourceDto));
+    it("updates the local storage via delta sync if the update period threshold given in parameter is overdue.", async () => {
+      expect.assertions(3);
       jest.spyOn(FindResourcesService.prototype, "findAllForLocalStorage");
       await ResourceLocalStorage.set(new ResourcesCollection(multipleResourceDtos()));
 
-      const resourcesCollection = await service.findAndUpdateAll();
-      const resourcesDto = multipleResourceDtos();
-      jest.spyOn(ResourceService.prototype, "findAll").mockImplementation(() => mockPassboltResponse(resourcesDto));
+      await service.findAndUpdateAll();
       jest.advanceTimersByTime(1001);
-      const resourcesCollectionOverdue = await service.findAndUpdateAll({ updatePeriodThreshold: 1000 });
+      await service.findAndUpdateAll({ updatePeriodThreshold: 1000 });
 
-      const resourcesLSDto = await ResourceLocalStorage.get();
-      expect(FindResourcesService.prototype.findAllForLocalStorage).toHaveBeenCalledTimes(2);
-      expect(resourcesLSDto).toHaveLength(4);
-      expect(new ResourcesCollection(resourcesLSDto)).toEqual(new ResourcesCollection(resourcesDto));
-      expect(resourcesCollection).not.toEqual(resourcesCollectionOverdue);
-      expect(resourcesCollectionOverdue).toEqual(new ResourcesCollection(resourcesDto));
+      expect(FindResourcesService.prototype.findAllForLocalStorage).not.toHaveBeenCalled();
+      expect(SyncEngine.prototype.sync).toHaveBeenCalledTimes(2);
+      expect(SyncEngine.prototype.sync).toHaveBeenLastCalledWith(SyncTrigger.AUTO, null);
     });
 
     it("should update the local storage without resources having unknown resource types.", async () => {
@@ -822,6 +842,7 @@ describe("UpdateResourcesLocalStorage", () => {
       jest
         .spyOn(GetOrFindActiveSessionService.prototype, "getOrFind")
         .mockImplementation(() => new UserActiveSessionEntity(defaultUserActiveSessionDto()));
+      jest.spyOn(SyncEngine.prototype, "sync").mockResolvedValue({ status: SyncResult.SUCCESS });
     });
 
     it("should extract the id from the resource collection", async () => {
