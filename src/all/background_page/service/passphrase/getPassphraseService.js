@@ -60,6 +60,9 @@ export default class GetPassphraseService {
    * @return {Promise<string>}
    */
   async requestPassphrase(worker) {
+    if (worker?.port && typeof worker.port.isConnected === "function" && !worker.port.isConnected()) {
+      throw new UserAbortsOperationError("Cannot request passphrase on disconnected port.");
+    }
     const requestResult = await worker.port.request("passbolt.passphrase.request");
     const { passphrase, rememberMe } = requestResult;
     await this.validatePassphrase(passphrase);

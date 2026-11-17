@@ -12,6 +12,7 @@
  * @since         3.12.0
  */
 import userModel from "../../model/user/userModel";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 class UpdateUserLocalStorageController {
   /**
@@ -35,10 +36,12 @@ class UpdateUserLocalStorageController {
   async _exec() {
     try {
       await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS");
+      safePortEmit(this.worker, this.requestId, "SUCCESS");
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

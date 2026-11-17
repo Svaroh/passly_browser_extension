@@ -23,11 +23,10 @@ const PROD_DOMAIN = 'https://pass.66ton99.org.ua';
 const EXT_DIR = path.resolve(__dirname, '..');
 const EXTENSION_PATH = path.resolve(EXT_DIR, 'build/all');
 
+const { getChromeExecutable } = require('./common/platform-chrome');
+
 const CHROME_PORT = 9456;
-const CHROME_PATH = process.env.CHROME_BIN ||
-  (process.platform === 'darwin'
-    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    : 'google-chrome');
+const CHROME_PATH = getChromeExecutable();
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -254,6 +253,10 @@ async function run() {
     if (client.failedRequests.length > 0) {
       throw new Error(`FAILED: Failed CSS network requests detected: ${JSON.stringify(client.failedRequests)}`);
     }
+
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) during online style verification:\n${client.errors.join('\n')}`);
+    }
     console.log('[PASS] Online stylesheets loaded with 0 network failures.');
 
     // STEP 2: Verify Extension Direct Workspace UI & Styling
@@ -314,6 +317,10 @@ async function run() {
       if (wsStyles.fontFamily && !wsStyles.fontFamily.toLowerCase().includes('open sans') && !wsStyles.fontFamily.includes('sans-serif')) {
         throw new Error(`FAILED: Unexpected font family in workspace: ${wsStyles.fontFamily}`);
       }
+
+      if (wsClient.errors.length > 0) {
+        throw new Error(`FAILED: Detected ${wsClient.errors.length} console error(s) in workspace:\n${wsClient.errors.join('\n')}`);
+      }
       console.log('[PASS] Typography and ext_app.min.css stylesheets confirmed.');
 
       wsClient.close();
@@ -371,6 +378,10 @@ async function run() {
 
     if (offlineStatus.sheetsCount === 0 && (!offlineStatus.links || offlineStatus.links.length === 0)) {
       throw new Error('FAILED: Zero stylesheets active after offline reload!');
+    }
+
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) during offline style evaluation:\n${client.errors.join('\n')}`);
     }
 
     // STEP 4: Production Domain Offline Verification (https://pass.66ton99.org.ua)
@@ -440,6 +451,10 @@ async function run() {
 
     if (prodNavError && prodNavError.includes('ERR_INTERNET_DISCONNECTED')) {
       throw new Error('FAILED: Detected net::ERR_INTERNET_DISCONNECTED on production domain!');
+    }
+
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) on production domain:\n${client.errors.join('\n')}`);
     }
 
     console.log('\n[PASS] All stylesheet and theme checks passed under online, dark mode, and offline reload conditions.');

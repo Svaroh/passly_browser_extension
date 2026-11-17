@@ -744,7 +744,13 @@ class PasskeyWebAuthenticationProxyService {
       await PasskeyVaultResourceService.createResourceForPasskey(requestDetails, result.secretDto);
       await PasskeyWebAuthenticationProxyService.completeCreateRequestWithResponse(requestId, result.credential);
     } catch (error) {
-      console.warn("Passly passkey create request failed.", error);
+      if (
+        error?.name !== "NotAllowedError" &&
+        error?.name !== "AbortError" &&
+        !error?.message?.includes("dialog has been closed")
+      ) {
+        console.warn("Passly passkey create request failed.", error);
+      }
       await PasskeyWebAuthenticationProxyService.completeCreateRequestWithError(
         requestId,
         PasskeyWebAuthenticationProxyService.toWebAuthnError(error),
@@ -771,7 +777,13 @@ class PasskeyWebAuthenticationProxyService {
       const result = await PasskeyWebauthnService.getAssertion(requestDetails, secretDto);
       await PasskeyWebAuthenticationProxyService.completeGetRequestWithResponse(requestId, result.credential);
     } catch (error) {
-      console.warn("Passly passkey get request failed.", error);
+      if (
+        error?.name !== "NotAllowedError" &&
+        error?.name !== "AbortError" &&
+        !error?.message?.includes("dialog has been closed")
+      ) {
+        console.warn("Passly passkey get request failed.", error);
+      }
       await PasskeyWebAuthenticationProxyService.completeGetRequestWithError(
         requestId,
         PasskeyWebAuthenticationProxyService.toWebAuthnError(error),

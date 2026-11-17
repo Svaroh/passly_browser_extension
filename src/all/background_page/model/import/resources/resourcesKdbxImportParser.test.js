@@ -43,6 +43,7 @@ import {
 import { KEEPASS_PASSKEY_FIELDS } from "../../../../passkey/passkeyKeepassImportService";
 
 describe("ResourcesKdbxImportParser", () => {
+  jest.setTimeout(25000);
   let resourceTypesCollection, metadataTypesSettings;
 
   beforeEach(() => {

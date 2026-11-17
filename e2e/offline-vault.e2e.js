@@ -31,11 +31,10 @@ const SERVER_INFRA_DIR = path.resolve(EXT_DIR, '../server-infra');
 const CREDS_DIR = path.resolve(SERVER_INFRA_DIR, 'e2e/credentials/chrome');
 const BS_ENV_PATH = path.resolve(SERVER_INFRA_DIR, 'e2e/browserstack/browserstack.env');
 
+const { getChromeExecutable } = require('./common/platform-chrome');
+
 const CHROME_PORT = 9455;
-const CHROME_PATH = process.env.CHROME_BIN ||
-  (process.platform === 'darwin'
-    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    : 'google-chrome');
+const CHROME_PATH = getChromeExecutable();
 
 // Load BrowserStack environment if available
 if (fs.existsSync(BS_ENV_PATH)) {
@@ -91,17 +90,26 @@ function cleanPassboltHeader(header) {
  * Local Password Generator implementation for validation
  */
 function generatePassword(length = 16, { digits = true, symbols = true, uppercase = true, lowercase = true } = {}) {
-  let chars = '';
-  if (lowercase) chars += 'abcdefghijklmnopqrstuvwxyz';
-  if (uppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  if (digits) chars += '0123456789';
-  if (symbols) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  if (!chars) chars = 'abcdefghijklmnopqrstuvwxyz';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  const pools = [];
+  if (lowercase) pools.push('abcdefghijklmnopqrstuvwxyz');
+  if (uppercase) pools.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  if (digits) pools.push('0123456789');
+  if (symbols) pools.push('!@#$%^&*()_+-=[]{}|;:,.<>?');
+  if (pools.length === 0) pools.push('abcdefghijklmnopqrstuvwxyz');
+
+  const chars = pools.join('');
+  const result = [];
+  for (const pool of pools) {
+    result.push(pool.charAt(Math.floor(Math.random() * pool.length)));
   }
-  return result;
+  while (result.length < length) {
+    result.push(chars.charAt(Math.floor(Math.random() * chars.length)));
+  }
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result.slice(0, length).join('');
 }
 
 class CdpClient {
@@ -416,6 +424,10 @@ async function run() {
     console.log(`Service Worker Controller: ${swController}`);
     console.log(`Cache Storage Keys: ${JSON.stringify(cacheKeys)}`);
 
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) during online seeding:\n${client.errors.join('\n')}`);
+    }
+
     // STEP 8: Simulate Complete Offline Mode & Test Vault Resilience
     console.log('\n--- Step 8: Simulating Complete Network Disconnection (Offline Mode) ---');
     await client.send('Network.emulateNetworkConditions', {
@@ -453,6 +465,10 @@ async function run() {
     // Audit captured console errors
     console.log(`Captured console errors: ${client.errors.length}`);
     client.errors.forEach(err => console.log(` - ${err}`));
+
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) during offline vault test:\n${client.errors.join('\n')}`);
+    }
 
     let hasCanIUseError = client.errors.some(e => e.includes("Cannot read properties of null (reading 'canIUse')"));
     let hasNetDisconnected = navError && navError.includes('ERR_INTERNET_DISCONNECTED');
@@ -518,6 +534,10 @@ async function run() {
 
     if (prodNavError && prodNavError.includes('ERR_INTERNET_DISCONNECTED')) {
       throw new Error('FAILED: Detected net::ERR_INTERNET_DISCONNECTED on production domain in offline mode!');
+    }
+
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) on production domain in offline mode:\n${client.errors.join('\n')}`);
     }
 
     console.log('\n[PASS] Zero critical offline runtime exceptions detected.');

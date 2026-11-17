@@ -11,6 +11,7 @@
  * @link          https://passly.svaroh.net Passly
  */
 import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
+import UserAbortsOperationError from "../../error/userAbortsOperationError";
 import SyncEngine, { SyncTrigger, SyncResult } from "../../service/sync/syncEngine";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 
@@ -35,10 +36,19 @@ export default class SyncNowController {
   async _exec() {
     try {
       const result = await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS", result);
+      if (this.worker?.port && (!this.worker.port.isConnected || this.worker.port.isConnected())) {
+        this.worker.port.emit(this.requestId, "SUCCESS", result);
+      }
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      const isDisconnected =
+        error?.message?.includes("disconnected port") ||
+        (this.worker?.port?.isConnected && !this.worker.port.isConnected());
+      if (!isDisconnected) {
+        console.error(error);
+        if (this.worker?.port && (!this.worker.port.isConnected || this.worker.port.isConnected())) {
+          this.worker.port.emit(this.requestId, "ERROR", error);
+        }
+      }
     }
   }
 
@@ -65,8 +75,26 @@ export default class SyncNowController {
         (typeof result?.reason === "string" && result.reason.includes("passphrase is required"));
 
       if (isPassphraseRequired) {
-        const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
-        result = await this.syncEngine.sync(SyncTrigger.MANUAL, passphrase);
+        if (
+          this.worker?.port &&
+          typeof this.worker.port.isConnected === "function" &&
+          !this.worker.port.isConnected()
+        ) {
+          return { status: SyncResult.SKIPPED, reason: "Port disconnected before passphrase request" };
+        }
+        try {
+          const passphrase = await this.getPassphraseService.getPassphrase(this.worker);
+          result = await this.syncEngine.sync(SyncTrigger.MANUAL, passphrase);
+        } catch (err) {
+          if (
+            err instanceof UserAbortsOperationError ||
+            err?.message?.includes("disconnected port") ||
+            (this.worker?.port && typeof this.worker.port.isConnected === "function" && !this.worker.port.isConnected())
+          ) {
+            return { status: SyncResult.SKIPPED, reason: "Port disconnected or user aborted passphrase prompt" };
+          }
+          throw err;
+        }
       } else if (result.error) {
         throw result.error;
       }

@@ -334,13 +334,17 @@ export async function main() {
     return;
   }
   const query = new URLSearchParams(window.location.search);
-  const portname = query.get("passbolt");
+  const portname = query.get("passbolt") || "quickaccess";
   const port = new Port(portname);
   await port.connect();
   const biometricOptions = { enableOnLogin: false };
   const biometricAwarePort = BiometricAuthFormService.createBiometricAwarePort(port, biometricOptions, [
     {
       requestMessage: "passbolt.auth.login",
+      option: "enableOnLogin",
+    },
+    {
+      requestMessage: "passbolt.auth.login-offline",
       option: "enableOnLogin",
     },
     {

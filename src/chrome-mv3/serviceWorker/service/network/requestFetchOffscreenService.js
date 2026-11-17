@@ -75,7 +75,7 @@ export class RequestFetchOffscreenService {
       if (!navigator.onLine) {
         throw new Error("RequestFetchOffscreenService::fetchNative: offline error.");
       }
-      console.error(
+      console.debug(
         "RequestFetchOffscreenService::fetchNative: An error occurred while using the native fetch API, fallback on offscreen strategy until browser restart.",
         error,
       );

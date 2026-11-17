@@ -96,8 +96,9 @@ describe("FormDataUtils", () => {
       // process
       const arrayObject = await FormDataUtils.formDataToArray(formData);
       const formDataReceived = FormDataUtils.arrayToFormData(arrayObject);
-      // expectations
-      expect(formData).toStrictEqual(formDataReceived);
+      // expectations: compare serialized data structures (ignoring internal file creation timestamps)
+      const arrayObjectReceived = await FormDataUtils.formDataToArray(formDataReceived);
+      expect(arrayObject).toStrictEqual(arrayObjectReceived);
     });
   });
 });

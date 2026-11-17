@@ -15,6 +15,7 @@ import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/us
 import FindAndUpdateResourcesLocalStorage from "../../service/resource/findAndUpdateResourcesLocalStorageService";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
 import PassphraseStorageService from "../../service/session_storage/passphraseStorageService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 class ResourceUpdateLocalStorageController {
   /**
@@ -41,10 +42,12 @@ class ResourceUpdateLocalStorageController {
   async _exec(options = {}) {
     try {
       await this.exec(options);
-      this.worker.port.emit(this.requestId, "SUCCESS");
+      safePortEmit(this.worker, this.requestId, "SUCCESS");
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 
