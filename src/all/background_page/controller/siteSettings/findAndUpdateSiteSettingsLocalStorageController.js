@@ -12,6 +12,7 @@
  * @since         6.0.0
  */
 import FindAndUpdateSiteSettingsLocalStorageService from "../../service/siteSettings/findAndUpdateSiteSettingsLocalStorageService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 /**
  * Retrieve the site settings from the API and update the caches.
@@ -39,10 +40,12 @@ class FindAndUpdateSiteSettingsLocalStorageController {
   async _exec() {
     try {
       const siteSettings = await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS", siteSettings);
+      safePortEmit(this.worker, this.requestId, "SUCCESS", siteSettings);
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

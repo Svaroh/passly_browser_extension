@@ -12,6 +12,7 @@
  * @since         4.9.4
  */
 import FindAndUpdateFoldersLocalStorageService from "../../service/folder/findAndUpdateFoldersLocalStorageService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 class UpdateAllFolderLocalStorageController {
   /**
@@ -38,10 +39,12 @@ class UpdateAllFolderLocalStorageController {
   async _exec() {
     try {
       await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS");
+      safePortEmit(this.worker, this.requestId, "SUCCESS");
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

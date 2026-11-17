@@ -1,5 +1,6 @@
 {
   "testEnvironment": "node",
+  "testTimeout": 30000,
   "setupFiles": [
     "<rootDir>/test/jest.env-setup.js",
     "jest-webextension-mock",

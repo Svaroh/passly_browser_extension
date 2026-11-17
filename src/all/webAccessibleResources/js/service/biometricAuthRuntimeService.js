@@ -27,6 +27,28 @@ class BiometricAuthRuntimeService {
   }
 
   /**
+   * Returns whether this extension document is running inside a cross-origin iframe
+   * embedded in a Passbolt HTTPS page (e.g. passbolt-iframe-login.html).
+   * In Chromium, cross-origin iframes without a publickey-credentials-create Permissions Policy
+   * cannot invoke WebAuthn directly and must delegate to the parent HTTPS page.
+   * @returns {boolean}
+   */
+  static isEmbeddedExtensionFrame() {
+    if (!["chrome-extension:", "moz-extension:", "safari-web-extension:"].includes(globalThis.location?.protocol)) {
+      return false;
+    }
+    try {
+      return (
+        typeof globalThis.self !== "undefined" &&
+        typeof globalThis.top !== "undefined" &&
+        globalThis.self !== globalThis.top
+      );
+    } catch {
+      return true;
+    }
+  }
+
+  /**
    * Get the relying party id for the current account domain.
    * @param {Port} port The extension port.
    * @returns {Promise<string|null>}
@@ -51,15 +73,17 @@ class BiometricAuthRuntimeService {
   static async isAvailable(port) {
     return this.withPasskeyProviderSuspended(async () => {
       const rpId = await this.getRpId(port);
+      if (this.usePassboltPageOrigin() || this.isEmbeddedExtensionFrame()) {
+        try {
+          if (await port.request("passbolt.biometric-auth.is-available-in-page", rpId)) {
+            return true;
+          }
+        } catch {
+          // Fall back to direct check below.
+        }
+      }
       if (await BiometricAuthClientService.isAvailable(rpId).catch(() => false)) {
         return true;
-      }
-      if (this.usePassboltPageOrigin()) {
-        try {
-          return await port.request("passbolt.biometric-auth.is-available-in-page", rpId);
-        } catch {
-          return false;
-        }
       }
       return false;
     });
@@ -74,10 +98,28 @@ class BiometricAuthRuntimeService {
   static async createConfiguration(port, passphrase) {
     return this.withPasskeyProviderSuspended(async () => {
       const rpId = await this.getRpId(port);
-      if (this.usePassboltPageOrigin()) {
-        return port.request("passbolt.biometric-auth.create-configuration-in-page", passphrase, rpId);
+      if (this.usePassboltPageOrigin() || this.isEmbeddedExtensionFrame()) {
+        try {
+          return await port.request("passbolt.biometric-auth.create-configuration-in-page", passphrase, rpId);
+        } catch (relayError) {
+          if (this.usePassboltPageOrigin()) {
+            throw relayError;
+          }
+          return BiometricAuthClientService.createConfiguration(passphrase, rpId);
+        }
       }
-      return BiometricAuthClientService.createConfiguration(passphrase, rpId);
+      try {
+        return await BiometricAuthClientService.createConfiguration(passphrase, rpId);
+      } catch (error) {
+        if (this.isUnavailableError(error)) {
+          try {
+            return await port.request("passbolt.biometric-auth.create-configuration-in-page", passphrase, rpId);
+          } catch {
+            throw error;
+          }
+        }
+        throw error;
+      }
     });
   }
 
@@ -90,7 +132,7 @@ class BiometricAuthRuntimeService {
   static async unlock(port, configuration) {
     return this.withPasskeyProviderSuspended(async () => {
       const rpId = await this.getRpId(port);
-      if (this.usePassboltPageOrigin()) {
+      if (this.usePassboltPageOrigin() || this.isEmbeddedExtensionFrame()) {
         try {
           return await port.request("passbolt.biometric-auth.unlock-in-page", configuration, rpId);
         } catch {

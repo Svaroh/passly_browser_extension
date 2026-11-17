@@ -14,6 +14,7 @@
 
 import FindAndUpdateResourcesLocalStorage from "../../service/resource/findAndUpdateResourcesLocalStorageService";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 import ResourceLocalStorage from "../../service/local_storage/resourceLocalStorage";
 
@@ -39,10 +40,12 @@ class FindDeletedResourcesController {
   async _exec() {
     try {
       const result = await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS", result);
+      safePortEmit(this.worker, this.requestId, "SUCCESS", result);
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

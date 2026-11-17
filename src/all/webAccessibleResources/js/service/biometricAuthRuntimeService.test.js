@@ -245,4 +245,57 @@ describe("BiometricAuthRuntimeService", () => {
       expect(chrome.webAuthenticationProxy.attach).not.toHaveBeenCalled();
     });
   });
+
+  describe("::createConfiguration", () => {
+    it("Should delegate Touch ID creation to the Passbolt HTTPS page when running in an embedded Chrome extension iframe.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      jest.spyOn(BiometricAuthRuntimeService, "isEmbeddedExtensionFrame").mockReturnValue(true);
+      const expectedConfig = { credential_id: "cred-1", rp_id: "pass.66ton99.org.ua" };
+      const port = {
+        request: jest.fn((message) => {
+          if (message === "passbolt.addon.get-domain") {
+            return Promise.resolve("https://pass.66ton99.org.ua/");
+          }
+          if (message === "passbolt.biometric-auth.create-configuration-in-page") {
+            return Promise.resolve(expectedConfig);
+          }
+        }),
+      };
+      const localCreateSpy = jest.spyOn(BiometricAuthClientService, "createConfiguration");
+
+      await expect(BiometricAuthRuntimeService.createConfiguration(port, "secret-pass")).resolves.toBe(expectedConfig);
+      expect(port.request).toHaveBeenCalledWith(
+        "passbolt.biometric-auth.create-configuration-in-page",
+        "secret-pass",
+        "pass.66ton99.org.ua",
+      );
+      expect(localCreateSpy).not.toHaveBeenCalled();
+    });
+
+    it("Should fall back to Passbolt HTTPS page delegation when local Touch ID creation fails with NotAllowedError.", async () => {
+      mockLocation({ protocol: "chrome-extension:" });
+      jest.spyOn(BiometricAuthRuntimeService, "isEmbeddedExtensionFrame").mockReturnValue(false);
+      const expectedConfig = { credential_id: "cred-2", rp_id: "pass.66ton99.org.ua" };
+      const port = {
+        request: jest.fn((message) => {
+          if (message === "passbolt.addon.get-domain") {
+            return Promise.resolve("https://pass.66ton99.org.ua/");
+          }
+          if (message === "passbolt.biometric-auth.create-configuration-in-page") {
+            return Promise.resolve(expectedConfig);
+          }
+        }),
+      };
+      const notAllowedError = new Error("The 'publickey-credentials-create' feature is not enabled in this document.");
+      notAllowedError.name = "NotAllowedError";
+      jest.spyOn(BiometricAuthClientService, "createConfiguration").mockRejectedValue(notAllowedError);
+
+      await expect(BiometricAuthRuntimeService.createConfiguration(port, "secret-pass")).resolves.toBe(expectedConfig);
+      expect(port.request).toHaveBeenCalledWith(
+        "passbolt.biometric-auth.create-configuration-in-page",
+        "secret-pass",
+        "pass.66ton99.org.ua",
+      );
+    });
+  });
 });

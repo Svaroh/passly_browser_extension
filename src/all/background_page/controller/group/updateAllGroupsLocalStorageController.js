@@ -13,6 +13,7 @@
  */
 
 import FindAndUpdateGroupsLocalStorageService from "../../service/group/findAndUpdateGroupsLocalStorageService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 class UpdateAllGroupsLocalStorageController {
   /**
@@ -35,10 +36,12 @@ class UpdateAllGroupsLocalStorageController {
   async _exec() {
     try {
       const result = await this.exec.apply(this, arguments);
-      this.worker.port.emit(this.requestId, "SUCCESS", result);
+      safePortEmit(this.worker, this.requestId, "SUCCESS", result);
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

@@ -45,6 +45,7 @@ import { AppSignOutEvents } from "../event/appSignOutEvents";
 import UserApiService from "passbolt-styleguide/src/shared/services/api/user/userApiService";
 import UserEntity from "../model/entity/user/userEntity";
 import GetOrFindActiveSessionService from "../service/activeSession/getOrFindActiveSessionService";
+import isMissingAccountError from "../service/account/isMissingAccountError";
 
 class App extends Pagemod {
   /**
@@ -143,6 +144,9 @@ class App extends Pagemod {
         event.listen({ port, tab }, apiClientOptions, account);
       }
     } catch (error) {
+      if (isMissingAccountError(error)) {
+        return;
+      }
       /*
        * Ensure the application does not crash completely if the legacy account cannot be retrieved.
        * The following controllers won't work as expected:

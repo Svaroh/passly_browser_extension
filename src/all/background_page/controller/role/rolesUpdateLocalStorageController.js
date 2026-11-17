@@ -12,6 +12,7 @@
  * @since         5.8.0
  */
 import FindAndUpdateRolesLocalStorageService from "../../service/role/findAndUpdateRolesLocalStorageService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 export default class RolesUpdateLocalStorageController {
   /**
@@ -34,10 +35,12 @@ export default class RolesUpdateLocalStorageController {
   async _exec() {
     try {
       await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS");
+      safePortEmit(this.worker, this.requestId, "SUCCESS");
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

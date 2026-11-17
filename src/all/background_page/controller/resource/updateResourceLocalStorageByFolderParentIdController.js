@@ -15,6 +15,7 @@ import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import FindAndUpdateResourcesLocalStorage from "../../service/resource/findAndUpdateResourcesLocalStorageService";
 import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 class UpdateResourceLocalStorageByFolderParentIdController {
   /**
@@ -39,10 +40,12 @@ class UpdateResourceLocalStorageByFolderParentIdController {
   async _exec(parentFolderId) {
     try {
       await this.exec(parentFolderId);
-      this.worker.port.emit(this.requestId, "SUCCESS");
+      safePortEmit(this.worker, this.requestId, "SUCCESS");
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

@@ -15,6 +15,7 @@
 import FindAndUpdateResourcesLocalStorage from "../../service/resource/findAndUpdateResourcesLocalStorageService";
 import { assertUuid } from "passbolt-styleguide/src/shared/utils/assertions";
 import GetPassphraseService from "../../service/passphrase/getPassphraseService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 
 class FindAllIdsByIsSharedWithGroupController {
@@ -41,10 +42,12 @@ class FindAllIdsByIsSharedWithGroupController {
   async _exec(groupId) {
     try {
       const result = await this.exec(groupId);
-      this.worker.port.emit(this.requestId, "SUCCESS", result);
+      safePortEmit(this.worker, this.requestId, "SUCCESS", result);
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

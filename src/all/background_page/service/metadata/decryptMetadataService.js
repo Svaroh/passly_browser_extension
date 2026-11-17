@@ -26,6 +26,7 @@ import SessionKeysCollection from "passbolt-styleguide/src/shared/models/entity/
 import EntityValidationError from "passbolt-styleguide/src/shared/models/entity/abstract/entityValidationError";
 import ResourceMetadataEntity from "passbolt-styleguide/src/shared/models/entity/resource/metadata/resourceMetadataEntity";
 import Logger from "passbolt-styleguide/src/shared/utils/logger";
+import UserPassphraseRequiredError from "passbolt-styleguide/src/shared/error/userPassphraseRequiredError";
 
 class DecryptMetadataService {
   /**
@@ -57,7 +58,7 @@ class DecryptMetadataService {
     const ignoreDecryptionError = options?.ignoreDecryptionError || false;
     const updateSessionKeys = options?.updateSessionKeys || false;
 
-    const sessionKeys = await this.decryptAllFromForeignModelsWithSessionKeys(collection, passphrase);
+    const sessionKeys = await this.decryptAllFromForeignModelsWithSessionKeys(collection, passphrase, options);
     const decryptWithSharedKeySessionKeysDto = await this.decryptAllFromForeignModelsWithSharedKey(
       collection,
       passphrase,
@@ -89,7 +90,7 @@ class DecryptMetadataService {
    * @returns {Promise<SessionKeysCollection>}
    * @private
    */
-  async decryptAllFromForeignModelsWithSessionKeys(collection, passphrase = null) {
+  async decryptAllFromForeignModelsWithSessionKeys(collection, passphrase = null, options = {}) {
     let sessionKeys = new SessionKeysCollection();
     const filteredCollection = collection.items.filter((entity) => !entity.isMetadataDecrypted());
 
@@ -113,13 +114,23 @@ class DecryptMetadataService {
           await this.decryptMetadataWithSessionKey(entity, sessionKey.sessionKey);
         } catch (error) {
           sessionKeys.items.splice(i, 1);
-          const errorMessage = `Unable to decrypt the metadata of the entity ${sessionKey?.foreignModel}:${sessionKey?.foreignId} with the session key.`;
-          Logger.error(new Error(errorMessage, { cause: error }));
+          if (!options.ignoreDecryptionError) {
+            const errorMessage = `Unable to decrypt the metadata of the entity ${sessionKey?.foreignModel}:${sessionKey?.foreignId} with the session key.`;
+            Logger.error(new Error(errorMessage, { cause: error }));
+          }
         }
       }
     } catch (error) {
-      const errorMessage = "Unable to decrypt the metadata of the entities using the session key.";
-      Logger.error(new Error(errorMessage, { cause: error }));
+      const isPassphraseRequired =
+        error instanceof UserPassphraseRequiredError ||
+        error?.name === "UserPassphraseRequiredError" ||
+        error?.cause instanceof UserPassphraseRequiredError ||
+        error?.cause?.name === "UserPassphraseRequiredError" ||
+        (typeof error?.message === "string" && error.message.includes("passphrase is required"));
+      if (!isPassphraseRequired && !options.ignoreDecryptionError) {
+        const errorMessage = "Unable to decrypt the metadata of the entities using the session key.";
+        Logger.error(new Error(errorMessage, { cause: error }));
+      }
     }
 
     return sessionKeys;
@@ -356,7 +367,6 @@ class DecryptMetadataService {
     if (!options.ignoreDecryptionError) {
       throw error;
     }
-    Logger.error(error);
   }
 
   /**

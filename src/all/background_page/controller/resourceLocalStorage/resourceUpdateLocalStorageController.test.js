@@ -75,6 +75,21 @@ describe("ResourceUpdateLocalStorageController", () => {
       expect(controller.worker.port.emit).toHaveBeenCalledWith(null, "ERROR", error);
     });
 
+    it("Should not log console.error when API returns Authentication is required (403)", async () => {
+      expect.assertions(2);
+
+      console.error.mockClear();
+      const authError = new Error("Authentication is required to continue");
+      authError.name = "PassboltApiFetchError";
+      authError.data = { code: 403 };
+      jest.spyOn(controller.findAndUpdateResourcesLocalStorage, "findAndUpdateAll").mockRejectedValueOnce(authError);
+
+      await controller._exec();
+
+      expect(console.error).not.toHaveBeenCalled();
+      expect(controller.worker.port.emit).toHaveBeenCalledWith(null, "ERROR", authError);
+    });
+
     it("requests the user passphrase whenever the decryption of the metadata requires it and try to load the data again", async () => {
       expect.assertions(4);
 

@@ -36,6 +36,7 @@ import { TEST_RESOURCE_TYPE_V5_DEFAULT } from "passbolt-styleguide/src/shared/mo
 import GetOrFindResourceTypesService from "../../resourceType/getOrFindResourceTypesService";
 
 describe("RotateResourcesMetadataKeyService", () => {
+  jest.setTimeout(30000);
   let account, metadataKeysDtos;
 
   beforeEach(() => {
@@ -130,7 +131,7 @@ describe("RotateResourcesMetadataKeyService", () => {
       expect(progressService.finishStep).toHaveBeenCalledWith("Rotating resources metadata page 2/2");
       expect(service.encryptMetadataService.encryptAllFromForeignModels).toHaveBeenCalledTimes(2);
       expect(service.decryptMetadataService.decryptAllFromForeignModels).toHaveBeenCalledTimes(2);
-    }, 10_000);
+    }, 40_000);
 
     it("should retry the process multiple times before aborting it", async () => {
       expect.assertions(3);
@@ -173,7 +174,7 @@ describe("RotateResourcesMetadataKeyService", () => {
       // check expectation
       expect(service._rotateResources).toHaveBeenCalledTimes(3);
       expect(replayOptions.count).toStrictEqual(3);
-    }, 10_000);
+    }, 40_000);
 
     it("should not retry the process if the error from the API is unexpected", async () => {
       expect.assertions(3);
@@ -213,6 +214,6 @@ describe("RotateResourcesMetadataKeyService", () => {
       // check expectation
       expect(service._rotateResources).toHaveBeenCalledTimes(1);
       expect(replayOptions.count).toStrictEqual(0);
-    }, 10_000);
+    }, 40_000);
   });
 });

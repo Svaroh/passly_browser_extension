@@ -1,3 +1,35 @@
+# v6.1.21
+Passly 6.1.21 fixes Touch ID / biometric enrollment on Chrome login iframes, suppresses expected unauthenticated `Authentication is required to continue` console errors in background sync controllers, and hardens Linux E2E extension loading.
+
+### Fixed
+- **Touch ID / Biometric Enrollment on Login:** Delegated WebAuthn `createConfiguration`, `unlock`, and `isAvailable` calls from embedded `chrome-extension://` iframes (`passbolt-iframe-login.html`, `passbolt-iframe-recover.html`, `passbolt-iframe-account-recovery.html`) to the top-level Passly HTTPS origin (`passbolt.biometric-auth.create-configuration-in-page`), resolving silent `NotAllowedError` Permissions Policy failures that prevented the Touch ID enrollment prompt from appearing. Added fallback delegation for top-level extension pages and included offline login (`passbolt.auth.login-offline`) in QuickAccess biometric enrollment.
+- **Eliminate `Authentication is required to continue` Console Errors:** Added `isExpectedControllerError` / `safePortEmit` guards to local-storage refresh controllers (`ResourceUpdateLocalStorageController`, folders, groups, users, roles, active session, and site settings) so unauthenticated 401/403 responses do not spam `console.error` in the MV3 Service Worker.
+- **Real MV3 Extension Verification in E2E Tests:** Updated `e2e/common/platform-chrome.js` to prefer Chromium / Chrome for Testing on Linux so `--load-extension` actually loads Passly's `serviceWorker/serviceWorker.js` and `offscreens/offscreen.html`, and updated `e2e/first-load.e2e.js` to explicitly audit both targets and reject `ERR_FILE_NOT_FOUND`.
+
+# v6.1.20
+Passly 6.1.20 introduces cross-platform E2E test suites for Windows, Linux & MAC, integrates automated multi-platform BrowserStack verification, and adds portable cross-platform browser detection with strict zero-console-error assertions across all environments.
+
+### Added
+- **Cross-Platform Matrix Test Suite (`e2e/cross-platform-matrix.e2e.js`):** Unified test runner orchestrating E2E verification across Windows, Linux & MAC platforms (`npm run test:e2e:linux`, `npm run test:e2e:windows`, `npm run test:e2e:mac`, `npm run test:e2e:platforms`).
+- **BrowserStack Cloud Multi-Platform Runner (`server-infra/e2e/browserstack/run-browserstack-web.js`):** Support for executing automated cloud verification sessions across Windows (Windows 11 / Chrome), MAC (macOS Sonoma / Chrome), and Linux (native headless Chrome / CDP), with flag support (`--platform=windows|mac|linux|all`).
+- **Cross-Platform Chrome Executable Resolution (`e2e/common/platform-chrome.js`):** Automated detection of Chrome / Chromium binaries across Linux, macOS (`darwin`), and Windows (`win32`).
+- **Strict Zero Console Error Assertions Across All Platforms:** Each platform verifies backend healthcheck, login, and application shell with strict assertion of zero console errors and unhandled exceptions (`errors.length === 0`), failing immediately if any error is encountered.
+
+# v6.1.19
+Passly 6.1.19 eliminates console errors and unhandled exceptions on first load, adds a dedicated First Load E2E test suite, and enforces strict zero-console-error assertions across all E2E test suites in local and BrowserStack runners.
+
+### Fixed
+- **Metadata Decryption Error Suppression on First Load:** In `DecryptMetadataService`, passed options into `decryptAllFromForeignModelsWithSessionKeys`, suppressed `Logger.error` when session keys cannot be decrypted because user passphrase is required (`UserPassphraseRequiredError`), and gracefully caught missing passphrases in `decryptAllFromForeignModelsWithUserKey` when `ignoreDecryptionError: true`.
+- **Clean Error Handling in `handleError`:** Avoided calling `Logger.error` when `options.ignoreDecryptionError` is explicitly requested.
+- **Native Fetch Offscreen Fallback Logging:** In `RequestFetchOffscreenService`, downgraded the fallback log from `console.error` to `console.debug` to prevent transparent MV3 offscreen fetch fallback from generating alarming console error messages.
+- **Disconnected Port Guard:** In `SyncNowController` and `GetPassphraseService`, added port connectivity checks (`port?.isConnected()`) prior to requesting passphrases, returning `SyncResult.SKIPPED` and throwing `UserAbortsOperationError` cleanly when disconnected rather than logging unhandled `console.error` exceptions.
+- **Passkey Dialog Closed Resilience:** In `PasskeyWebAuthenticationProxyService`, suppressed `console.warn` when passkey requests are aborted or dialog is closed (`NotAllowedError` / `AbortError`).
+
+### Added
+- **First Load E2E Test Suite (`e2e/first-load.e2e.js`):** Comprehensive end-to-end test verifying first launch under a clean profile, multi-target CDP auditing (Page, Service Worker, Workspace, QuickAccess), and asserting zero console errors across all targets.
+- **Strict Console Error Assertions Across All E2E Suites:** All E2E suites (`first-load.e2e.js`, `offline-vault.e2e.js`, `style-verification.e2e.js`, `delta-sync.e2e.js`, `test-offline-service-worker.js`) fail if any console errors or uncaught exceptions are detected.
+- **Server-Infra BrowserStack & Portability Fixes:** Resolved hardcoded macOS file paths across `server-infra` E2E scripts and validated successful execution on BrowserStack Automate cloud runner.
+
 # v6.1.18
 Passly 6.1.18 hardens delta synchronization fault tolerance, resolves all PR #54 second-round review blockers, and fixes offline resource replication and metadata key decryption.
 

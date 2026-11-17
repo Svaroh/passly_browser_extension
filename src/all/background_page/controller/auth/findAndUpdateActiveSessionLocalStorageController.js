@@ -12,6 +12,7 @@
  * @since         6.0.0
  */
 import FindAndUpdateActiveSessionLocalStorageService from "../../service/activeSession/findAndUpdateActiveSessionLocalStorageService";
+import { isExpectedControllerError, safePortEmit } from "../../utils/error/isExpectedControllerError";
 
 class FindAndUpdateActiveSessionLocalStorageController {
   /**
@@ -38,10 +39,12 @@ class FindAndUpdateActiveSessionLocalStorageController {
   async _exec() {
     try {
       const activeSessionEntity = await this.exec();
-      this.worker.port.emit(this.requestId, "SUCCESS", activeSessionEntity);
+      safePortEmit(this.worker, this.requestId, "SUCCESS", activeSessionEntity);
     } catch (error) {
-      console.error(error);
-      this.worker.port.emit(this.requestId, "ERROR", error);
+      if (!isExpectedControllerError(error)) {
+        console.error(error);
+      }
+      safePortEmit(this.worker, this.requestId, "ERROR", error);
     }
   }
 

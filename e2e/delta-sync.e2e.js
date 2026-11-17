@@ -27,11 +27,10 @@ const EXTENSION_PATH = path.resolve(EXT_DIR, 'build/all');
 const SERVER_INFRA_DIR = path.resolve(EXT_DIR, '../server-infra');
 const CREDS_DIR = path.resolve(SERVER_INFRA_DIR, 'e2e/credentials/chrome');
 
+const { getChromeExecutable } = require('./common/platform-chrome');
+
 const CHROME_PORT = 9470;
-const CHROME_PATH = process.env.CHROME_BIN ||
-  (process.platform === 'darwin'
-    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    : 'google-chrome');
+const CHROME_PATH = getChromeExecutable();
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -307,6 +306,10 @@ async function run() {
 
     const pageTitle = await client.eval('document.title');
     console.log(`[PASS] Vault Page Attached. Title: "${pageTitle}"`);
+
+    if (client.errors.length > 0) {
+      throw new Error(`FAILED: Detected ${client.errors.length} console error(s) during delta sync E2E test:\n${client.errors.join('\n')}`);
+    }
 
     console.log('\n================================================================');
     console.log('  ALL INCREMENTAL DELTA SYNC (sync/1) CONTRACT CHECKS PASSED');

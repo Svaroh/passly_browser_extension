@@ -44,6 +44,8 @@ const mockedWindow = {
 };
 
 Object.defineProperty(global, "FileReader", {value: MockedFileReader});
-Object.defineProperty(global, "File", {value: File});
+if (!global.File) {
+  Object.defineProperty(global, "File", {value: File});
+}
 Object.defineProperty(global, "self", {value: global});
 Object.defineProperty(global, "window", {value: mockedWindow});

@@ -19,9 +19,11 @@ import { enableFetchMocks } from "jest-fetch-mock";
 import { defaultApiClientOptions } from "passbolt-styleguide/src/shared/lib/apiClient/apiClientOptions.test.data";
 import AccountEntity from "../../model/entity/account/accountEntity";
 import { defaultAccountDto } from "../../model/entity/account/accountEntity.test.data";
+import SiteSettingsRuntimeCache from "../siteSettings/siteSettingsRuntimeCache";
 
 let currentTime, account;
 beforeEach(() => {
+  SiteSettingsRuntimeCache.flushAll();
   enableFetchMocks();
   MockExtension.withMissingPrivateKeyAccount();
   account = new AccountEntity(defaultAccountDto());
@@ -30,6 +32,11 @@ beforeEach(() => {
   currentTime = new Date();
   currentTime.setMilliseconds(0);
   jest.setSystemTime(currentTime.getTime());
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+  SiteSettingsRuntimeCache.flushAll();
 });
 
 describe("GetGpgCompatibleDate service", () => {
